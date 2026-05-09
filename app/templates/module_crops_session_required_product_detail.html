@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="crop-required-detail-page">
+  <header class="dashboard-header crop-required-detail-page__hero">
+    <div>
+      <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
+      <p class="dash-meta">{{ module_desc }}</p>
+      <div class="crop-required-detail-page__item-card">
+        {% if detail_kind == 'PRODUCT' and input_product %}
+          <p class="crop-required-detail-page__item-kicker">{{ i("package") }} Stock product</p>
+          <p class="crop-required-detail-page__item-title">
+            <strong>{{ input_product.crop_code }}</strong> — {{ input_product.crop_name }}
+          </p>
+          <p class="hint">
+            {{ input_product.crop_category or "—" }} · {{ input_product.product_type or "—" }}
+            · Unit: <strong>{{ (unit_display or "UNIT")|upper }}</strong>
+          </p>
+        {% elif detail_kind == 'MANUAL' %}
+          <p class="crop-required-detail-page__item-kicker">{{ i("file_text") }} Manual activity input</p>
+          <p class="crop-required-detail-page__item-title">{{ manual_activity_label }}</p>
+          <p class="hint">
+            Type: {{ manual_activity.activity_type or "—" }} · Unit: <strong>{{ (unit_display or "UNIT")|upper }}</strong>
+          </p>
+        {% endif %}
+      </div>
+      <p class="hint crop-required-detail-page__nav" style="margin-top:0.85rem">
+        <a href="{{ url_for('main.crops_session_crop_required_products', role=session.get('employee_role'), product_id=crop_product.id) }}">{{ i("chevron_left") }} All products required</a>
+        <span aria-hidden="true"> · </span>
+        <a href="{{ url_for('main.crops_session_sessions_for_crop', role=session.get('employee_role'), product_id=crop_product.id) }}">{{ i("users") }} Farmers in session</a>
+        {% if stock_out_enabled %}
+        <span aria-hidden="true"> · </span>
+        <a href="{{ url_for('main.warehouse_distribution', role=session.get('employee_role')) }}">{{ i("truck") }} Warehouse distribution</a>
+        {% endif %}
+      </p>
+    </div>
+  </header>
+
+  <section class="panel">
+    <div class="crop-required-detail-page__panel-head">
+      <h3>{{ i("users") }} Farmers &amp; quantities</h3>
+      <p class="crop-required-detail-page__panel-desc">
+        Each quantity is the sum of <strong>(session acres × units per acre)</strong> for every active activity line that references this input for crop
+        <strong>{{ crop_product.crop_code }}</strong>.
+        {% if stock_out_enabled %}
+        <strong>Already stocked out</strong> is the running total issued to each farmer for this SKU via warehouse distributions (same product).
+        <strong>Remaining to issue</strong> is what is left against the crop requirement. Stock-out uses only the remainder (rounded to two decimals).
+        {% endif %}
+      </p>
+    </div>
+
+    <div class="crop-required-detail-page__stats-row">
+      <div class="crop-required-detail-page__grand">
+        <span class="crop-required-detail-page__grand-label">Grand total (all farmers)</span>
+        <strong class="crop-required-detail-page__grand-value">{{ "%.4f"|format(grand_qty_required|float) }}</strong>
+        <span class="pill">{{ (unit_display or "UNIT")|upper }}</span>
+      </div>
+      {% if stock_out_enabled %}
+      <div class="crop-required-detail-page__stock-chip">
+        <span class="crop-required-detail-page__stock-chip-label">{{ i("boxes") }} On hand</span>
+        <strong class="crop-required-detail-page__stock-chip-value">{{ "%.2f"|format(stock_qty_available|float) }}</strong>
+        <span class="pill">{{ (unit_display or "UNIT")|upper }}</span>
+      </div>
+      <div class="crop-required-detail-page__issue-chip">
+        <span class="crop-required-detail-page__issue-chip-label">{{ i("truck") }} Remaining to issue</span>
+        <strong class="crop-required-detail-page__issue-chip-value">{{ "%.2f"|format(grand_issue_suggested|float) }}</strong>
+        <span class="pill">{{ (unit_display or "UNIT")|upper }}</span>
+        <span class="hint crop-required-detail-page__issue-chip-hint">all farmers</span>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if stock_out_enabled and farmer_rows and farmer_rows|length %}
+    <form
+      method="post"
+      class="crop-required-detail-page__stock-form"
+      id="crop-required-stock-form"
+      data-stock-available="{{ '%.2f'|format(stock_qty_available|float) }}"
+      data-stock-unit="{{ (unit_display or 'UNIT')|upper|e }}"
+      data-grand-remainder-zero="{{ '1' if (grand_issue_suggested|float) <= 0 else '0' }}"
+    >
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      {% if (grand_issue_suggested|float) <= 0 %}
+      <div class="crop-required-detail-page__remainder-global-alert" role="alert">
+        {{ i("alert_triangle") }}
+        <span>
+          <strong>No remaining quantity to issue.</strong>
+          Every farmer is already stocked out up to the computed requirement (or remainder is zero). You cannot record another stock-out from this screen until requirements or distributions change.
+        </span>
+      </div>
+      {% endif %}
+      <div class="crop-required-detail-page__no-remainder-alert" data-no-remainder-alert hidden role="alert">
+        {{ i("alert_triangle") }}
+        <span class="crop-required-detail-page__no-remainder-body">
+          <strong>No remaining quantity to issue for the selected farmers (already stocked out up to the computed requirement, or zero remaining).</strong>
+          <span data-no-remainder-detail></span>
+        </span>
+      </div>
+      <div class="crop-required-detail-page__deficit-alert" data-stock-deficit-alert hidden role="alert">
+        {{ i("alert_triangle") }}
+        <span class="crop-required-detail-page__deficit-alert-body">
+          <strong>Insufficient stock for this selection.</strong>
+          <span data-stock-deficit-detail></span>
+        </span>
+      </div>
+      <div class="crop-required-detail-page__stock-actions">
+        <div class="crop-required-detail-page__selection-live" aria-live="polite">
+          <span class="crop-required-detail-page__selection-label">Selected remainder issue total</span>
+          <strong class="crop-required-detail-page__selection-value" data-stock-selection-total>0.00</strong>
+          <span class="pill">{{ (unit_display or "UNIT")|upper }}</span>
+          <span class="hint" data-stock-selection-count>(0 farmers)</span>
+        </div>
+        <div class="crop-required-detail-page__stock-fields">
+          <label class="crop-required-detail-page__note-field">
+            <span class="crop-required-detail-page__note-label">Note (optional)</span>
+            <input type="text" name="stock_out_note" maxlength="120" placeholder="REFERENCE / BATCH (STORED IN CAPS)" autocomplete="off" style="text-transform:uppercase" />
+          </label>
+          <button type="submit" class="button" data-stock-submit>{{ i("truck") }} Stock out selected amounts</button>
+        </div>
+      </div>
+
+      <div class="table-wrap crop-required-detail-page__table-wrap{% if (grand_issue_suggested|float) <= 0 %} crop-required-detail-page__table-wrap--remainder-blocked{% endif %}">
+        <table class="data-table crop-required-detail-page__table">
+          <thead>
+            <tr>
+              <th class="crop-required-detail-page__col-check">
+                <input type="checkbox" id="crop-stock-select-all" title="Select all farmers" aria-label="Select all farmers" />
+              </th>
+              <th>Farmer</th>
+              <th>Code / member #</th>
+              <th>Phone</th>
+              <th class="numeric-col">Session acres (this crop)</th>
+              <th class="numeric-col">Qty required</th>
+              <th class="numeric-col">Already stocked out</th>
+              <th class="numeric-col">Remaining to issue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for fr in farmer_rows %}
+            {% set iss = (fr.qty_issue_suggested|float) if fr.qty_issue_suggested is defined else 0 %}
+            {% set issued = (fr.qty_already_issued|float) if fr.qty_already_issued is defined else 0 %}
+            {% set remain_need = (fr.qty_remaining_need|float) if fr.qty_remaining_need is defined else 0 %}
+            <tr class="crop-required-detail-page__data-row{% if fr.qty_over_issued is defined and (fr.qty_over_issued|float) > 0 %} crop-required-detail-page__data-row--over{% endif %}">
+              <td class="crop-required-detail-page__col-check">
+                <input
+                  type="checkbox"
+                  name="farmer_stock"
+                  value="{{ fr.farmer_id }}"
+                  class="crop-stock-farmer-cb"
+                  data-qty="{{ iss }}"
+                  aria-label="Select {{ fr.full_name | e }} for stock out{% if iss <= 0 %} (no remainder — selection will warn){% endif %}"
+                />
+              </td>
+              <td><strong>{{ fr.full_name or "—" }}</strong></td>
+              <td>
+                {% if fr.farmer_code or fr.membership_number %}
+                  {{ fr.farmer_code or "—" }} / {{ fr.membership_number or "—" }}
+                {% else %}—{% endif %}
+              </td>
+              <td>{{ fr.phone_number or "—" }}</td>
+              <td class="numeric-col">{{ "%.4f"|format((fr.farmer_crop_acres|float) if fr.farmer_crop_acres is not none else 0) }}</td>
+              <td class="numeric-col"><strong>{{ "%.4f"|format((fr.qty_required|float) if fr.qty_required is not none else 0) }}</strong></td>
+              <td class="numeric-col">{{ "%.2f"|format(issued) }}{% if fr.qty_over_issued is defined and (fr.qty_over_issued|float) > 0 %}<div class="hint crop-required-detail-page__over-hint">+{{ "%.2f"|format(fr.qty_over_issued|float) }} vs requirement</div>{% endif %}</td>
+              <td class="numeric-col"><strong>{{ "%.2f"|format(remain_need) }}</strong></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </form>
+    {% else %}
+    <div class="table-wrap crop-required-detail-page__table-wrap">
+      <table class="data-table crop-required-detail-page__table">
+        <thead>
+          <tr>
+            <th>Farmer</th>
+            <th>Code / member #</th>
+            <th>Phone</th>
+            <th class="numeric-col">Session acres (this crop)</th>
+            <th class="numeric-col">Qty required</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if farmer_rows and farmer_rows|length %}
+            {% for fr in farmer_rows %}
+            <tr>
+              <td><strong>{{ fr.full_name or "—" }}</strong></td>
+              <td>
+                {% if fr.farmer_code or fr.membership_number %}
+                  {{ fr.farmer_code or "—" }} / {{ fr.membership_number or "—" }}
+                {% else %}—{% endif %}
+              </td>
+              <td>{{ fr.phone_number or "—" }}</td>
+              <td class="numeric-col">{{ "%.4f"|format((fr.farmer_crop_acres|float) if fr.farmer_crop_acres is not none else 0) }}</td>
+              <td class="numeric-col"><strong>{{ "%.4f"|format((fr.qty_required|float) if fr.qty_required is not none else 0) }}</strong></td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="5" class="table-empty">No farmers with active sessions for this crop, or no quantity attributable.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </section>
+</div>
+
+{% if stock_out_enabled and farmer_rows and farmer_rows|length %}
+<script>
+(function () {
+  var form = document.getElementById("crop-required-stock-form");
+  if (!form) return;
+  var allCb = document.getElementById("crop-stock-select-all");
+  var boxes = form.querySelectorAll(".crop-stock-farmer-cb");
+  var totalEl = form.querySelector("[data-stock-selection-total]");
+  var countEl = form.querySelector("[data-stock-selection-count]");
+  var submitBtn = form.querySelector("[data-stock-submit]");
+  var deficitWrap = form.querySelector("[data-stock-deficit-alert]");
+  var deficitDetail = form.querySelector("[data-stock-deficit-detail]");
+  var avail = parseFloat(form.getAttribute("data-stock-available") || "0");
+  if (!isFinite(avail)) avail = 0;
+  var unitStr = form.getAttribute("data-stock-unit") || "UNIT";
+  var grandRemainderZero = form.getAttribute("data-grand-remainder-zero") === "1";
+  var noRemainderWrap = form.querySelector("[data-no-remainder-alert]");
+  var noRemainderDetail = form.querySelector("[data-no-remainder-detail]");
+
+  function syncSelectAll() {
+    if (!allCb || !boxes.length) {
+      if (allCb) {
+        allCb.checked = false;
+        allCb.indeterminate = false;
+        allCb.disabled = true;
+      }
+      return;
+    }
+    allCb.disabled = false;
+    var n = 0;
+    Array.prototype.forEach.call(boxes, function (b) {
+      if (b.checked) n++;
+    });
+    allCb.checked = n === boxes.length;
+    allCb.indeterminate = n > 0 && n < boxes.length;
+  }
+
+  function recalc() {
+    var t = 0;
+    var c = 0;
+    var badRemainder = false;
+    var badRemainderCount = 0;
+    boxes.forEach(function (b) {
+      var tr = b.closest("tr");
+      var q = parseFloat(b.getAttribute("data-qty") || "0");
+      if (!isFinite(q)) q = 0;
+      var qR = Math.round(q * 100) / 100;
+
+      if (!b.checked) {
+        if (tr) {
+          tr.classList.remove("crop-required-detail-page__data-row--no-remainder");
+        }
+        return;
+      }
+
+      c++;
+      t += qR;
+      if (qR <= 1e-6) {
+        badRemainder = true;
+        badRemainderCount++;
+        if (tr) tr.classList.add("crop-required-detail-page__data-row--no-remainder");
+      } else if (tr) {
+        tr.classList.remove("crop-required-detail-page__data-row--no-remainder");
+      }
+    });
+
+    if (totalEl) totalEl.textContent = t.toFixed(2);
+    if (countEl) countEl.textContent = "(" + c + " farmer" + (c === 1 ? "" : "s") + ")";
+
+    var over = c > 0 && t > avail + 1e-6;
+    var shortfall = over ? Math.round((t - avail) * 100) / 100 : 0;
+
+    boxes.forEach(function (b) {
+      var tr = b.closest("tr");
+      if (!tr) return;
+      tr.classList.toggle("crop-required-detail-page__data-row--deficit", over && b.checked);
+    });
+
+    if (deficitWrap) {
+      if (over && !grandRemainderZero) {
+        deficitWrap.hidden = false;
+        if (deficitDetail) {
+          deficitDetail.textContent =
+            " Selected total " +
+            t.toFixed(2) +
+            " " +
+            unitStr +
+            " exceeds on-hand " +
+            avail.toFixed(2) +
+            " " +
+            unitStr +
+            " — short by " +
+            shortfall.toFixed(2) +
+            " " +
+            unitStr +
+            ". Reduce selection or add stock.";
+        }
+      } else {
+        deficitWrap.hidden = true;
+        if (deficitDetail) deficitDetail.textContent = "";
+      }
+    }
+
+    if (noRemainderWrap) {
+      if (badRemainder && !grandRemainderZero) {
+        noRemainderWrap.hidden = false;
+        if (noRemainderDetail) {
+          noRemainderDetail.textContent =
+            badRemainderCount > 1
+              ? " Highlighted rows (" + badRemainderCount + " farmers) have nothing left to issue — deselect them or choose others."
+              : " The highlighted row has nothing left to issue — deselect it or choose another farmer.";
+        }
+      } else {
+        noRemainderWrap.hidden = true;
+        if (noRemainderDetail) noRemainderDetail.textContent = "";
+      }
+    }
+
+    var blockSubmit =
+      grandRemainderZero ||
+      c === 0 ||
+      over ||
+      badRemainder;
+    if (submitBtn) submitBtn.disabled = blockSubmit;
+  }
+
+  if (allCb) {
+    allCb.addEventListener("change", function () {
+      var on = allCb.checked;
+      Array.prototype.forEach.call(boxes, function (b) {
+        b.checked = on;
+      });
+      recalc();
+    });
+  }
+  boxes.forEach(function (b) {
+    b.addEventListener("change", function () {
+      syncSelectAll();
+      recalc();
+    });
+  });
+  syncSelectAll();
+  recalc();
+})();
+</script>
+{% endif %}
+
+{% endblock %}

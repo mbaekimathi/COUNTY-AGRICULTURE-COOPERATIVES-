@@ -1,0 +1,460 @@
+{% extends "base.html" %}
+{% block title %}Register farming session — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i("leaf") }} Register farming session</h2>
+    <p class="dash-meta">
+      Choose active crop varieties from the catalogue (season and cycle length apply automatically). Enter acreage per farmer;
+      available land excludes existing active sessions. Farmers are flagged partially or fully in session based on total acreage vs farm size.
+    </p>
+  </div>
+</div>
+
+<section class="panel">
+  <p class="hint" style="margin-bottom: 1rem">
+    <a href="{{ url_for('main.module_page', role=session.get('employee_role'), module_key='farmers') }}">{{ i("chevron_left") }} Back to farmers in session</a>
+  </p>
+
+  <form method="post" action="{{ url_for('main.farmer_farming_session', role=session.get('employee_role')) }}" class="form-grid farming-session-form" style="margin-top: 0.5rem">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+
+    <div class="field" style="grid-column: 1 / -1">
+      <label class="label-row" for="nfs_crop"><span>Registered crop</span></label>
+      <div class="input-wrap">{{ i("package") }}
+        <select id="nfs_crop" name="product_id" required data-fs-crop-select>
+          <option value="" data-growth-days="90" data-season="">Select crop…</option>
+          {% for p in crop_products %}
+          <option
+            value="{{ p.id }}"
+            data-growth-days="{{ p.growth_days }}"
+            data-season="{{ (p.planting_season or '')|e }}"
+          >{{ p.crop_code }} — {{ p.crop_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <p class="hint">
+        Season (from product): <strong data-fs-season-display>—</strong>
+        · Growth cycle: <strong><span data-fs-growth-days-label>—</span> days</strong>
+      </p>
+    </div>
+
+    <div class="field">
+      <label class="label-row" for="nfs_start"><span>Session start</span></label>
+      <div class="input-wrap">{{ i("file_text") }}<input id="nfs_start" name="session_started_on" type="date" required data-fs-start /></div>
+    </div>
+
+    <div class="field">
+      <label class="label-row"><span>Calculated session end</span></label>
+      <div class="input-wrap">{{ i("file_text") }}
+        <input type="text" readonly class="farming-session-readonly-date" data-fs-end-display value="—" aria-live="polite" />
+      </div>
+      <p class="hint">Based on crop growth duration and start date (saved with the session).</p>
+    </div>
+
+    <div class="field" style="grid-column: 1 / -1">
+      <span class="label-row">{{ i("users") }} <span>Farmers &amp; acreage</span></span>
+      <p class="hint" style="margin: 0 0 0.5rem">
+        Tick farmers and enter acres for this session. “Available” is recorded farm size minus acreage already in <strong>active</strong> sessions.
+        Acres are checked <strong>as you type</strong>; you cannot save if a farmer exceeds available land on record.
+      </p>
+      <p class="farming-session-form-alert" data-fs-acres-summary hidden role="alert" aria-live="assertive"></p>
+      <div class="farming-session-farmer-list" role="group" aria-label="Select farmers and acreage">
+        <div class="farming-session-farmer-list__toolbar row-buttons" style="flex-wrap: wrap; margin-bottom: 0.45rem">
+          <button type="button" class="button button-ghost" data-fs-select-all style="font-size:0.85rem;padding:0.35rem 0.65rem">{{ i("check") }} Select all</button>
+          <button type="button" class="button button-ghost" data-fs-clear-all style="font-size:0.85rem;padding:0.35rem 0.65rem">Clear</button>
+        </div>
+        {% for fr in farmers_for_select %}
+        <div
+          class="farming-session-farmer-pick"
+          data-farmer-pick-row
+          {% if fr.available_acres is not none %}data-available-acres="{{ fr.available_acres }}"{% endif %}
+        >
+          <label class="farming-session-farmer-pick__check">
+            <input
+              type="checkbox"
+              name="farmer_id"
+              value="{{ fr.id }}"
+              {% if fr.id in selected_farmer_ids %}checked{% endif %}
+              data-fs-farmer-check
+            />
+          </label>
+          <div class="farming-session-farmer-pick__main">
+            <div><strong>{{ fr.full_name }}</strong> <span class="hint">({{ fr.farmer_code }})</span></div>
+            <div class="farming-session-farmer-pick__metrics hint">
+              {% if fr.total_acres is not none %}
+                Farm total ≈ <strong>{{ "%.2f"|format(fr.total_acres) }}</strong> acres
+                · In active sessions: <strong>{{ "%.2f"|format(fr.committed_acres_display) }}</strong> acres
+                · <strong>Available for planting: {{ "%.2f"|format(fr.available_acres) }}</strong> acres
+              {% else %}
+                Land size not on file — enter acreage carefully; session land status may stay partial.
+              {% endif %}
+            </div>
+          </div>
+          <div class="farming-session-farmer-pick__acres">
+            <label class="sr-only" for="acre_{{ fr.id }}">Acres this session</label>
+            <input
+              id="acre_{{ fr.id }}"
+              type="number"
+              name="farmer_session_acres_{{ fr.id }}"
+              min="0.01"
+              step="0.01"
+              inputmode="decimal"
+              placeholder="Acres"
+              class="num-input"
+              data-fs-farmer-acres
+              {% if fr.available_acres is not none %}max="{{ fr.available_acres }}"{% endif %}
+              {% if fr.id not in selected_farmer_ids %}disabled{% endif %}
+              autocomplete="off"
+            />
+            <p class="farming-session-acres-live" data-fs-acres-feedback hidden aria-live="polite"></p>
+          </div>
+        </div>
+        {% else %}
+        <p class="hint">No active farmers available.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="field" style="grid-column: 1 / -1">
+      <label class="label-row" for="nfs_land"><span>Land / plot notes (optional)</span></label>
+      <div class="input-wrap">{{ i("boxes") }}<input id="nfs_land" name="land_area_notes" type="text" placeholder="Shared note for this batch" data-uppercase style="text-transform: uppercase" /></div>
+    </div>
+
+    <div class="field" style="grid-column: 1 / -1">
+      <label class="label-row" for="nfs_notes"><span>Notes (optional)</span></label>
+      <div class="input-wrap">{{ i("file_text") }}<input id="nfs_notes" name="notes" type="text" data-uppercase style="text-transform: uppercase" /></div>
+    </div>
+
+    <div class="actions" style="grid-column: 1 / -1">
+      <button type="submit" class="button">{{ i("check") }} Save farming session</button>
+    </div>
+  </form>
+</section>
+
+<style>
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+  .farming-session-readonly-date {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.5rem 0.65rem;
+    width: 100%;
+    opacity: 0.95;
+  }
+</style>
+
+<script>
+  (function () {
+    var form = document.querySelector(".farming-session-form");
+    if (!form) return;
+
+    var cropSel = form.querySelector("[data-fs-crop-select]");
+    var seasonEl = form.querySelector("[data-fs-season-display]");
+    var growthEl = form.querySelector("[data-fs-growth-days-label]");
+    var startInp = form.querySelector("[data-fs-start]");
+    var endDisp = form.querySelector("[data-fs-end-display]");
+    var rootList = form.querySelector(".farming-session-farmer-list");
+    var selAll = rootList && rootList.querySelector("[data-fs-select-all]");
+    var clearBtn = rootList && rootList.querySelector("[data-fs-clear-all]");
+
+    function optGrowthDays() {
+      var opt = cropSel && cropSel.options[cropSel.selectedIndex];
+      if (!opt) return 90;
+      var g = parseInt(String(opt.getAttribute("data-growth-days") || "90"), 10);
+      return !isNaN(g) && g > 0 ? g : 90;
+    }
+
+    function pad(n) {
+      return (n < 10 ? "0" : "") + n;
+    }
+
+    function addDaysIso(iso, days) {
+      if (!iso || !days || days < 0) return "";
+      var p = iso.split("-");
+      if (p.length !== 3) return "";
+      var d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+      if (isNaN(d.getTime())) return "";
+      d.setDate(d.getDate() + days);
+      return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+    }
+
+    function refreshCropMeta() {
+      var opt = cropSel && cropSel.options[cropSel.selectedIndex];
+      if (!opt) return;
+      var season = String(opt.getAttribute("data-season") || "").trim();
+      var gd = parseInt(String(opt.getAttribute("data-growth-days") || "90"), 10);
+      if (isNaN(gd) || gd < 1) gd = 90;
+      if (seasonEl) seasonEl.textContent = season ? season.toUpperCase() : "—";
+      if (growthEl) growthEl.textContent = String(gd);
+      refreshEnd();
+    }
+
+    function refreshEnd() {
+      var gd = optGrowthDays();
+      var start = startInp && String(startInp.value || "").trim();
+      if (!endDisp) return;
+      if (!start) {
+        endDisp.value = "—";
+        return;
+      }
+      var end = addDaysIso(start, gd);
+      endDisp.value = end || "—";
+    }
+
+    if (cropSel) cropSel.addEventListener("change", refreshCropMeta);
+    if (startInp) startInp.addEventListener("change", refreshEnd);
+    if (startInp) startInp.addEventListener("input", refreshEnd);
+
+    refreshCropMeta();
+
+    function rowFromCheckbox(cb) {
+      return cb && cb.closest ? cb.closest("[data-farmer-pick-row]") : null;
+    }
+
+    /* Live + submit validation: acres must not exceed data-available-acres on the row */
+    var EPS = 0.021;
+    var summaryEl = form.querySelector("[data-fs-acres-summary]");
+
+    function hideSummary() {
+      if (summaryEl) {
+        summaryEl.hidden = true;
+        summaryEl.textContent = "";
+      }
+    }
+
+    function fmtAcres(n) {
+      var x = Number(n);
+      if (!isFinite(x)) return "—";
+      return (Math.round(x * 10000) / 10000).toString();
+    }
+
+    function parseAcresInput(val) {
+      if (val == null || String(val).trim() === "") return null;
+      var x = parseFloat(String(val).trim().replace(",", "."));
+      return isFinite(x) ? x : NaN;
+    }
+
+    function getAvailableFromRow(row) {
+      if (!row || !row.getAttribute) return null;
+      if (!row.hasAttribute("data-available-acres")) return null;
+      var raw = row.getAttribute("data-available-acres");
+      if (raw === "" || raw == null) return null;
+      var n = parseFloat(String(raw).replace(",", "."));
+      return isFinite(n) ? n : null;
+    }
+
+    function clearAcresFeedback(row) {
+      var inp = row && row.querySelector ? row.querySelector("[data-fs-farmer-acres]") : null;
+      var fb = row && row.querySelector ? row.querySelector("[data-fs-acres-feedback]") : null;
+      if (inp) {
+        inp.classList.remove("is-invalid");
+        inp.setCustomValidity("");
+      }
+      if (fb) {
+        fb.hidden = true;
+        fb.textContent = "";
+        fb.classList.remove("farming-session-acres-live--error", "farming-session-acres-live--warn", "farming-session-acres-live--ok");
+      }
+    }
+
+    function validateAcresRow(row) {
+      var cb = row.querySelector("[data-fs-farmer-check]");
+      var inp = row.querySelector("[data-fs-farmer-acres]");
+      var fb = row.querySelector("[data-fs-acres-feedback]");
+      if (!inp) return "ok";
+
+      if (!cb || !cb.checked) {
+        clearAcresFeedback(row);
+        return "ok";
+      }
+
+      var available = getAvailableFromRow(row);
+      var raw = String(inp.value || "").trim();
+      var a = parseAcresInput(raw);
+
+      if (!fb) {
+        if (available != null && isFinite(a) && a > available + EPS) {
+          inp.classList.add("is-invalid");
+          inp.setCustomValidity("Acres exceed available land on record.");
+          return "over";
+        }
+        inp.classList.remove("is-invalid");
+        inp.setCustomValidity("");
+        return raw === "" || !isFinite(a) ? "empty" : "ok";
+      }
+
+      fb.classList.remove("farming-session-acres-live--error", "farming-session-acres-live--warn", "farming-session-acres-live--ok");
+
+      if (raw === "" || !isFinite(a)) {
+        inp.classList.remove("is-invalid");
+        inp.setCustomValidity("");
+        if (cb && cb.checked) {
+          inp.setCustomValidity("Enter acres for this farmer.");
+          fb.hidden = false;
+          fb.classList.add("farming-session-acres-live--error");
+          fb.textContent = "Enter acres for this session.";
+        } else {
+          fb.hidden = true;
+          fb.textContent = "";
+        }
+        return "empty";
+      }
+
+      if (a <= 0) {
+        inp.classList.add("is-invalid");
+        inp.setCustomValidity("Enter a positive acreage.");
+        fb.hidden = false;
+        fb.classList.add("farming-session-acres-live--error");
+        fb.textContent = "Enter a positive number of acres.";
+        return "invalid";
+      }
+
+      if (available == null) {
+        inp.classList.remove("is-invalid");
+        inp.setCustomValidity("");
+        fb.hidden = false;
+        fb.classList.add("farming-session-acres-live--warn");
+        fb.textContent = "No farm size on file — double-check acreage before saving.";
+        return "unknown";
+      }
+
+      if (available <= 0 && a > EPS) {
+        inp.classList.add("is-invalid");
+        inp.setCustomValidity("No acres available on record for this farmer.");
+        fb.hidden = false;
+        fb.classList.add("farming-session-acres-live--error");
+        fb.textContent =
+          "No planting acres left on record (all land is already in active sessions, or size is zero).";
+        return "over";
+      }
+
+      if (a > available + EPS) {
+        inp.classList.add("is-invalid");
+        inp.setCustomValidity("Acres exceed available land (" + fmtAcres(available) + " acres).");
+        fb.hidden = false;
+        fb.classList.add("farming-session-acres-live--error");
+        fb.textContent =
+          "Exceeds available " +
+          fmtAcres(available) +
+          " acres for this farmer. Reduce acres or close other sessions.";
+        return "over";
+      }
+
+      inp.classList.remove("is-invalid");
+      inp.setCustomValidity("");
+      fb.hidden = false;
+      fb.classList.add("farming-session-acres-live--ok");
+      fb.textContent = "Within available " + fmtAcres(available) + " acres.";
+      return "ok";
+    }
+
+    function validateAllSelectedAcres() {
+      var firstBadRow = null;
+      var overCount = 0;
+      var emptyCount = 0;
+      form.querySelectorAll("[data-farmer-pick-row]").forEach(function (row) {
+        var st = validateAcresRow(row);
+        if (st === "over" || st === "invalid") {
+          overCount += 1;
+          if (!firstBadRow) firstBadRow = row;
+        } else if (st === "empty") {
+          var cb = row.querySelector("[data-fs-farmer-check]");
+          if (cb && cb.checked) {
+            emptyCount += 1;
+            if (!firstBadRow) firstBadRow = row;
+          }
+        }
+      });
+      return { firstBadRow: firstBadRow, overCount: overCount, emptyCount: emptyCount };
+    }
+
+    function syncRow(cb) {
+      var row = rowFromCheckbox(cb);
+      if (!row) return;
+      var acres = row.querySelector("[data-fs-farmer-acres]");
+      if (!acres) return;
+      acres.disabled = !cb.checked;
+      acres.required = !!cb.checked;
+      if (!cb.checked) {
+        acres.value = "";
+        clearAcresFeedback(row);
+      } else {
+        validateAcresRow(row);
+      }
+    }
+
+    form.querySelectorAll("[data-fs-farmer-check]").forEach(function (cb) {
+      cb.addEventListener("change", function () {
+        hideSummary();
+        syncRow(cb);
+      });
+      syncRow(cb);
+    });
+
+    form.querySelectorAll("[data-fs-farmer-acres]").forEach(function (inp) {
+      ["input", "change"].forEach(function (ev) {
+        inp.addEventListener(ev, function () {
+          hideSummary();
+          var row = inp.closest("[data-farmer-pick-row]");
+          if (row) validateAcresRow(row);
+        });
+      });
+    });
+
+    if (selAll)
+      selAll.addEventListener("click", function () {
+        hideSummary();
+        form.querySelectorAll("[data-fs-farmer-check]").forEach(function (cb) {
+          cb.checked = true;
+          syncRow(cb);
+        });
+      });
+    if (clearBtn)
+      clearBtn.addEventListener("click", function () {
+        hideSummary();
+        form.querySelectorAll("[data-fs-farmer-check]").forEach(function (cb) {
+          cb.checked = false;
+          syncRow(cb);
+        });
+      });
+
+    form.addEventListener(
+      "submit",
+      function (e) {
+        hideSummary();
+        var r = validateAllSelectedAcres();
+        if (r.firstBadRow) {
+          e.preventDefault();
+          if (summaryEl) {
+            summaryEl.hidden = false;
+            if (r.emptyCount > 0 && r.overCount === 0) {
+              summaryEl.textContent =
+                r.emptyCount > 1
+                  ? "Enter acres for each selected farmer (missing acreage on " + r.emptyCount + " rows)."
+                  : "Enter acres for the selected farmer.";
+            } else if (r.overCount > 1) {
+              summaryEl.textContent =
+                "Fix acreage for " +
+                r.overCount +
+                " farmers: amounts must not exceed available acres on record (or are not valid).";
+            } else {
+              summaryEl.textContent =
+                "Fix acreage: each selected farmer needs valid acres within available land on record.";
+            }
+          }
+          var focusEl = r.firstBadRow.querySelector("[data-fs-farmer-acres]");
+          if (focusEl && !focusEl.disabled) {
+            focusEl.focus();
+            r.firstBadRow.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          }
+        }
+      },
+      true
+    );
+  })();
+</script>
+
+{% endblock %}

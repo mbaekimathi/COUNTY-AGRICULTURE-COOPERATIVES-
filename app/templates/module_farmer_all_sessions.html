@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header farmer-crop-detail-header farmer-all-sessions-topbar">
+  <div class="farmer-farm-summary-anchor">
+    <details class="farmer-crop-profile">
+      <summary class="farmer-crop-profile__summary">
+        <span class="farmer-farm-summary__lead" aria-hidden="true">{{ i("boxes") }}</span>
+        <span class="farmer-crop-profile__summary-text">
+          <span class="farmer-crop-profile__kicker">Farm summary</span>
+          <span class="farmer-crop-profile__name-line">
+            {% if farm_summary.total_farm_acres is none %}
+              No farm size on file
+            {% elif farm_summary.over_by_acres %}
+              Over by {{ "%.4f"|format(farm_summary.over_by_acres) }} ac
+            {% elif farm_summary.left_acres is not none %}
+              {{ "%.4f"|format(farm_summary.left_acres) }} ac left
+            {% else %}
+              —
+            {% endif %}
+          </span>
+        </span>
+        <span class="farmer-crop-profile__chev" aria-hidden="true">{{ i("chevron_down") }}</span>
+      </summary>
+      <div class="farmer-crop-profile__panel farmer-farm-summary__panel">
+        <ul class="farmer-crop-profile__details">
+          <li class="farmer-crop-profile__detail">
+            <span class="farmer-crop-profile__detail-label">{{ i("boxes") }} <span>Total farm acres</span></span>
+            <span class="farmer-crop-profile__detail-value">
+              {% if farm_summary.total_farm_acres is not none %}
+                <strong>{{ "%.4f"|format(farm_summary.total_farm_acres) }}</strong> ac
+                {% if farmer.land_size is not none %}
+                  <span class="hint">({{ farmer.land_size }}{% if farmer.land_size_unit %} {{ (farmer.land_size_unit|string)|upper }}{% endif %} on record)</span>
+                {% endif %}
+              {% else %}
+                <span class="hint">Not on file</span>
+              {% endif %}
+            </span>
+          </li>
+          <li class="farmer-crop-profile__detail">
+            <span class="farmer-crop-profile__detail-label">{{ i("leaf") }} <span>Acres in sessions</span></span>
+            <span class="farmer-crop-profile__detail-value">
+              <strong>{{ "%.4f"|format(farm_summary.session_acres) }}</strong> ac
+              <span class="hint">(active sessions only)</span>
+            </span>
+          </li>
+          <li class="farmer-crop-profile__detail">
+            <span class="farmer-crop-profile__detail-label">{{ i("shield") }} <span>Left acres</span></span>
+            <span class="farmer-crop-profile__detail-value">
+              {% if farm_summary.total_farm_acres is none %}
+                —
+              {% elif farm_summary.over_by_acres %}
+                <span class="farmer-land-compare farmer-land-compare--over">Over by {{ "%.4f"|format(farm_summary.over_by_acres) }} ac</span>
+              {% elif farm_summary.left_acres is not none %}
+                <strong>{{ "%.4f"|format(farm_summary.left_acres) }}</strong> ac
+              {% else %}
+                —
+              {% endif %}
+            </span>
+          </li>
+        </ul>
+      </div>
+    </details>
+  </div>
+
+  <div class="farmer-crop-profile-anchor">
+  <details class="farmer-crop-profile">
+    <summary class="farmer-crop-profile__summary">
+      <span class="farmer-crop-profile__avatar-wrap">
+        {% if farmer and farmer.profile_photo %}
+          <img
+            class="farmer-crop-profile__avatar-img"
+            src="{{ url_for('static', filename=farmer.profile_photo) }}"
+            alt=""
+            width="48"
+            height="48"
+            loading="lazy"
+          />
+        {% else %}
+          <span class="farmer-crop-profile__avatar-fallback" aria-hidden="true">{{ (farmer.full_name if farmer else module_title) | initials }}</span>
+        {% endif %}
+      </span>
+      <span class="farmer-crop-profile__summary-text">
+        <span class="farmer-crop-profile__kicker">Profile</span>
+        <span class="farmer-crop-profile__name-line">{{ farmer.full_name if farmer else "Farmer" }}</span>
+      </span>
+      <span class="farmer-crop-profile__chev" aria-hidden="true">{{ i("chevron_down") }}</span>
+    </summary>
+    <div class="farmer-crop-profile__panel">
+      <ul class="farmer-crop-profile__details">
+        <li class="farmer-crop-profile__detail">
+          <span class="farmer-crop-profile__detail-label">{{ i("id") }} <span>Farmer code / Membership</span></span>
+          <span class="farmer-crop-profile__detail-value">{{ farmer.farmer_code or "—" }} / {{ farmer.membership_number or "—" }}</span>
+        </li>
+        <li class="farmer-crop-profile__detail">
+          <span class="farmer-crop-profile__detail-label">{{ i("keypad") }} <span>Phone</span></span>
+          <span class="farmer-crop-profile__detail-value">{{ farmer.phone_number or "—" }}</span>
+        </li>
+        <li class="farmer-crop-profile__detail">
+          <span class="farmer-crop-profile__detail-label">{{ i("shield") }} <span>Location</span></span>
+          <span class="farmer-crop-profile__detail-value">
+            {% if farmer.county or farmer.ward %}
+              {{ farmer.county or "" }}{% if farmer.county and farmer.ward %}, {% endif %}{{ farmer.ward or "" }}
+            {% else %}
+              —
+            {% endif %}
+          </span>
+        </li>
+        {% if farmer.location or farmer.village %}
+        <li class="farmer-crop-profile__detail">
+          <span class="farmer-crop-profile__detail-label">{{ i("shield") }} <span>Location detail</span></span>
+          <span class="farmer-crop-profile__detail-value">
+            {% if farmer.location %}{{ farmer.location }}{% endif %}
+            {% if farmer.location and farmer.village %}, {% endif %}
+            {% if farmer.village %}{{ farmer.village }}{% endif %}
+          </span>
+        </li>
+        {% endif %}
+        <li class="farmer-crop-profile__detail">
+          <span class="farmer-crop-profile__detail-label">{{ i("boxes") }} <span>Land on file</span></span>
+          <span class="farmer-crop-profile__detail-value">
+            {% if farmer.land_size is not none %}
+              {{ farmer.land_size }}{% if farmer.land_size_unit %} {{ (farmer.land_size_unit|string)|upper }}{% endif %}
+            {% else %}
+              —
+            {% endif %}
+          </span>
+        </li>
+        <li class="farmer-crop-profile__detail">
+          <span class="farmer-crop-profile__detail-label">{{ i("shield") }} <span>Farmer status</span></span>
+          <span class="farmer-crop-profile__detail-value">{{ (farmer.status or "—") | replace("_", " ") }}</span>
+        </li>
+        <li class="farmer-crop-profile__detail">
+          <span class="farmer-crop-profile__detail-label">{{ i("id") }} <span>National ID</span></span>
+          <span class="farmer-crop-profile__detail-value">{{ farmer.national_id or "—" }}</span>
+        </li>
+      </ul>
+    </div>
+  </details>
+  </div>
+</div>
+
+<section class="panel">
+  <h3>{{ i("leaf") }} Sessions by crop</h3>
+  <p class="hint" style="margin-bottom: 1rem">Each row is one session (active or ended).</p>
+  <div class="table-wrap">
+    <table class="data-table farmer-all-sessions-table">
+      <thead>
+        <tr>
+          <th scope="col">Crop / product</th>
+          <th scope="col">Season</th>
+          <th scope="col">Started</th>
+          <th scope="col">Ended</th>
+          <th class="numeric-col" scope="col">Acres</th>
+          <th scope="col">Status</th>
+          <th scope="col">Land / area notes</th>
+          <th scope="col">Registered by</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in session_rows %}
+        <tr
+          {% if row.product_id %}
+            class="farmer-all-sessions-table__row--link"
+            tabindex="0"
+            role="link"
+            data-href="{{ url_for('main.farmer_crop_session_detail', role=session.get('employee_role'), farmer_id=farmer_id, product_id=row.product_id) }}"
+            aria-label="Open crop sessions for {{ farmer.full_name or 'farmer' }}"
+          {% endif %}
+        >
+          <td>
+            {% if row.product_crop_code or row.product_crop_name %}
+              <strong>{{ row.product_crop_code or "" }}</strong>{% if row.product_crop_code and row.product_crop_name %} — {% endif %}{{ row.product_crop_name or "" }}
+            {% else %}
+              {{ row.crop_or_activity or "—" }}
+            {% endif %}
+          </td>
+          <td>{{ row.season_name or "—" }}</td>
+          <td>{{ row.session_started_on or "—" }}</td>
+          <td>{{ row.session_ended_on or "—" }}</td>
+          <td class="numeric-col">{{ "%.4f"|format(row.acreage_used_acres or 0) }}</td>
+          <td>{{ row.session_status or "—" }}</td>
+          <td>
+            {% if row.land_area_notes %}{{ row.land_area_notes }}{% elif row.crop_or_activity %}{{ row.crop_or_activity }}{% else %}—{% endif %}
+          </td>
+          <td>{{ row.registered_by_name or "—" }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="table-empty">No sessions for this farmer. <a href="{{ url_for('main.farmer_farming_session', role=session.get('employee_role')) }}?farmer_id={{ farmer_id }}">Register a farming session</a>.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+<script>
+  (function () {
+    document.querySelectorAll(".farmer-all-sessions-table__row--link[data-href]").forEach(function (tr) {
+      var href = tr.getAttribute("data-href");
+      if (!href) return;
+      function go() {
+        window.location.href = href;
+      }
+      tr.addEventListener("click", function (e) {
+        if (e.target.closest && e.target.closest("a, button")) return;
+        go();
+      });
+      tr.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          go();
+        }
+      });
+    });
+  })();
+</script>
+{% endblock %}

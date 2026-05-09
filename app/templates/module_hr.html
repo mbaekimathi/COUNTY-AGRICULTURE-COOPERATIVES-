@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+{% from "macros/forms.html" import password_field %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
+    <p class="dash-meta">Register, edit, suspend, activate, or delete employees.</p>
+  </div>
+</div>
+
+<section class="panel">
+  <h3>{{ i("user") }} Register employee</h3>
+  <details class="form-disclosure">
+    <summary class="form-disclosure__summary">
+      <span class="form-disclosure__summary-inner">{{ i("spark") }} Register employee</span>
+    </summary>
+    <div class="form-disclosure__body">
+      <form method="post" action="{{ url_for('main.hr_employees_action', role=session.get('employee_role')) }}" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <input type="hidden" name="action" value="create" />
+
+        <div class="form-grid" style="margin-top: 0.85rem">
+          <div class="field">
+            <label class="label-row" for="e_full_name">{{ i("user") }} <span>Full name</span></label>
+            <div class="input-wrap">{{ i("user") }}<input id="e_full_name" name="full_name" type="text" required /></div>
+          </div>
+          <div class="field">
+            <label class="label-row" for="e_email">{{ i("mail") }} <span>Personal email</span></label>
+            <div class="input-wrap">{{ i("mail") }}<input id="e_email" name="email" type="email" required /></div>
+          </div>
+          <div class="field">
+            <label class="label-row" for="e_national_id">{{ i("id") }} <span>National ID</span></label>
+            <div class="input-wrap">{{ i("id") }}<input id="e_national_id" name="national_id" type="text" required /></div>
+          </div>
+          <div class="field">
+            <label class="label-row" for="e_login_code">{{ i("keypad") }} <span>6-digit login code</span></label>
+            <div class="input-wrap">{{ i("keypad") }}<input id="e_login_code" name="login_code" type="text" inputmode="numeric" pattern="\\d{6}" maxlength="6" required /></div>
+          </div>
+          <div class="field">
+            <label class="label-row" for="e_role">{{ i("shield") }} <span>Role</span></label>
+            <div class="input-wrap">{{ i("shield") }}<input id="e_role" name="role" type="text" value="employee" /></div>
+            <p class="hint">Allowed: administrator, manager, health_officer, sales, it_support, storage, employee.</p>
+          </div>
+          <div class="field">
+            <label class="label-row" for="e_password">{{ i("lock") }} <span>Password</span></label>
+            {{ password_field("e_password", "password", "new-password", 6, true) }}
+          </div>
+          <div class="actions">
+            <button type="submit">{{ i("spark") }} Save registration</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </details>
+</section>
+
+<section class="panel" style="margin-top: 1.25rem">
+  <h3>{{ i("shield") }} Employees</h3>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>National ID</th>
+          <th>Code</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th style="min-width: 320px">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in employees %}
+        <tr>
+          <td>{{ e.id }}</td>
+          <td>{{ e.full_name }}</td>
+          <td>{{ e.email }}</td>
+          <td>{{ e.national_id }}</td>
+          <td><code class="profile-code">{{ e.login_code }}</code></td>
+          <td>{{ e.role | replace("_", " ") }}</td>
+          <td>{{ e.status | replace("_", " ") }}</td>
+          <td>
+            <details class="row-actions">
+              <summary class="row-actions__summary">Edit / Actions</summary>
+              <div class="row-actions__body">
+                <form method="post" action="{{ url_for('main.hr_employees_action', role=session.get('employee_role')) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                  <input type="hidden" name="action" value="update" />
+                  <input type="hidden" name="employee_id" value="{{ e.id }}" />
+                  <div class="row-form">
+                    <input name="full_name" value="{{ e.full_name }}" placeholder="Full name" required />
+                    <input name="email" value="{{ e.email }}" placeholder="Email" required />
+                    <input name="national_id" value="{{ e.national_id }}" placeholder="National ID" required />
+                    <input name="login_code" value="{{ e.login_code }}" placeholder="Login code" required />
+                    <input name="role" value="{{ e.role }}" placeholder="Role" />
+                  </div>
+                  <div class="row-buttons">
+                    <button type="submit" class="button">{{ i("spark") }} Save</button>
+                  </div>
+                </form>
+
+                <div class="row-buttons">
+                  <form method="post" action="{{ url_for('main.hr_employees_action', role=session.get('employee_role')) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                    <input type="hidden" name="employee_id" value="{{ e.id }}" />
+                    <input type="hidden" name="action" value="activate" />
+                    <button type="submit" class="button button-ghost">{{ i("shield") }} Activate</button>
+                  </form>
+                  <form method="post" action="{{ url_for('main.hr_employees_action', role=session.get('employee_role')) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                    <input type="hidden" name="employee_id" value="{{ e.id }}" />
+                    <input type="hidden" name="action" value="suspend" />
+                    <button type="submit" class="button button-ghost">{{ i("shield") }} Suspend</button>
+                  </form>
+                  <form method="post" action="{{ url_for('main.hr_employees_action', role=session.get('employee_role')) }}" onsubmit="return confirm('Delete employee?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                    <input type="hidden" name="employee_id" value="{{ e.id }}" />
+                    <input type="hidden" name="action" value="delete" />
+                    <button type="submit" class="button button-ghost">Delete</button>
+                  </form>
+                </div>
+              </div>
+            </details>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% endblock %}
+

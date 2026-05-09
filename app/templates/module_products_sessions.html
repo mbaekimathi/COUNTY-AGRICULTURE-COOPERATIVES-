@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
+    <p class="dash-meta">{{ module_desc }}</p>
+  </div>
+</div>
+
+<section class="panel">
+  <h3>{{ i("leaf") }} Crops in active farming sessions</h3>
+  <p class="lede">Only <strong>CROP</strong> products with an active farmer registration. Herbicide, fertiliser, and equipment appear in <a href="{{ url_for('main.products_management', role=session.get('employee_role')) }}">Product management</a>.</p>
+
+  <div class="form-grid" style="margin-top: 0.75rem">
+    <div class="field" style="margin-bottom: 0">
+      <label class="label-row" for="products_session_search">{{ i("search") }} <span>Live search</span></label>
+      <div class="input-wrap">{{ i("search") }}<input id="products_session_search" type="search" placeholder="Code, name, category…" autocomplete="off" /></div>
+      <p class="hint" data-products-session-search-meta style="margin-bottom: 0">—</p>
+    </div>
+  </div>
+
+  <div class="table-wrap" style="margin-top: 0.75rem">
+    <table class="data-table module-products-session-table">
+      <thead>
+        <tr>
+          <th>IMAGE</th>
+          <th>CATEGORY</th>
+          <th>CODE &amp; NAME</th>
+          <th class="numeric-col">ACTIVE SESSIONS</th>
+          <th class="numeric-col">FARMERS</th>
+          <th>STATUS</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if products_in_session and products_in_session|length %}
+          {% for p in products_in_session %}
+          <tr
+            class="module-products-session-table__row module-products-session-table__row--link"
+            tabindex="0"
+            role="link"
+            data-href="{{ url_for('main.crops_session_sessions_for_crop', role=session.get('employee_role'), product_id=p.id) }}"
+            aria-label="Open farmers in session for {{ p.crop_code }} {{ p.crop_name }}"
+          >
+            <td>
+              {% if p.crop_image %}
+                <img class="product-thumb" src="{{ url_for('static', filename=p.crop_image) }}" alt="{{ p.crop_name }}" loading="lazy" />
+              {% else %}
+                <span class="thumb-placeholder">{{ i("camera") }}</span>
+              {% endif %}
+            </td>
+            <td>{{ p.crop_category }}</td>
+            <td><strong>{{ p.crop_code }}</strong> — {{ p.crop_name }}</td>
+            <td class="numeric-col"><span class="pill">{{ p.active_session_count | int if p.active_session_count is not none else 0 }}</span></td>
+            <td class="numeric-col"><span class="pill">{{ p.farmers_in_session_count | int if p.farmers_in_session_count is not none else 0 }}</span></td>
+            <td><span class="pill">ACTIVE</span></td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" class="table-empty">No <strong>crop</strong> products with an active farming session. Register sessions under <strong>Farmers</strong> or open <a href="{{ url_for('main.products_management', role=session.get('employee_role')) }}">Product management</a> for the full catalogue.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+  (function () {
+    var input = document.getElementById("products_session_search");
+    if (!input) return;
+    var panel = input.closest(".panel");
+    if (!panel) return;
+    var table = panel.querySelector("table");
+    if (!table) return;
+    var tbody = table.querySelector("tbody");
+    if (!tbody) return;
+    var rows = Array.prototype.slice.call(tbody.querySelectorAll("tr"));
+    var meta = document.querySelector("[data-products-session-search-meta]");
+
+    var cache = rows.map(function (tr) {
+      if (tr.querySelector(".table-empty")) return "";
+      var tds = Array.prototype.slice.call(tr.querySelectorAll("td"));
+      var parts = [];
+      /* category, code+name, sessions, farmers, status (skip image col 0) */
+      [1, 2, 3, 4, 5].forEach(function (idx) {
+        var td = tds[idx];
+        if (!td) return;
+        parts.push((td.textContent || "").trim());
+      });
+      return String(parts.join(" ")).toUpperCase();
+    });
+
+    function setMeta(visible, total) {
+      if (!meta) return;
+      if (!total && rows.length === 1 && rows[0].querySelector(".table-empty")) {
+        meta.textContent = "";
+        return;
+      }
+      meta.textContent =
+        visible === total
+          ? "Showing " + total + " crop(s) in session."
+          : "Showing " + visible + " of " + total + " crop(s).";
+    }
+
+    function apply() {
+      var q = String(input.value || "").trim().toUpperCase();
+      var visible = 0;
+      var total = 0;
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].querySelector(".table-empty")) continue;
+        total++;
+        var ok = !q || cache[i].indexOf(q) !== -1;
+        rows[i].hidden = !ok;
+        if (ok) visible++;
+      }
+      setMeta(visible, total);
+    }
+
+    input.addEventListener("input", apply);
+    apply();
+  })();
+  (function () {
+    document.querySelectorAll(".module-products-session-table__row--link[data-href]").forEach(function (tr) {
+      var href = tr.getAttribute("data-href");
+      if (!href) return;
+      function go() {
+        window.location.href = href;
+      }
+      tr.addEventListener("click", function (e) {
+        if (e.target.closest && e.target.closest("a, button")) return;
+        go();
+      });
+      tr.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          go();
+        }
+      });
+    });
+  })();
+</script>
+{% endblock %}

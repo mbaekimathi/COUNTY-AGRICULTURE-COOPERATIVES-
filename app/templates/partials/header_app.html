@@ -1,0 +1,81 @@
+<header class="app-header">
+  <div class="app-header__inner app-header__inner--full">
+    <div class="app-header__left">
+      <button
+        type="button"
+        class="app-header-back"
+        data-history-back
+        data-fallback-href="{{ url_for('main.dashboard', role=session.get('employee_role')) }}"
+        aria-label="Go back to previous page"
+      >
+        {{ i("chevron_left", "icon-svg") }}
+      </button>
+      <button
+        type="button"
+        class="app-sidebar-toggle"
+        aria-expanded="false"
+        aria-controls="app-sidebar"
+        data-sidebar-toggle
+      >
+        <span class="sr-only">Open menu</span>
+        {{ i("menu", "icon-svg") }}
+      </button>
+      <a class="app-header__brand" href="{{ url_for('main.dashboard', role=session.get('employee_role')) }}">
+        <span class="app-header__logo" aria-hidden="true">{{ i("leaf", "icon-svg") }}</span>
+        <span class="app-header__titles">
+          <span class="app-header__title">Meru Cooperatives</span>
+          <span class="app-header__subtitle">Employee workspace</span>
+        </span>
+      </a>
+    </div>
+
+    <div class="app-header__right">
+      <div class="header-clock" aria-label="Current date and time">
+        <span class="header-clock__date" data-live-date>—</span>
+        <span class="header-clock__time" data-live-time>—</span>
+      </div>
+      <button type="button" class="theme-toggle" data-theme-toggle aria-pressed="false" aria-label="Switch to dark mode">
+        <span class="theme-toggle__icon theme-toggle__icon--sun" aria-hidden="true">{{ i("sun", "icon-svg") }}</span>
+        <span class="theme-toggle__icon theme-toggle__icon--moon" aria-hidden="true" hidden>{{ i("moon", "icon-svg") }}</span>
+      </button>
+      <div class="header-user-menu" data-user-dropdown>
+        <button
+          type="button"
+          class="header-user-menu__trigger"
+          id="header-user-btn"
+          data-user-dropdown-trigger
+          aria-expanded="false"
+          aria-haspopup="true"
+          aria-controls="header-user-panel"
+        >
+          {% set photo = session.get("employee_photo") %}
+          {% if photo %}
+          <img class="header-user-menu__avatar" src="{{ url_for('static', filename=photo) }}" alt="" width="40" height="40" />
+          {% else %}
+          <span class="header-user-menu__avatar header-user-menu__avatar--fallback" aria-hidden="true">{{ session.get("employee_name") | initials }}</span>
+          {% endif %}
+          <span class="header-user-menu__summary">
+            <span class="header-user-menu__name">{{ session.get("employee_name") or "Employee" }}</span>
+            <span class="header-user-menu__role">{{ session.get("employee_role") | replace("_", " ") | title }}</span>
+          </span>
+          {{ i("chevron_down", "icon-svg header-user-menu__chevron") }}
+        </button>
+
+        <div id="header-user-panel" class="header-user-menu__panel" data-user-dropdown-panel role="menu" hidden>
+          <a
+            href="{{ url_for('main.profile', role=session.get('employee_role')) }}"
+            class="header-user-menu__item"
+            role="menuitem"
+            >{{ i("user") }} My profile</a
+          >
+          <form class="header-user-menu__logout-form" method="post" action="{{ url_for('auth.logout') }}" role="none">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button type="submit" class="header-user-menu__item header-user-menu__item--btn" role="menuitem">
+              {{ i("logout") }} Sign out
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>

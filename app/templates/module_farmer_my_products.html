@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
+    <p class="dash-meta">{{ module_desc }}</p>
+    <p class="hint" style="margin-top: 0.85rem">
+      <a href="{{ url_for('main.farmer_all_active_sessions', role=session.get('employee_role'), farmer_id=farmer_id) }}">{{ i("leaf") }} Sessions &amp; farm summary</a>
+      <span aria-hidden="true"> · </span>
+      <a href="{{ url_for('main.module_page', role=session.get('employee_role'), module_key='farmers') }}">{{ i("users") }} Farmers in session</a>
+    </p>
+  </div>
+</div>
+
+<section class="panel">
+  <h3>{{ i("package") }} Allocated products</h3>
+  <p class="hint" style="margin-bottom: 1rem">
+    Totals from <strong>warehouse distributions</strong> to <strong>{{ farmer.full_name or "this farmer" }}</strong>.
+  </p>
+  <div class="table-wrap">
+    <table class="data-table farmer-allocated-products-table">
+      <thead>
+        <tr>
+          <th scope="col">Product</th>
+          <th scope="col">Type</th>
+          <th scope="col">Unit</th>
+          <th class="numeric-col" scope="col">Quantity allocated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in allocated_product_rows %}
+        <tr>
+          <td>
+            {% if row.crop_code or row.crop_name %}
+              <strong>{{ row.crop_code or "" }}</strong>{% if row.crop_code and row.crop_name %} — {% endif %}{{ row.crop_name or "" }}
+            {% else %}
+              Product #{{ row.product_id }}
+            {% endif %}
+          </td>
+          <td>{{ (row.product_type or "—") | replace("_", " ") }}</td>
+          <td>{{ row.unit_of_measure or "—" }}</td>
+          <td class="numeric-col">{{ "%.2f"|format(row.allocated_quantity or 0) }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4" class="table-empty">No products allocated to this farmer yet. Issue stock from <a href="{{ url_for('main.warehouse_distribution', role=session.get('employee_role')) }}">warehouse distribution</a>.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Products required — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="crop-required-products-page">
+  <header class="dashboard-header crop-required-products-page__hero">
+    <div>
+      <h2 class="dash-title">{{ i(module_icon) }} Products required — {{ product.crop_code }} {{ product.crop_name }}</h2>
+      <p class="dash-meta">{{ module_desc }}</p>
+      <div class="crop-required-products-page__badge-row" aria-label="Session scope">
+        <span class="crop-required-products-page__badge">{{ farmers_in_crop_sessions }} farmer{% if farmers_in_crop_sessions != 1 %}s{% endif %} in session</span>
+        <span class="crop-required-products-page__badge is-muted">{{ "%.4f"|format(total_session_acres|float) }} total session acres</span>
+      </div>
+      <p class="hint crop-required-products-page__hint-links" style="margin-top:0.85rem">
+        <a href="{{ url_for('main.crops_session_sessions_for_crop', role=session.get('employee_role'), product_id=product.id) }}">{{ i("users") }} Farmers in session</a>
+        <span aria-hidden="true"> · </span>
+        <a href="{{ url_for('main.crops_session_crop_activities', role=session.get('employee_role'), product_id=product.id) }}">{{ i("file_text") }} Crop activities</a>
+      </p>
+    </div>
+  </header>
+
+  <section class="panel">
+    <div class="crop-required-products-page__panel-head">
+      <h3>{{ i("shopping_cart") }} Aggregated requirements</h3>
+      <p class="crop-required-products-page__panel-desc">
+        Each total is <strong>Σ (farmer session acres × units per acre)</strong> from every <strong>active</strong> scheduled activity for this crop.
+        Click a row or the eye icon to see each farmer’s quantity for that item.
+      </p>
+    </div>
+
+    {% if requirement_rows and requirement_rows|length %}
+    <div class="table-wrap crop-required-products-page__table-wrap">
+      <table class="data-table crop-required-products-page__table">
+        <thead>
+          <tr>
+            <th>Source</th>
+            <th>Code</th>
+            <th>Item</th>
+            <th>Category</th>
+            <th>Type</th>
+            <th>Unit</th>
+            <th class="numeric-col">Farmers</th>
+            <th class="numeric-col">Total qty required</th>
+            <th class="numeric-col">Activities</th>
+            <th class="crop-required-products-page__col-view"><span class="sr-only">Open detail</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in requirement_rows %}
+          {% if row.row_kind == 'PRODUCT' %}
+            {% set req_detail_url = url_for(
+              'main.crops_session_crop_required_product_farmers',
+              role=session.get('employee_role'),
+              product_id=product.id,
+              equipment_product_id=row.equipment_product_id
+            ) %}
+          {% else %}
+            {% set req_detail_url = url_for(
+              'main.crops_session_crop_required_manual_farmers',
+              role=session.get('employee_role'),
+              product_id=product.id,
+              activity_id=row.activity_id
+            ) %}
+          {% endif %}
+          {% set req_row_label = ((row.item_code ~ ' ') if row.item_code else '') ~ (row.item_name or 'item') %}
+          <tr
+            class="crop-required-products-page__row crop-required-products-page__row--click"
+            data-href="{{ req_detail_url }}"
+            tabindex="0"
+            role="link"
+            aria-label="Open farmer breakdown for {{ req_row_label | e }}"
+          >
+            <td>
+              {% if row.row_kind == 'PRODUCT' %}
+                <span class="crop-required-products-page__pill crop-required-products-page__pill--stock">{{ i("package") }} Stock</span>
+              {% else %}
+                <span class="crop-required-products-page__pill crop-required-products-page__pill--manual">{{ i("file_text") }} Manual</span>
+              {% endif %}
+            </td>
+            <td>{% if row.item_code %}<strong>{{ row.item_code }}</strong>{% else %}—{% endif %}</td>
+            <td>{{ row.item_name or "—" }}</td>
+            <td>{{ row.item_category or "—" }}</td>
+            <td>{{ row.item_type or "—" }}</td>
+            <td>{{ (row.unit_of_measure or "UNIT")|upper }}</td>
+            <td class="numeric-col">{{ row.farmers_reached or 0 }}</td>
+            <td class="numeric-col"><strong>{{ "%.4f"|format((row.total_qty_required|float) if row.total_qty_required is not none else 0) }}</strong></td>
+            <td class="numeric-col">{{ row.activities_count or 0 }}</td>
+            <td class="crop-required-products-page__action-cell">
+              <a
+                class="finance-purchase-list-page__view-btn crop-required-products-page__view-btn"
+                href="{{ req_detail_url }}"
+                title="View farmers and quantities"
+                aria-label="View farmers and quantities for {{ (row.item_name or row.item_code or 'item') | e }}"
+              >{{ i("eye") }}</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="hint crop-required-products-page__empty">
+      No measurable requirements yet. Add scheduled activities with units per acre (and optional stock product or manual description)
+      on <a href="{{ url_for('main.crops_session_crop_activities', role=session.get('employee_role'), product_id=product.id) }}">Crop activities</a>,
+      and ensure farmers have active sessions for this crop.
+    </p>
+    {% endif %}
+  </section>
+</div>
+
+<script>
+  (function () {
+    document.querySelectorAll(".crop-required-products-page__row--click[data-href]").forEach(function (row) {
+      row.addEventListener("click", function (e) {
+        if (e.target && e.target.closest && e.target.closest("a")) return;
+        var href = row.getAttribute("data-href");
+        if (href) window.location.href = href;
+      });
+      row.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          var href = row.getAttribute("data-href");
+          if (href) window.location.href = href;
+        }
+      });
+    });
+  })();
+</script>
+
+{% endblock %}

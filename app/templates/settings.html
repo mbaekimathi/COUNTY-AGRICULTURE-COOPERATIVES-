@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Settings — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i("gear") }} Settings</h2>
+    <p class="dash-meta">Workspace preferences and account shortcuts.</p>
+  </div>
+</div>
+
+<section class="panel">
+  <h3 class="settings-card-title">{{ i("user") }} Profile &amp; account</h3>
+  <p class="lede dash-card-lede">
+    Update your directory details and photo on your profile page.
+  </p>
+  <p class="settings-actions">
+    <a class="button" href="{{ url_for('main.profile', role=session.get('employee_role')) }}">{{ i("user") }} Open my profile</a>
+    <a class="button button-ghost" href="{{ url_for('main.dashboard', role=session.get('employee_role')) }}">{{ i("spark") }} Back to dashboard</a>
+  </p>
+</section>
+
+<section class="panel settings-placeholder">
+  <h3>{{ i("shield") }} More preferences</h3>
+  <p class="lede dash-card-lede settings-lede-tight">
+    Notifications, security, and cooperative-specific options will appear here as modules are added.
+  </p>
+</section>
+{% endblock %}

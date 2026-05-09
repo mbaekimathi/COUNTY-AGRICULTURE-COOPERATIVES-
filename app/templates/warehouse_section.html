@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ section_title }} — Warehouse — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i(section_icon) }} {{ section_title }}</h2>
+    <p class="dash-meta">{{ section_desc }}</p>
+  </div>
+</div>
+
+<section class="panel">
+  <h3>{{ i("spark") }} Coming next</h3>
+  <p class="lede dash-card-lede">
+    This page is ready. Next we’ll add tables, forms, and workflows for {{ section_title | lower }}.
+  </p>
+</section>
+
+{% endblock %}
+

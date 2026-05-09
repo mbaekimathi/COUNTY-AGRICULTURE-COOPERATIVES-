@@ -1,0 +1,797 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
+    <p class="dash-meta">{{ module_desc }}</p>
+    <div style="margin-top: 0.65rem; display: flex; flex-wrap: wrap; gap: 0.55rem">
+      <span class="pill">{{ i("hash") }} AUTO CROP CODE</span>
+      <span class="pill">{{ i("type") }} UPPERCASE ENFORCED</span>
+    </div>
+  </div>
+  <a
+    href="{{ url_for('main.module_page', role=session.get('employee_role'), module_key='crops_session') }}"
+    class="button button-ghost"
+  >
+    {{ i("leaf") }} Crops in session
+  </a>
+</div>
+
+<section class="panel">
+  <h3>{{ i("package") }} Register product</h3>
+  <details class="form-disclosure">
+    <summary class="form-disclosure__summary">
+      <span class="form-disclosure__summary-inner">{{ i("spark") }} Register product</span>
+    </summary>
+    <div class="form-disclosure__body">
+      <form method="post" action="{{ url_for('main.products_action', role=session.get('employee_role')) }}" enctype="multipart/form-data" novalidate data-product-per-acre-form>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <input type="hidden" name="action" value="create" />
+
+        <div class="form-grid" style="margin-top: 0.85rem">
+          <div class="field">
+            <label class="label-row" for="p_product_type">{{ i("layers") }} <span>Product Category</span></label>
+            <div class="input-wrap">{{ i("layers") }}
+              <select id="p_product_type" name="product_type" required style="text-transform: uppercase" data-product-type>
+                <option value="CROP">CROP</option>
+                <option value="HERBICIDE">HERBICIDE</option>
+                <option value="FERTILIZER">FERTILIZER</option>
+                <option value="EQUIPMENT">EQUIPMENT</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label-row" for="p_product_name">{{ i("tag") }} <span>Product Name</span></label>
+            <div class="input-wrap">{{ i("tag") }}<input id="p_product_name" name="product_name" type="text" required data-uppercase style="text-transform: uppercase" /></div>
+          </div>
+
+          <div class="field" data-section="shared">
+            <label class="label-row" for="p_brand">{{ i("shield") }} <span>Brand (optional)</span></label>
+            <div class="input-wrap">{{ i("shield") }}<input id="p_brand" name="brand" type="text" data-uppercase style="text-transform: uppercase" /></div>
+          </div>
+
+          <div class="field" data-section="shared">
+            <label class="label-row" for="p_manufacturer">{{ i("factory") }} <span>Manufacturer (optional)</span></label>
+            <div class="input-wrap">{{ i("factory") }}<input id="p_manufacturer" name="manufacturer" type="text" data-uppercase style="text-transform: uppercase" /></div>
+          </div>
+
+          <div class="field" data-section="shared">
+            <label class="label-row" for="p_unit_of_measure">{{ i("hash") }} <span>Unit of Measure</span></label>
+            <div class="input-wrap">{{ i("hash") }}
+              <select id="p_unit_of_measure" name="unit_of_measure" required style="text-transform: uppercase">
+                <option value="">SELECT…</option>
+                <option value="KG">KG</option>
+                <option value="G">G</option>
+                <option value="LITER">LITER</option>
+                <option value="ML">ML</option>
+                <option value="UNIT">UNIT</option>
+                <option value="PIECE">PIECE</option>
+                <option value="BAG">BAG</option>
+                <option value="BOTTLE">BOTTLE</option>
+                <option value="PACK">PACK</option>
+                <option value="BOX">BOX</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field" data-section="shared">
+            <label class="label-row" for="p_package_size">{{ i("package") }} <span>Amount per acre</span></label>
+            <div class="input-wrap input-wrap--per-acre-block">{{ i("package") }}
+              <div class="input-per-acre-stack">
+                <div class="input-per-acre-amount-row">
+                  <input id="p_package_size" name="package_size" type="text" inputmode="decimal" placeholder="E.G. 2.5" data-uppercase style="text-transform: uppercase" autocomplete="off" aria-describedby="p_package_size_caption" />
+                  <span class="pill" data-package-size-uom-badge aria-live="polite" title="Unit of measure selected above">—</span>
+                </div>
+                <span id="p_package_size_caption" class="input-per-acre-live" data-per-acre-stock-live></span>
+              </div>
+            </div>
+            <p class="hint"><strong>Warehouse / farmer acre math:</strong> a positive number of your <strong>stock unit</strong> (above) applied per <strong>one acre</strong>. Distribution uses <strong>session acres × this amount</strong>. Required for herbicides and fertilizers; optional for crops and equipment. Do not enter mixing ratios here—use Application rate below for that.</p>
+          </div>
+
+          <div class="field" style="grid-column: 1 / -1">
+            <label class="label-row" for="p_crop_description">{{ i("file_text") }} <span>Description</span></label>
+            <textarea id="p_crop_description" name="crop_description" rows="4" required data-uppercase style="text-transform: uppercase"></textarea>
+          </div>
+
+          <div class="field">
+            <label class="label-row" for="p_crop_image">{{ i("camera") }} <span>Product Image</span></label>
+            <input id="p_crop_image" name="crop_image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+          </div>
+
+          <!-- CROP fields -->
+          <div class="field" data-section="crop">
+            <label class="label-row" for="p_scientific_name">{{ i("beaker") }} <span>Scientific Name</span></label>
+            <div class="input-wrap">{{ i("beaker") }}<input id="p_scientific_name" name="scientific_name" type="text" required data-uppercase style="text-transform: uppercase" /></div>
+          </div>
+
+          <div class="field" data-section="crop">
+            <label class="label-row" for="p_crop_category">{{ i("tag") }} <span>Crop Category</span></label>
+            <div class="input-wrap">{{ i("tag") }}<input id="p_crop_category" name="crop_category" type="text" required data-uppercase style="text-transform: uppercase" /></div>
+          </div>
+
+          <div class="field" data-section="crop">
+            <label class="label-row" for="p_crop_variety">{{ i("layers") }} <span>Crop Variety</span></label>
+            <div class="input-wrap">{{ i("layers") }}<input id="p_crop_variety" name="crop_variety" type="text" required data-uppercase style="text-transform: uppercase" /></div>
+          </div>
+
+          <div class="field" data-section="crop">
+            <label class="label-row" for="p_planting_season">{{ i("calendar") }} <span>Planting Season</span></label>
+            <div class="input-wrap">{{ i("calendar") }}
+              <select id="p_planting_season" name="planting_season" required style="text-transform: uppercase">
+                <option value="">SELECT…</option>
+                <option value="LONG RAINS">LONG RAINS</option>
+                <option value="SHORT RAINS">SHORT RAINS</option>
+                <option value="DRY SEASON">DRY SEASON</option>
+                <option value="ALL YEAR">ALL YEAR</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field" data-section="crop">
+            <label class="label-row" for="p_growth_duration">{{ i("clock") }} <span>Growth Duration</span></label>
+            <div class="input-wrap">{{ i("clock") }}<input id="p_growth_duration" name="growth_duration" type="text" required placeholder="E.G. 90 DAYS" data-uppercase style="text-transform: uppercase" /></div>
+          </div>
+
+          <div class="field" data-section="crop">
+            <label class="label-row" for="p_water_requirement">{{ i("droplet") }} <span>Water Requirement</span></label>
+            <div class="input-wrap">{{ i("droplet") }}
+              <select id="p_water_requirement" name="water_requirement" required style="text-transform: uppercase">
+                <option value="">SELECT…</option>
+                <option value="LOW">LOW</option>
+                <option value="MODERATE">MODERATE</option>
+                <option value="HIGH">HIGH</option>
+                <option value="IRRIGATED">IRRIGATED</option>
+                <option value="RAINFED">RAINFED</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field" data-section="crop">
+            <label class="label-row" for="p_avg_yield_amt">{{ i("bar_chart") }} <span>Average yield per acre (optional)</span></label>
+            <div class="input-wrap input-wrap--per-acre-block">{{ i("bar_chart") }}
+              <div class="input-per-acre-stack">
+                <input id="p_avg_yield_amt" name="average_yield_per_acre" type="text" inputmode="decimal" placeholder="E.G. 15" data-uppercase style="text-transform: uppercase" />
+                <span class="input-per-acre-live" data-per-acre-yield-live></span>
+              </div>
+            </div>
+            <p class="hint">Expected harvest from <strong>one acre</strong>, in the same <strong>unit of measure</strong> you chose above (same stock unit as amount per acre).</p>
+          </div>
+
+          <!-- HERBICIDE / FERTILIZER fields -->
+          <div class="field" data-section="agro">
+            <label class="label-row" for="p_active_ingredient">{{ i("beaker") }} <span>Active Ingredient / Composition</span></label>
+            <div class="input-wrap">{{ i("beaker") }}<input id="p_active_ingredient" name="active_ingredient" type="text" required data-uppercase style="text-transform: uppercase" /></div>
+          </div>
+          <div class="field" data-section="agro">
+            <label class="label-row" for="p_formulation">{{ i("layers") }} <span>Formulation</span></label>
+            <div class="input-wrap">{{ i("layers") }}<input id="p_formulation" name="formulation" type="text" required placeholder="E.G. EC / WP / GRANULAR" data-uppercase style="text-transform: uppercase" /></div>
+          </div>
+          <div class="field" data-section="agro">
+            <label class="label-row" for="p_application_rate">{{ i("droplet") }} <span>Application rate (mixing / dose notes)</span></label>
+            <div class="input-wrap">{{ i("droplet") }}<input id="p_application_rate" name="application_rate" type="text" required placeholder="E.G. 2 ML PER LITRE WATER (NOT MULTIPLIED BY ACRES)" data-uppercase style="text-transform: uppercase" autocomplete="off" /></div>
+            <p class="hint">Instructions for preparing or applying the product (concentration, water volume, etc.). <strong>Not</strong> used for automatic acre-based quantity—use Amount per acre for the number multiplied by farmer session acres.</p>
+          </div>
+          <div class="field" data-section="agro">
+            <label class="label-row" for="p_target_use">{{ i("target") }} <span>Target Use</span></label>
+            <div class="input-wrap">{{ i("target") }}<input id="p_target_use" name="target_use" type="text" required placeholder="E.G. WEEDS IN MAIZE" data-uppercase style="text-transform: uppercase" /></div>
+          </div>
+          <div class="field" style="grid-column: 1 / -1" data-section="agro">
+            <label class="label-row" for="p_safety_notes">{{ i("shield") }} <span>Safety Notes (optional)</span></label>
+            <textarea id="p_safety_notes" name="safety_notes" rows="3" data-uppercase style="text-transform: uppercase"></textarea>
+          </div>
+
+          <!-- EQUIPMENT fields -->
+          <div class="field" data-section="equip">
+            <label class="label-row" for="p_equipment_model">{{ i("cpu") }} <span>Model</span></label>
+            <div class="input-wrap">{{ i("cpu") }}<input id="p_equipment_model" name="equipment_model" type="text" required data-uppercase style="text-transform: uppercase" /></div>
+          </div>
+          <div class="field" data-section="equip">
+            <label class="label-row" for="p_power_source">{{ i("zap") }} <span>Power Source</span></label>
+            <div class="input-wrap">{{ i("zap") }}<input id="p_power_source" name="power_source" type="text" required placeholder="E.G. DIESEL / ELECTRIC / MANUAL" data-uppercase style="text-transform: uppercase" /></div>
+          </div>
+          <div class="field" data-section="equip">
+            <label class="label-row" for="p_capacity">{{ i("gauge") }} <span>Capacity</span></label>
+            <div class="input-wrap">{{ i("gauge") }}<input id="p_capacity" name="capacity" type="text" required placeholder="E.G. 16 L / 5 HP" data-uppercase style="text-transform: uppercase" /></div>
+          </div>
+          <div class="field" data-section="equip">
+            <label class="label-row" for="p_warranty_period">{{ i("badge_check") }} <span>Warranty Period (optional)</span></label>
+            <div class="input-wrap">{{ i("badge_check") }}<input id="p_warranty_period" name="warranty_period" type="text" placeholder="E.G. 12 MONTHS" data-uppercase style="text-transform: uppercase" /></div>
+          </div>
+
+          <div class="field">
+            <label class="label-row" for="p_crop_code">{{ i("hash") }} <span>Product Code (auto generated)</span></label>
+            <div class="input-wrap">{{ i("hash") }}<input id="p_crop_code" type="text" value="AUTO-GENERATED" readonly style="text-transform: uppercase; opacity: 0.85" /></div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn btn-primary" type="submit">{{ i("plus_circle") }} Register product</button>
+        </div>
+      </form>
+    </div>
+  </details>
+</section>
+
+<section class="panel">
+  <h3>{{ i("list") }} Registered products</h3>
+  <div class="form-grid" style="margin-top: 0.75rem">
+    <div class="field" style="margin-bottom: 0">
+      <label class="label-row" for="products_search">{{ i("search") }} <span>Live search</span></label>
+      <div class="input-wrap">{{ i("search") }}<input id="products_search" type="search" placeholder="Search by code, type, name, category, variety, amount per acre…" autocomplete="off" /></div>
+      <p class="hint" data-products-search-meta style="margin-bottom: 0">—</p>
+    </div>
+  </div>
+  <div class="table-wrap" style="margin-top: 0.75rem">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>IMAGE</th>
+          <th>CODE</th>
+          <th>TYPE</th>
+          <th>NAME</th>
+          <th>CATEGORY</th>
+          <th>VARIETY</th>
+          <th title="Expected harvest per acre (crop)">YIELD / ACRE</th>
+          <th title="Typical quantity per acre (stock unit)">AMT / ACRE</th>
+          <th>PLANTING SEASON</th>
+          <th>STATUS</th>
+          <th>ACTIONS</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if products and products|length %}
+          {% for p in products %}
+          <tr class="{% if p.status == 'suspended' %}is-suspended{% endif %}">
+            <td>
+              {% if p.crop_image %}
+                <img class="product-thumb" src="{{ url_for('static', filename=p.crop_image) }}" alt="{{ p.crop_name }}" loading="lazy" />
+              {% else %}
+                <span class="thumb-placeholder">{{ i("image") }}</span>
+              {% endif %}
+            </td>
+            <td><strong>{{ p.crop_code }}</strong></td>
+            <td>{{ p.product_type or 'CROP' }}</td>
+            <td>{{ p.crop_name }}</td>
+            <td>{{ p.crop_category }}</td>
+            <td>{{ p.crop_variety }}</td>
+            <td>
+              {% if p.average_yield_per_acre %}
+                <strong>{{ p.average_yield_per_acre }}</strong>{% if p.unit_of_measure or p.average_yield_uom %} <span class="hint">{{ p.unit_of_measure or p.average_yield_uom }}</span>{% endif %}
+              {% elif p.average_yield_range %}
+                <span class="hint">{{ p.average_yield_range }}</span>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>
+              {% if p.package_size %}
+                <strong>{{ p.package_size }}</strong>{% if p.unit_of_measure %} <span class="hint">{{ p.unit_of_measure }}</span>{% endif %}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>{{ p.planting_season }}</td>
+            <td>
+              {% if p.status == 'suspended' %}
+                <span class="pill pill-warn">SUSPENDED</span>
+              {% else %}
+                <span class="pill">ACTIVE</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="row-buttons" style="gap: 0.4rem; flex-wrap: wrap">
+                <button
+                  type="button"
+                  class="button button-ghost action-icon action-icon--edit"
+                  title="Edit"
+                  aria-label="Edit"
+                  data-product-edit="{{ p.id }}"
+                >
+                  {{ i("pencil") }}
+                </button>
+
+                {% if p.status == 'suspended' %}
+                  <form method="post" action="{{ url_for('main.products_action', role=session.get('employee_role')) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                    <input type="hidden" name="product_id" value="{{ p.id }}" />
+                    <input type="hidden" name="action" value="activate" />
+                    <button type="submit" class="button button-ghost action-icon action-icon--unsuspend" title="Unsuspend" aria-label="Unsuspend">
+                      {{ i("undo") }}
+                    </button>
+                  </form>
+                {% else %}
+                  <form method="post" action="{{ url_for('main.products_action', role=session.get('employee_role')) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                    <input type="hidden" name="product_id" value="{{ p.id }}" />
+                    <input type="hidden" name="action" value="suspend" />
+                    <button type="submit" class="button button-ghost action-icon action-icon--suspend" title="Suspend" aria-label="Suspend">
+                      {{ i("ban") }}
+                    </button>
+                  </form>
+                {% endif %}
+
+                <form method="post" action="{{ url_for('main.products_action', role=session.get('employee_role')) }}" onsubmit="return confirm('Delete this product?');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                  <input type="hidden" name="product_id" value="{{ p.id }}" />
+                  <input type="hidden" name="action" value="delete" />
+                  <button type="submit" class="button button-ghost action-icon action-icon--delete" title="Delete" aria-label="Delete">
+                    {{ i("trash") }}
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="11" class="table-empty">No products registered yet.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="modal-backdrop" data-product-edit-modal hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="product_edit_title" tabindex="-1">
+    <div class="modal__head">
+      <h3 id="product_edit_title" class="modal__title">{{ i("pencil") }} Edit product</h3>
+      <button type="button" class="button button-ghost modal__close" data-product-edit-close aria-label="Close" title="Close">×</button>
+    </div>
+    <div class="modal__body">
+      <form method="post" action="{{ url_for('main.products_action', role=session.get('employee_role')) }}" enctype="multipart/form-data" data-product-edit-form data-product-per-acre-form>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <input type="hidden" name="action" value="update" />
+        <input type="hidden" name="product_id" value="" />
+
+        <div class="form-grid" style="margin-top: 0.25rem">
+          <div class="row-form">
+            <div class="modal-field">
+              <label class="modal-label">Product Category</label>
+              <select name="product_type" required style="text-transform: uppercase" data-product-type>
+                <option value="CROP">CROP</option>
+                <option value="HERBICIDE">HERBICIDE</option>
+                <option value="FERTILIZER">FERTILIZER</option>
+                <option value="EQUIPMENT">EQUIPMENT</option>
+              </select>
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Product Name</label>
+              <input name="product_name" value="" required data-uppercase style="text-transform: uppercase" />
+            </div>
+
+            <div class="modal-field">
+              <label class="modal-label">Brand (optional)</label>
+              <input name="brand" value="" data-uppercase style="text-transform: uppercase" />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Manufacturer (optional)</label>
+              <input name="manufacturer" value="" data-uppercase style="text-transform: uppercase" />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Unit of measure</label>
+              <select name="unit_of_measure" required style="text-transform: uppercase">
+                <option value="">SELECT…</option>
+                <option value="KG">KG</option>
+                <option value="G">G</option>
+                <option value="LITER">LITER</option>
+                <option value="ML">ML</option>
+                <option value="UNIT">UNIT</option>
+                <option value="PIECE">PIECE</option>
+                <option value="BAG">BAG</option>
+                <option value="BOTTLE">BOTTLE</option>
+                <option value="PACK">PACK</option>
+                <option value="BOX">BOX</option>
+              </select>
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Amount per acre</label>
+              <div class="modal-input-with-caption">
+                <div class="input-per-acre-amount-row">
+                  <input name="package_size" value="" inputmode="decimal" placeholder="E.G. 2.5" data-uppercase style="text-transform: uppercase" autocomplete="off" aria-describedby="modal_package_size_caption" />
+                  <span class="pill" data-package-size-uom-badge aria-live="polite" title="Unit of measure selected above">—</span>
+                </div>
+                <span id="modal_package_size_caption" class="input-per-acre-live" data-per-acre-stock-live></span>
+              </div>
+              <p class="hint"><strong>Warehouse / acre qty:</strong> stock units per one acre (session acres × this value). Required for herbicides and fertilizers. Not for mixing ratios—use Application rate.</p>
+            </div>
+
+            <div class="modal-field">
+              <label class="modal-label">Scientific Name</label>
+              <input name="scientific_name" value="" required data-uppercase style="text-transform: uppercase" data-section="crop" />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Crop Category</label>
+              <input name="crop_category" value="" required data-uppercase style="text-transform: uppercase" data-section="crop" />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Crop Variety</label>
+              <input name="crop_variety" value="" required data-uppercase style="text-transform: uppercase" data-section="crop" />
+            </div>
+            <div class="modal-field modal-field--span2">
+              <label class="modal-label">Crop Description</label>
+              <textarea name="crop_description" rows="4" required data-uppercase style="text-transform: uppercase"></textarea>
+            </div>
+
+            <div class="modal-field">
+              <label class="modal-label">Planting Season</label>
+              <select name="planting_season" required style="text-transform: uppercase" data-section="crop">
+                <option value="">SELECT…</option>
+                <option value="LONG RAINS">LONG RAINS</option>
+                <option value="SHORT RAINS">SHORT RAINS</option>
+                <option value="DRY SEASON">DRY SEASON</option>
+                <option value="ALL YEAR">ALL YEAR</option>
+              </select>
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Growth Duration</label>
+              <input name="growth_duration" value="" required data-uppercase style="text-transform: uppercase" data-section="crop" />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Water Requirement</label>
+              <select name="water_requirement" required style="text-transform: uppercase" data-section="crop">
+                <option value="">SELECT…</option>
+                <option value="LOW">LOW</option>
+                <option value="MODERATE">MODERATE</option>
+                <option value="HIGH">HIGH</option>
+                <option value="IRRIGATED">IRRIGATED</option>
+                <option value="RAINFED">RAINFED</option>
+              </select>
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Average yield per acre (optional)</label>
+              <div class="modal-input-with-caption">
+                <input name="average_yield_per_acre" value="" inputmode="decimal" placeholder="E.G. 15" data-uppercase style="text-transform: uppercase" data-section="crop" />
+                <span class="input-per-acre-live" data-per-acre-yield-live></span>
+              </div>
+              <p class="hint">Per <strong>1 acre</strong>; uses the same <strong>unit of measure</strong> as above.</p>
+            </div>
+
+            <div class="modal-field" data-section="agro">
+              <label class="modal-label">Active Ingredient / Composition</label>
+              <input name="active_ingredient" value="" data-uppercase style="text-transform: uppercase" />
+            </div>
+            <div class="modal-field" data-section="agro">
+              <label class="modal-label">Formulation</label>
+              <input name="formulation" value="" data-uppercase style="text-transform: uppercase" />
+            </div>
+            <div class="modal-field" data-section="agro">
+              <label class="modal-label">Application rate (mixing / dose notes)</label>
+              <input name="application_rate" value="" placeholder="E.G. ML PER LITRE WATER" data-uppercase style="text-transform: uppercase" autocomplete="off" />
+              <p class="hint">Mixing or spray guidance only—not multiplied by acres.</p>
+            </div>
+            <div class="modal-field" data-section="agro">
+              <label class="modal-label">Target Use</label>
+              <input name="target_use" value="" data-uppercase style="text-transform: uppercase" />
+            </div>
+            <div class="modal-field modal-field--span2" data-section="agro">
+              <label class="modal-label">Safety Notes (optional)</label>
+              <textarea name="safety_notes" rows="3" data-uppercase style="text-transform: uppercase"></textarea>
+            </div>
+
+            <div class="modal-field" data-section="equip">
+              <label class="modal-label">Model</label>
+              <input name="equipment_model" value="" data-uppercase style="text-transform: uppercase" />
+            </div>
+            <div class="modal-field" data-section="equip">
+              <label class="modal-label">Power Source</label>
+              <input name="power_source" value="" data-uppercase style="text-transform: uppercase" />
+            </div>
+            <div class="modal-field" data-section="equip">
+              <label class="modal-label">Capacity</label>
+              <input name="capacity" value="" data-uppercase style="text-transform: uppercase" />
+            </div>
+            <div class="modal-field" data-section="equip">
+              <label class="modal-label">Warranty Period</label>
+              <input name="warranty_period" value="" data-uppercase style="text-transform: uppercase" />
+            </div>
+
+            <div class="modal-field modal-field--span2">
+              <label class="modal-label">Current crop image</label>
+              <div class="modal-preview" data-product-image-wrap hidden>
+                <img class="modal-preview__img" alt="Crop image" data-product-image />
+                <a class="modal-preview__link" target="_blank" rel="noopener" data-product-image-link>Open</a>
+              </div>
+              <p class="hint" data-product-image-empty>—</p>
+            </div>
+            <div class="modal-field modal-field--span2">
+              <label class="modal-label">Change crop image (optional)</label>
+              <input name="crop_image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+            </div>
+          </div>
+        </div>
+
+        <div class="modal__footer">
+          <button type="submit" class="button">{{ i("save") }} Save changes</button>
+          <button type="button" class="button button-ghost" data-product-edit-close>Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    function refreshProductPerAcreCaptions(form) {
+      if (!form || !form.querySelector || !form.querySelector("[data-product-type]")) return;
+      var stockEl = form.querySelector("[data-per-acre-stock-live]");
+      var yieldEl = form.querySelector("[data-per-acre-yield-live]");
+      var uomStock = form.querySelector('[name="unit_of_measure"]');
+      var pkg = form.querySelector('[name="package_size"]');
+      var yAmt = form.querySelector('[name="average_yield_per_acre"]');
+      var typeEl = form.querySelector("[data-product-type]");
+      var isCrop = !typeEl || String(typeEl.value || "CROP").toUpperCase() === "CROP";
+
+      var uomBadge = form.querySelector("[data-package-size-uom-badge]");
+      if (uomBadge && uomStock) {
+        var ub = String(uomStock.value || "").trim().toUpperCase();
+        uomBadge.textContent = ub || "—";
+      }
+
+      if (stockEl && uomStock && pkg) {
+        var u = String(uomStock.value || "").trim().toUpperCase();
+        var a = String(pkg.value || "").trim();
+        if (!u) {
+          stockEl.textContent = "Uses unit of measure above — choose a unit first.";
+        } else if (!a) {
+          stockEl.textContent = "Per 1 acre → … " + u + " (stock unit)";
+        } else {
+          stockEl.textContent = "Per 1 acre → " + a.toUpperCase() + " " + u + " (stock unit)";
+        }
+      }
+
+      if (yieldEl && yAmt && uomStock) {
+        if (!isCrop) {
+          yieldEl.textContent = "";
+        } else {
+          var yu = String(uomStock.value || "").trim().toUpperCase();
+          var ya = String(yAmt.value || "").trim();
+          if (!yu) {
+            yieldEl.textContent = "Set unit of measure above — yield uses that same unit.";
+          } else if (!ya) {
+            yieldEl.textContent = "Per 1 acre → … " + yu + " (same unit as above)";
+          } else {
+            yieldEl.textContent = "Per 1 acre → " + ya.toUpperCase() + " " + yu + " (same unit as above)";
+          }
+        }
+      }
+    }
+
+    function bindPerAcreForm(form) {
+      if (!form || !form.hasAttribute("data-product-per-acre-form")) return;
+      form.addEventListener("input", function (e) {
+        var t = e.target;
+        if (!t || !t.name) return;
+        if (t.name === "package_size" || t.name === "average_yield_per_acre") refreshProductPerAcreCaptions(form);
+      });
+      form.addEventListener("change", function (e) {
+        var t = e.target;
+        if (!t || !t.name) return;
+        if (t.name === "unit_of_measure" || t.name === "product_type")
+          refreshProductPerAcreCaptions(form);
+      });
+      refreshProductPerAcreCaptions(form);
+    }
+
+    window.refreshProductPerAcreCaptions = refreshProductPerAcreCaptions;
+
+    document.addEventListener("DOMContentLoaded", function () {
+      document.querySelectorAll("[data-product-per-acre-form]").forEach(bindPerAcreForm);
+    });
+  })();
+</script>
+<script>
+  (function () {
+    var modalBackdrop = document.querySelector("[data-product-edit-modal]");
+    var form = document.querySelector("[data-product-edit-form]");
+    if (!modalBackdrop || !form) return;
+
+    var modal = modalBackdrop.querySelector(".modal");
+    var closeEls = modalBackdrop.querySelectorAll("[data-product-edit-close]");
+    var STATIC_BASE = "{{ url_for('static', filename='') }}";
+    var imgWrap = form.querySelector("[data-product-image-wrap]");
+    var imgEl = form.querySelector("[data-product-image]");
+    var imgLink = form.querySelector("[data-product-image-link]");
+    var imgEmpty = form.querySelector("[data-product-image-empty]");
+
+    function setVal(name, v) {
+      var el = form.querySelector('[name="' + name + '"]');
+      if (el) el.value = v || "";
+    }
+
+    function setImage(relPath) {
+      if (!imgWrap || !imgEl || !imgLink || !imgEmpty) return;
+      if (!relPath) {
+        imgWrap.hidden = true;
+        imgEmpty.textContent = "No image uploaded.";
+        return;
+      }
+      var url = STATIC_BASE + String(relPath).replace(/^\/+/, "");
+      imgEl.src = url;
+      imgLink.href = url;
+      imgWrap.hidden = false;
+      imgEmpty.textContent = "";
+    }
+
+    function openFromButton(btn) {
+      var id = btn.getAttribute("data-product-edit");
+      setVal("product_id", id);
+
+      modalBackdrop.hidden = false;
+      document.body.classList.add("modal-open");
+      if (modal) modal.focus();
+
+      fetch("/api/products/" + encodeURIComponent(id), { credentials: "same-origin" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          var p = j && j.product ? j.product : null;
+          if (!p) return;
+          setVal("product_type", p.product_type || "CROP");
+          setVal("product_name", p.crop_name);
+          setVal("brand", p.brand);
+          setVal("manufacturer", p.manufacturer);
+          setVal("unit_of_measure", p.unit_of_measure);
+          setVal("package_size", p.package_size);
+          setVal("scientific_name", p.scientific_name);
+          setVal("crop_category", p.crop_category);
+          setVal("crop_variety", p.crop_variety);
+          setVal("crop_description", p.crop_description);
+          setVal("planting_season", p.planting_season);
+          setVal("growth_duration", p.growth_duration);
+          setVal("water_requirement", p.water_requirement);
+          setVal("average_yield_per_acre", p.average_yield_per_acre);
+          setVal("active_ingredient", p.active_ingredient);
+          setVal("formulation", p.formulation);
+          setVal("application_rate", p.application_rate);
+          setVal("target_use", p.target_use);
+          setVal("safety_notes", p.safety_notes);
+          setVal("equipment_model", p.equipment_model);
+          setVal("power_source", p.power_source);
+          setVal("capacity", p.capacity);
+          setVal("warranty_period", p.warranty_period);
+          setImage(p.crop_image);
+          var typeSel = form.querySelector("[data-product-type]");
+          if (typeSel) typeSel.dispatchEvent(new Event("change", { bubbles: true }));
+          if (window.refreshProductPerAcreCaptions) window.refreshProductPerAcreCaptions(form);
+        })
+        .catch(function () {});
+    }
+
+    function close() {
+      modalBackdrop.hidden = true;
+      document.body.classList.remove("modal-open");
+    }
+
+    closeEls.forEach(function (el) {
+      el.addEventListener("click", close);
+    });
+
+    modalBackdrop.addEventListener("click", function (e) {
+      if (e.target === modalBackdrop) close();
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !modalBackdrop.hidden) close();
+    });
+
+    document.addEventListener("click", function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest("[data-product-edit]") : null;
+      if (!btn) return;
+      openFromButton(btn);
+    });
+  })();
+</script>
+
+<script>
+  (function () {
+    function sync(root) {
+      if (!root) return;
+      var typeEl = root.querySelector("[data-product-type]");
+      if (!typeEl) return;
+      var type = String(typeEl.value || "CROP").toUpperCase();
+
+      // create form uses data-section attributes on containers; edit modal uses them too
+      root.querySelectorAll("[data-section]").forEach(function (el) {
+        var key = el.getAttribute("data-section");
+        if (key === "crop") el.hidden = type !== "CROP";
+        else if (key === "agro") el.hidden = !(type === "HERBICIDE" || type === "FERTILIZER");
+        else if (key === "equip") el.hidden = type !== "EQUIPMENT";
+      });
+
+      // enforce required flags only for visible groups in create form
+      root.querySelectorAll("[data-section] input, [data-section] select, [data-section] textarea").forEach(function (el) {
+        if (!el || !el.closest) return;
+        var wrap = el.closest("[data-section]");
+        if (!wrap) return;
+        var isHidden = wrap.hidden;
+        // only toggle required when element originally had required attr in markup
+        if (el.hasAttribute("required")) {
+          if (isHidden) el.dataset.wasRequired = "1";
+        }
+        if (isHidden) {
+          if (el.hasAttribute("required")) el.removeAttribute("required");
+        } else {
+          if (el.dataset.wasRequired === "1") el.setAttribute("required", "required");
+        }
+      });
+    }
+
+    function initAll() {
+      document.querySelectorAll("form").forEach(function (f) {
+        if (f.querySelector("[data-product-type]")) sync(f);
+      });
+      var modal = document.querySelector("[data-product-edit-modal]");
+      if (modal && modal.querySelector("[data-product-type]")) sync(modal);
+      document.querySelectorAll("[data-product-per-acre-form]").forEach(function (f) {
+        if (window.refreshProductPerAcreCaptions) window.refreshProductPerAcreCaptions(f);
+      });
+    }
+
+    document.addEventListener("change", function (e) {
+      var el = e.target;
+      if (!el || !el.matches) return;
+      if (!el.matches("[data-product-type]")) return;
+      var root = el.closest("form") || el.closest("[data-product-edit-modal]") || document;
+      sync(root);
+      var f = el.closest("form");
+      if (f && f.hasAttribute("data-product-per-acre-form") && window.refreshProductPerAcreCaptions) {
+        window.refreshProductPerAcreCaptions(f);
+      }
+    });
+
+    document.addEventListener("DOMContentLoaded", initAll);
+  })();
+</script>
+
+<script>
+  (function () {
+    var input = document.getElementById("products_search");
+    if (!input) return;
+    var table = input.closest(".panel") ? input.closest(".panel").querySelector("table") : null;
+    if (!table) return;
+    var tbody = table.querySelector("tbody");
+    if (!tbody) return;
+    var rows = Array.prototype.slice.call(tbody.querySelectorAll("tr"));
+    var meta = document.querySelector("[data-products-search-meta]");
+
+    // Precompute searchable text per row (ignores image + actions columns).
+    var cache = rows.map(function (tr) {
+      var tds = Array.prototype.slice.call(tr.querySelectorAll("td"));
+      var parts = [];
+      [1, 2, 3, 4, 5, 6, 7, 8, 9].forEach(function (idx) {
+        var td = tds[idx];
+        if (!td) return;
+        parts.push((td.textContent || "").trim());
+      });
+      return String(parts.join(" ")).toUpperCase();
+    });
+
+    function setMeta(visible, total) {
+      if (!meta) return;
+      meta.textContent = visible === total ? ("Showing " + total + " products.") : ("Showing " + visible + " of " + total + " products.");
+    }
+
+    function apply() {
+      var q = String(input.value || "").trim().toUpperCase();
+      var visible = 0;
+      for (var i = 0; i < rows.length; i++) {
+        var ok = !q || cache[i].indexOf(q) !== -1;
+        rows[i].hidden = !ok;
+        if (ok) visible++;
+      }
+      setMeta(visible, rows.length);
+    }
+
+    input.addEventListener("input", apply);
+    apply();
+  })();
+</script>
+{% endblock %}
+

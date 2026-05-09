@@ -1,0 +1,30 @@
+{% from "macros/icons.html" import i %}
+
+{# Password field with visibility toggle.
+   - minlength: omit with default -1 for no HTML min
+   - required: default true for login/register; set to false for profile edit
+#}
+{% macro password_field(field_id, name, autocomplete="current-password", minlength=-1, required=true) %}
+<div class="input-wrap input-wrap--password">
+  {{ i("lock") }}
+  <input
+    id="{{ field_id }}"
+    name="{{ name }}"
+    type="password"
+    autocomplete="{{ autocomplete }}"
+    {% if required %}required{% endif %}
+    {% if minlength >= 0 %}minlength="{{ minlength }}"{% endif %}
+  />
+  <button
+    type="button"
+    class="pw-toggle"
+    data-pw-toggle
+    aria-controls="{{ field_id }}"
+    aria-pressed="false"
+    aria-label="Show password"
+  >
+    <span class="pw-toggle__show">{{ i("eye", "icon-svg pw-toggle-icon") }}</span>
+    <span class="pw-toggle__hide" hidden>{{ i("eye_off", "icon-svg pw-toggle-icon") }}</span>
+  </button>
+</div>
+{% endmacro %}

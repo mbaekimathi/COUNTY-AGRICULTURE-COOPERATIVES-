@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
+    <p class="dash-meta">{{ module_desc }}</p>
+  </div>
+</div>
+
+<section class="panel">
+  <h3>{{ i("shield") }} Coming next</h3>
+  <p class="lede dash-card-lede">
+    This module page is ready. Next we’ll add data tables, create/edit forms, approvals, and role permissions for
+    {{ module_title | lower }}.
+  </p>
+</section>
+
+{% endblock %}
+

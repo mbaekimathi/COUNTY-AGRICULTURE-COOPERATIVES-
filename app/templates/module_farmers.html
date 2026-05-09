@@ -1,0 +1,1393 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
+    <p class="dash-meta">{{ module_desc }}</p>
+    <p class="hint" style="margin-top: 0.65rem">
+      <a href="{{ url_for('main.module_page', role=session.get('employee_role'), module_key='farmers') }}">{{ i("chevron_left") }} Farmers in session</a>
+    </p>
+  </div>
+</div>
+
+<section class="panel">
+  <h3>{{ i("users") }} Register farmer</h3>
+  <details class="form-disclosure">
+    <summary class="form-disclosure__summary">
+      <span class="form-disclosure__summary-inner">{{ i("spark") }} Register farmer</span>
+    </summary>
+    <div class="form-disclosure__body">
+      <form method="post" action="{{ url_for('main.farmers_action', role=session.get('employee_role')) }}" enctype="multipart/form-data" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <input type="hidden" name="action" value="create" />
+
+        <div class="form-grid" style="margin-top: 0.85rem">
+          <h3 class="settings-card-title">1. Personal Identification</h3>
+      <div class="field">
+        <label class="label-row" for="f_full_name">{{ i("user") }} <span>Full name</span></label>
+        <div class="input-wrap">{{ i("user") }}<input id="f_full_name" name="full_name" type="text" required /></div>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_national_id">{{ i("id") }} <span>National ID Number</span></label>
+        <div class="input-wrap">{{ i("id") }}<input id="f_national_id" name="national_id" type="text" required /></div>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_phone">{{ i("keypad") }} <span>Phone Number</span></label>
+        <div class="input-wrap">{{ i("keypad") }}<input id="f_phone" name="phone_number" type="text" required /></div>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_alt_phone">{{ i("keypad") }} <span>Alternative Phone (optional)</span></label>
+        <div class="input-wrap">{{ i("keypad") }}<input id="f_alt_phone" name="alt_phone_number" type="text" /></div>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_gender">{{ i("shield") }} <span>Gender</span></label>
+        <div class="input-wrap">{{ i("shield") }}
+          <select id="f_gender" name="gender">
+            <option value="">Select…</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_dob">{{ i("shield") }} <span>Date of Birth</span></label>
+        <input id="f_dob" name="date_of_birth" type="date" required />
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_photo">{{ i("camera") }} <span>Profile Photo</span></label>
+        <input id="f_photo" name="profile_photo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+      </div>
+
+      <h3 class="settings-card-title">2. Location (Standardized for Analytics)</h3>
+      <div class="field">
+        <label class="label-row" for="f_county">{{ i("shield") }} <span>County</span></label>
+        <div class="input-wrap">{{ i("shield") }}
+          <select id="f_county" name="county" data-county>
+            <option value="Meru" selected>Meru</option>
+            <option value="Baringo">Baringo</option>
+            <option value="Bomet">Bomet</option>
+            <option value="Bungoma">Bungoma</option>
+            <option value="Busia">Busia</option>
+            <option value="Elgeyo-Marakwet">Elgeyo-Marakwet</option>
+            <option value="Embu">Embu</option>
+            <option value="Garissa">Garissa</option>
+            <option value="Homa Bay">Homa Bay</option>
+            <option value="Isiolo">Isiolo</option>
+            <option value="Kajiado">Kajiado</option>
+            <option value="Kakamega">Kakamega</option>
+            <option value="Kericho">Kericho</option>
+            <option value="Kiambu">Kiambu</option>
+            <option value="Kilifi">Kilifi</option>
+            <option value="Kirinyaga">Kirinyaga</option>
+            <option value="Kisii">Kisii</option>
+            <option value="Kisumu">Kisumu</option>
+            <option value="Kitui">Kitui</option>
+            <option value="Kwale">Kwale</option>
+            <option value="Laikipia">Laikipia</option>
+            <option value="Lamu">Lamu</option>
+            <option value="Machakos">Machakos</option>
+            <option value="Makueni">Makueni</option>
+            <option value="Mandera">Mandera</option>
+            <option value="Marsabit">Marsabit</option>
+            <option value="Migori">Migori</option>
+            <option value="Mombasa">Mombasa</option>
+            <option value="Murang'a">Murang'a</option>
+            <option value="Nairobi">Nairobi</option>
+            <option value="Nakuru">Nakuru</option>
+            <option value="Nandi">Nandi</option>
+            <option value="Narok">Narok</option>
+            <option value="Nyamira">Nyamira</option>
+            <option value="Nyandarua">Nyandarua</option>
+            <option value="Nyeri">Nyeri</option>
+            <option value="Samburu">Samburu</option>
+            <option value="Siaya">Siaya</option>
+            <option value="Taita-Taveta">Taita-Taveta</option>
+            <option value="Tana River">Tana River</option>
+            <option value="Tharaka-Nithi">Tharaka-Nithi</option>
+            <option value="Trans Nzoia">Trans Nzoia</option>
+            <option value="Turkana">Turkana</option>
+            <option value="Uasin Gishu">Uasin Gishu</option>
+            <option value="Vihiga">Vihiga</option>
+            <option value="Wajir">Wajir</option>
+            <option value="West Pokot">West Pokot</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_sub_county">{{ i("shield") }} <span>Sub-county</span></label>
+        <div class="input-wrap">{{ i("shield") }}
+          <select id="f_sub_county" name="sub_county" data-subcounty disabled>
+            <option value="">Select sub-county…</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_ward">{{ i("shield") }} <span>Ward</span></label>
+        <div class="input-wrap">{{ i("shield") }}
+          <select id="f_ward" name="ward" data-ward disabled>
+            <option value="">Select ward…</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_location">{{ i("shield") }} <span>Location</span></label>
+        <div class="input-wrap">{{ i("shield") }}
+          <input id="f_location" name="location" type="text" list="location_list" placeholder="Select or type…" data-location disabled />
+          <datalist id="location_list"></datalist>
+        </div>
+        <p class="hint" data-location-hint>Choose a ward first to load locations.</p>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_village">{{ i("shield") }} <span>Village (optional)</span></label>
+        <div class="input-wrap">{{ i("shield") }}<input id="f_village" name="village" type="text" /></div>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_gps">{{ i("shield") }} <span>GPS Location (optional)</span></label>
+        <div class="input-wrap">{{ i("shield") }}<input id="f_gps" name="gps_coordinates" type="text" placeholder="-0.123, 37.123" /></div>
+        <div class="row-buttons" style="margin-top: 0.45rem">
+          <button type="button" class="button button-ghost" data-gps-detect>Auto-detect</button>
+        </div>
+      </div>
+
+      <h3 class="settings-card-title">3. Farm Details</h3>
+      <div class="field">
+        <label class="label-row" for="f_farm_name">{{ i("boxes") }} <span>Farm Name (optional)</span></label>
+        <div class="input-wrap">{{ i("boxes") }}<input id="f_farm_name" name="farm_name" type="text" /></div>
+        <p class="hint">Auto-fills from last name (editable).</p>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_farm_loc">{{ i("boxes") }} <span>Farm Location</span></label>
+        <div class="input-wrap">{{ i("boxes") }}<input id="f_farm_loc" name="farm_location" type="text" /></div>
+        <p class="hint">Tip: GPS auto-detect can fill this automatically.</p>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_land_unit">{{ i("boxes") }} <span>Unit</span></label>
+        <div class="input-wrap">{{ i("boxes") }}
+          <select id="f_land_unit" name="land_size_unit">
+            <option value="">Select…</option>
+            <option value="acres">Acres</option>
+            <option value="hectares">Hectares</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_land_size">{{ i("boxes") }} <span>Total Land Size (value)</span></label>
+        <div class="input-wrap">{{ i("boxes") }}
+          <input id="f_land_size" name="land_size" type="text" inputmode="decimal" placeholder="Select unit first" data-land-size />
+          <span class="input-suffix" data-land-suffix>—</span>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_ownership">{{ i("shield") }} <span>Farm Ownership Type</span></label>
+        <div class="input-wrap">{{ i("shield") }}
+          <select id="f_ownership" name="ownership_type">
+            <option value="">Select…</option>
+            <option value="owned">Owned</option>
+            <option value="leased">Leased</option>
+            <option value="family_land">Family Land</option>
+            <option value="cooperative_land">Cooperative Land</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" id="lease_period_field" hidden>
+        <label class="label-row">{{ i("shield") }} <span>Lease period</span></label>
+        <div class="row-form" style="grid-template-columns: 1fr 1fr; gap: 0.65rem">
+          <input name="lease_period_value" type="number" min="1" step="1" placeholder="Period value" />
+          <select name="lease_period_unit">
+            <option value="">Select unit…</option>
+            <option value="months">Months</option>
+            <option value="years">Years</option>
+          </select>
+        </div>
+        <p class="hint">Required only if ownership type is leased.</p>
+      </div>
+
+      <h3 class="settings-card-title">4. Cooperative Membership</h3>
+      <div class="field">
+        <label class="label-row" for="f_coop">{{ i("users") }} <span>Cooperative Name / Group</span></label>
+        <div class="input-wrap">{{ i("users") }}<input id="f_coop" name="cooperative_name" type="text" /></div>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_membership">{{ i("users") }} <span>Membership Number</span></label>
+        <div class="input-wrap">{{ i("users") }}<input id="f_membership" name="membership_number" type="text" placeholder="Auto-generated (e.g. M000123) if left blank" /></div>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_center">{{ i("shield") }} <span>Collection Center (optional)</span></label>
+        <div class="input-wrap">{{ i("shield") }}<input id="f_center" name="collection_center" type="text" /></div>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_officer">{{ i("shield") }} <span>Field Officer (optional)</span></label>
+        <div class="input-wrap">{{ i("shield") }}<input id="f_officer" type="text" value="{{ session.get('employee_name') or '' }}" readonly /></div>
+        <p class="hint">Auto-filled from the logged-in user.</p>
+      </div>
+
+      <h3 class="settings-card-title">5. Payment Information</h3>
+      <div class="field">
+        <label class="label-row" for="f_mpesa">{{ i("wallet") }} <span>M-Pesa Number (required)</span></label>
+        <div class="input-wrap">{{ i("wallet") }}<input id="f_mpesa" name="mpesa_number" type="text" required /></div>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_bank">{{ i("wallet") }} <span>Bank Account (optional)</span></label>
+        <div class="input-wrap">{{ i("wallet") }}<input id="f_bank" name="bank_account" type="text" /></div>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_pay_method">{{ i("wallet") }} <span>Preferred Payment Method</span></label>
+        <div class="input-wrap">{{ i("wallet") }}
+          <select id="f_pay_method" name="preferred_payment_method">
+            <option value="">Select…</option>
+            <option value="mpesa">M-Pesa</option>
+            <option value="bank">Bank</option>
+            <option value="sacco">SACCO</option>
+          </select>
+        </div>
+      </div>
+
+      <h3 class="settings-card-title">6. Emergency Contact</h3>
+      <div class="field">
+        <label class="label-row" for="f_kin_name">{{ i("user") }} <span>Next of Kin Name</span></label>
+        <div class="input-wrap">{{ i("user") }}<input id="f_kin_name" name="next_of_kin_name" type="text" /></div>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_kin_phone">{{ i("keypad") }} <span>Next of Kin Phone Number</span></label>
+        <div class="input-wrap">{{ i("keypad") }}<input id="f_kin_phone" name="next_of_kin_phone" type="text" /></div>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_kin_rel">{{ i("shield") }} <span>Relationship</span></label>
+        <div class="input-wrap">{{ i("shield") }}
+          <select id="f_kin_rel" name="next_of_kin_relationship">
+            <option value="">Select…</option>
+            <option value="spouse">Spouse</option>
+            <option value="parent">Parent</option>
+            <option value="sibling">Sibling</option>
+            <option value="child">Child</option>
+            <option value="relative">Relative</option>
+            <option value="guardian">Guardian</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <h3 class="settings-card-title">7. Verification Section</h3>
+      <div class="field">
+        <label class="label-row" for="f_id_upload">{{ i("id") }} <span>National ID Upload</span></label>
+        <input id="f_id_upload" name="national_id_upload" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf" />
+        <p class="hint">Image or PDF.</p>
+      </div>
+      <div class="field">
+        <label class="label-row" for="f_consent">{{ i("shield") }} <span>Registration consent</span></label>
+        <label style="display:flex;gap:0.6rem;align-items:flex-start">
+          <input id="f_consent" name="registration_consent" type="checkbox" required style="margin-top:0.25rem" />
+          <span>I confirm the farmer has consented to registration and data processing.</span>
+        </label>
+      </div>
+
+      <div class="actions">
+        <button type="submit">{{ i("spark") }} Save registration</button>
+      </div>
+        </div>
+      </form>
+    </div>
+  </details>
+</section>
+
+<section class="panel" style="margin-top: 1.25rem">
+  <h3>{{ i("file_text") }} Farmers</h3>
+  <div class="row-buttons" style="margin-top: 0.75rem; margin-bottom: 0.75rem">
+    <div class="input-wrap live-search-wrap">
+      {{ i("search") }}
+      <input
+        type="text"
+        placeholder="Search by membership, name, or phone…"
+        data-farmer-search
+        aria-label="Search farmers"
+      />
+    </div>
+    <span class="hint" data-farmer-search-count></span>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Membership</th>
+          <th>Name</th>
+          <th>Phone</th>
+          <th>Land size</th>
+          <th>Status</th>
+          <th style="min-width: 290px">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in farmers %}
+        <tr
+          class="farmer-select-row{% if f.status == 'suspended' %} is-suspended{% endif %}"
+          data-farmer-id="{{ f.id }}"
+          data-membership="{{ (f.membership_number or '') }}"
+          data-name="{{ (f.full_name or '') }}"
+          data-phone="{{ (f.phone_number or '') }}"
+          data-land="{% if f.land_size is not none %}{{ f.land_size }} {{ f.land_size_unit or '' }}{% endif %}"
+        >
+          <td><code class="profile-code">{{ f.membership_number or "—" }}</code></td>
+          <td>{{ f.full_name }}</td>
+          <td>{{ f.phone_number }}</td>
+          <td>
+            {% if f.land_size is not none %}
+              {{ f.land_size }}{% if f.land_size_unit %} {{ (f.land_size_unit|string)|upper }}{% endif %}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>
+            {{ f.status | replace("_", " ") }}
+            {% set land_sess = f.farming_session_land | default("none") %}
+            {% if land_sess == "partial" %}
+              <span class="farming-session-land-badge farming-session-land-badge--partial">Partially in farming session</span>
+            {% elif land_sess == "full" %}
+              <span class="farming-session-land-badge farming-session-land-badge--full">Fully in farming session</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="row-buttons" style="gap: 0.4rem; flex-wrap: wrap">
+              <button
+                type="button"
+                class="button button-ghost action-icon"
+                title="View"
+                aria-label="View"
+                data-farmer-view="{{ f.id }}"
+              >
+                {{ i("eye") }}
+              </button>
+              <button
+                type="button"
+                class="button button-ghost action-icon action-icon--edit"
+                title="Edit"
+                aria-label="Edit"
+                data-farmer-edit="{{ f.id }}"
+              >
+                {{ i("pencil") }}
+              </button>
+              {% if f.status == "suspended" %}
+                <form method="post" action="{{ url_for('main.farmers_action', role=session.get('employee_role')) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                  <input type="hidden" name="farmer_id" value="{{ f.id }}" />
+                  <input type="hidden" name="action" value="activate" />
+                  <button type="submit" class="button button-ghost action-icon action-icon--unsuspend" title="Unsuspend" aria-label="Unsuspend">
+                    {{ i("undo") }}
+                  </button>
+                </form>
+              {% elif f.status != "active" %}
+                <form method="post" action="{{ url_for('main.farmers_action', role=session.get('employee_role')) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                  <input type="hidden" name="farmer_id" value="{{ f.id }}" />
+                  <input type="hidden" name="action" value="activate" />
+                  <button type="submit" class="button button-ghost action-icon action-icon--activate" title="Activate" aria-label="Activate">
+                    {{ i("check") }}
+                  </button>
+                </form>
+              {% endif %}
+              {% if f.status != "suspended" %}
+                <form method="post" action="{{ url_for('main.farmers_action', role=session.get('employee_role')) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                  <input type="hidden" name="farmer_id" value="{{ f.id }}" />
+                  <input type="hidden" name="action" value="suspend" />
+                  <button type="submit" class="button button-ghost action-icon action-icon--suspend" title="Suspend" aria-label="Suspend">{{ i("ban") }}</button>
+                </form>
+              {% endif %}
+              <form method="post" action="{{ url_for('main.farmers_action', role=session.get('employee_role')) }}" onsubmit="return confirm('Delete farmer?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                <input type="hidden" name="farmer_id" value="{{ f.id }}" />
+                <input type="hidden" name="action" value="delete" />
+                <button type="submit" class="button button-ghost action-icon action-icon--delete" title="Delete" aria-label="Delete">{{ i("trash") }}</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="modal-backdrop" data-farmer-view-modal hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="farmer_view_title" tabindex="-1">
+    <div class="modal__head">
+      <h3 id="farmer_view_title" class="modal__title">{{ i("eye") }} Farmer details</h3>
+      <button type="button" class="button button-ghost modal__close" data-farmer-view-close aria-label="Close" title="Close">×</button>
+    </div>
+    <div class="modal__body">
+      <div class="form-grid" style="margin-top: 0.25rem">
+        <h3 class="settings-card-title">Personal</h3>
+        <div class="row-form">
+          <div class="modal-field">
+            <label class="modal-label">Full name</label>
+            <div class="modal-value" data-v-full-name>—</div>
+          </div>
+          <div class="modal-field">
+            <label class="modal-label">Membership</label>
+            <div class="modal-value" data-v-membership>—</div>
+          </div>
+          <div class="modal-field">
+            <label class="modal-label">National ID</label>
+            <div class="modal-value" data-v-national-id>—</div>
+          </div>
+          <div class="modal-field">
+            <label class="modal-label">Phone</label>
+            <div class="modal-value" data-v-phone>—</div>
+          </div>
+          <div class="modal-field">
+            <label class="modal-label">Status</label>
+            <div class="modal-value" data-v-status>—</div>
+          </div>
+          <div class="modal-field modal-field--span2">
+            <label class="modal-label">Profile photo</label>
+            <div class="modal-preview" data-v-photo-wrap hidden>
+              <img class="modal-preview__img" alt="Profile photo" data-v-photo />
+              <a class="modal-preview__link" target="_blank" rel="noopener" data-v-photo-link>Open</a>
+            </div>
+            <p class="hint" data-v-photo-empty>—</p>
+          </div>
+        </div>
+
+        <h3 class="settings-card-title">Location</h3>
+        <div class="row-form">
+          <div class="modal-field">
+            <label class="modal-label">County</label>
+            <div class="modal-value" data-v-county>—</div>
+          </div>
+          <div class="modal-field">
+            <label class="modal-label">Sub-county</label>
+            <div class="modal-value" data-v-sub-county>—</div>
+          </div>
+          <div class="modal-field">
+            <label class="modal-label">Ward</label>
+            <div class="modal-value" data-v-ward>—</div>
+          </div>
+          <div class="modal-field">
+            <label class="modal-label">Location</label>
+            <div class="modal-value" data-v-location>—</div>
+          </div>
+          <div class="modal-field">
+            <label class="modal-label">Village</label>
+            <div class="modal-value" data-v-village>—</div>
+          </div>
+          <div class="modal-field modal-field--span2">
+            <label class="modal-label">GPS</label>
+            <div class="modal-value" data-v-gps>—</div>
+          </div>
+        </div>
+
+        <h3 class="settings-card-title">Farm</h3>
+        <div class="row-form">
+          <div class="modal-field">
+            <label class="modal-label">Farm name</label>
+            <div class="modal-value" data-v-farm-name>—</div>
+          </div>
+          <div class="modal-field modal-field--span2">
+            <label class="modal-label">Farm location</label>
+            <div class="modal-value" data-v-farm-location>—</div>
+          </div>
+          <div class="modal-field">
+            <label class="modal-label">Land size</label>
+            <div class="modal-value" data-v-land-size>—</div>
+          </div>
+          <div class="modal-field">
+            <label class="modal-label">Ownership</label>
+            <div class="modal-value" data-v-ownership>—</div>
+          </div>
+        </div>
+
+        <h3 class="settings-card-title">Cooperative</h3>
+        <div class="row-form">
+          <div class="modal-field modal-field--span2">
+            <label class="modal-label">Cooperative name</label>
+            <div class="modal-value" data-v-coop>—</div>
+          </div>
+          <div class="modal-field">
+            <label class="modal-label">Collection center</label>
+            <div class="modal-value" data-v-center>—</div>
+          </div>
+        </div>
+
+        <h3 class="settings-card-title">Verification</h3>
+        <div class="row-form">
+          <div class="modal-field modal-field--span2">
+            <label class="modal-label">National ID upload</label>
+            <div class="modal-preview" data-v-id-wrap hidden>
+              <a class="modal-preview__link" target="_blank" rel="noopener" data-v-id-link>Open</a>
+            </div>
+            <p class="hint" data-v-id-empty>—</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" data-farmer-edit-modal hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="farmer_edit_title" tabindex="-1">
+    <div class="modal__head">
+      <h3 id="farmer_edit_title" class="modal__title">{{ i("pencil") }} Edit farmer</h3>
+      <button type="button" class="button button-ghost modal__close" data-farmer-edit-close aria-label="Close" title="Close">×</button>
+    </div>
+    <div class="modal__body">
+      <form method="post" action="{{ url_for('main.farmers_action', role=session.get('employee_role')) }}" enctype="multipart/form-data" data-farmer-edit-form>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <input type="hidden" name="action" value="update" />
+        <input type="hidden" name="farmer_id" value="" />
+        <div class="form-grid" style="margin-top: 0.25rem">
+          <h3 class="settings-card-title">1. Personal Identification</h3>
+          <div class="row-form">
+            <div class="modal-field">
+              <label class="modal-label">Full name</label>
+              <input name="full_name" value="" placeholder="Full name" required />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">National ID</label>
+              <input name="national_id" value="" placeholder="National ID" required />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Phone number</label>
+              <input name="phone_number" value="" placeholder="Phone number" required />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Alternative phone (optional)</label>
+              <input name="alt_phone_number" value="" placeholder="Alternative phone (optional)" />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Gender</label>
+              <select name="gender">
+                <option value="">Select…</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Date of birth</label>
+              <input name="date_of_birth" type="date" value="" />
+            </div>
+            <div class="modal-field modal-field--span2">
+              <label class="modal-label">Current profile photo</label>
+              <div class="modal-preview" data-profile-preview-wrap hidden>
+                <img class="modal-preview__img" alt="Profile photo" data-profile-preview />
+                <a class="modal-preview__link" target="_blank" rel="noopener" data-profile-preview-link>Open</a>
+              </div>
+              <p class="hint" data-profile-preview-empty>—</p>
+            </div>
+            <div class="modal-field modal-field--span2">
+              <label class="modal-label">Change profile photo (optional)</label>
+              <input name="profile_photo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+            </div>
+          </div>
+
+          <h3 class="settings-card-title">2. Location</h3>
+          <div class="row-form">
+            <div class="modal-field">
+              <label class="modal-label">County</label>
+              <input name="county" value="" placeholder="County" />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Sub-county</label>
+              <input name="sub_county" value="" placeholder="Sub-county" />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Ward</label>
+              <input name="ward" value="" placeholder="Ward" />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Location</label>
+              <input name="location" value="" placeholder="Location" />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Village</label>
+              <input name="village" value="" placeholder="Village" />
+            </div>
+            <div class="modal-field modal-field--span2">
+              <label class="modal-label">GPS coordinates (Latitude, Longitude)</label>
+              <div class="modal-row">
+                <input name="gps_coordinates" value="" placeholder="-0.123456, 37.123456" data-modal-gps />
+                <button type="button" class="button button-ghost" data-modal-gps-detect>Auto-detect</button>
+              </div>
+              <p class="hint">Use auto-detect to update latitude/longitude, or type manually.</p>
+            </div>
+          </div>
+
+          <h3 class="settings-card-title">3. Farm Details</h3>
+          <div class="row-form">
+            <div class="modal-field">
+              <label class="modal-label">Farm name</label>
+              <input name="farm_name" value="" placeholder="Farm name" />
+            </div>
+            <div class="modal-field modal-field--span2">
+              <label class="modal-label">Farm location</label>
+              <input name="farm_location" value="" placeholder="Farm location" />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Land size</label>
+              <input name="land_size" value="" placeholder="Land size" inputmode="decimal" />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Land unit</label>
+              <select name="land_size_unit">
+                <option value="">Select…</option>
+                <option value="acres">Acres</option>
+                <option value="hectares">Hectares</option>
+              </select>
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Ownership type</label>
+              <select name="ownership_type" data-modal-ownership>
+                <option value="">Select…</option>
+                <option value="owned">Owned</option>
+                <option value="leased">Leased</option>
+                <option value="family_land">Family Land</option>
+                <option value="cooperative_land">Cooperative Land</option>
+              </select>
+            </div>
+            <div class="modal-field" data-modal-lease hidden>
+              <label class="modal-label">Lease period value</label>
+              <input name="lease_period_value" type="number" min="1" step="1" placeholder="Value" />
+            </div>
+            <div class="modal-field" data-modal-lease hidden>
+              <label class="modal-label">Lease period unit</label>
+              <select name="lease_period_unit">
+                <option value="">Select…</option>
+                <option value="months">Months</option>
+                <option value="years">Years</option>
+              </select>
+            </div>
+          </div>
+
+          <h3 class="settings-card-title">4. Cooperative Membership</h3>
+          <div class="row-form">
+            <div class="modal-field modal-field--span2">
+              <label class="modal-label">Cooperative name / group</label>
+              <input name="cooperative_name" value="" placeholder="Cooperative name / group" readonly />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Membership number</label>
+              <input name="membership_number" value="" placeholder="Membership number" readonly />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Collection center</label>
+              <input name="collection_center" value="" placeholder="Collection center" readonly />
+            </div>
+            <p class="hint">Cooperative membership details are locked and cannot be edited.</p>
+          </div>
+
+          <h3 class="settings-card-title">5. Payment Information</h3>
+          <div class="row-form">
+            <div class="modal-field">
+              <label class="modal-label">M-Pesa number</label>
+              <input name="mpesa_number" value="" placeholder="M-Pesa number" />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Bank account</label>
+              <input name="bank_account" value="" placeholder="Bank account" />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Preferred payment method</label>
+              <select name="preferred_payment_method">
+                <option value="">Select…</option>
+                <option value="mpesa">M-Pesa</option>
+                <option value="bank">Bank</option>
+                <option value="sacco">SACCO</option>
+              </select>
+            </div>
+          </div>
+
+          <h3 class="settings-card-title">6. Emergency Contact</h3>
+          <div class="row-form">
+            <div class="modal-field">
+              <label class="modal-label">Next of kin name</label>
+              <input name="next_of_kin_name" value="" placeholder="Next of kin name" />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Next of kin phone</label>
+              <input name="next_of_kin_phone" value="" placeholder="Next of kin phone" />
+            </div>
+            <div class="modal-field">
+              <label class="modal-label">Relationship</label>
+              <select name="next_of_kin_relationship">
+                <option value="">Select…</option>
+                <option value="spouse">Spouse</option>
+                <option value="parent">Parent</option>
+                <option value="sibling">Sibling</option>
+                <option value="child">Child</option>
+                <option value="relative">Relative</option>
+                <option value="guardian">Guardian</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <h3 class="settings-card-title">7. Verification</h3>
+          <div class="row-form">
+            <div class="modal-field modal-field--span2">
+              <label class="modal-label">Current National ID upload</label>
+              <div class="modal-preview" data-id-preview-wrap hidden>
+                <a class="modal-preview__link" target="_blank" rel="noopener" data-id-preview-link>Open current file</a>
+              </div>
+              <p class="hint" data-id-preview-empty>—</p>
+            </div>
+            <div class="modal-field modal-field--span2">
+              <label class="modal-label">Replace National ID upload (optional)</label>
+              <input name="national_id_upload" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf" />
+            </div>
+          </div>
+        </div>
+        <div class="modal__footer">
+          <div class="row-buttons" style="justify-content: flex-end">
+            <button type="button" class="button button-ghost" data-farmer-edit-close>Cancel</button>
+            <button type="submit" class="button">{{ i("spark") }} Save changes</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  (function () {
+    var countyEl = document.querySelector("[data-county]");
+    var subEl = document.querySelector("[data-subcounty]");
+    var wardEl = document.querySelector("[data-ward]");
+    var locationEl = document.querySelector("[data-location]");
+    var locationList = document.getElementById("location_list");
+    var locationHint = document.querySelector("[data-location-hint]");
+    if (!countyEl || !subEl || !wardEl) return;
+
+    // Full Kenya dataset (counties -> constituencies/sub-counties -> wards)
+    // Source: https://github.com/mbithuka/Counties (restructured_data.json)
+    var DATA_URL = "https://raw.githubusercontent.com/mbithuka/Counties/master/restructured_data.json";
+    var cacheKey = "kenya_admin_v1";
+    var kenyaData = null;
+
+    function setOptions(select, options) {
+      select.innerHTML =
+        '<option value="">' +
+        "Select…" +
+        "</option>" +
+        options
+          .map(function (o) {
+            return '<option value="' + o.replace(/"/g, "&quot;") + '">' + o + "</option>";
+          })
+          .join("");
+    }
+
+    function reset() {
+      subEl.disabled = true;
+      wardEl.disabled = true;
+      setOptions(subEl, []);
+      setOptions(wardEl, []);
+      if (locationEl) {
+        locationEl.disabled = true;
+        locationEl.value = "";
+        if (locationList) locationList.innerHTML = "";
+        if (locationHint) locationHint.textContent = "Choose a ward first to load locations.";
+      }
+    }
+
+    function countyKeyFromValue(v) {
+      return String(v || "").trim().toUpperCase();
+    }
+
+    function normalizeLabel(s) {
+      // We display uppercase anyway via CSS, but keep readable spacing here
+      return String(s || "").trim();
+    }
+
+    function getCountyObject(countyValue) {
+      if (!kenyaData) return null;
+      var key = countyKeyFromValue(countyValue);
+      return kenyaData[key] || null;
+    }
+
+    function getSubCountyMap(countyValue) {
+      var obj = getCountyObject(countyValue);
+      if (!obj || !obj.Constituencies) return null;
+      return obj.Constituencies;
+    }
+
+    function populateSubCounties() {
+      reset();
+      var map = getSubCountyMap(countyEl.value);
+      if (!map) return;
+      subEl.disabled = false;
+      setOptions(subEl, Object.keys(map).map(normalizeLabel));
+    }
+
+    function populateWards() {
+      wardEl.disabled = true;
+      setOptions(wardEl, []);
+      var map = getSubCountyMap(countyEl.value);
+      if (!map) return;
+      var chosen = (subEl.value || "").toLowerCase();
+      var entry = map[chosen] || null;
+      if (!entry || !entry.Ward) return;
+      wardEl.disabled = false;
+      setOptions(wardEl, entry.Ward.map(normalizeLabel));
+    }
+
+    function populateLocationsForWard() {
+      if (!locationEl) return;
+      locationEl.disabled = true;
+      if (locationHint) locationHint.textContent = "Loading locations…";
+      if (locationList) locationList.innerHTML = "";
+
+      var ward = String(wardEl.value || "").trim();
+      if (!ward) {
+        if (locationHint) locationHint.textContent = "Choose a ward first to load locations.";
+        locationEl.disabled = true;
+        return;
+      }
+
+      fetch("/api/locations?ward=" + encodeURIComponent(ward), { credentials: "same-origin" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          var locations = (j && j.locations) ? j.locations : [];
+          if (locationList) {
+            locationList.innerHTML = locations.map(function (loc) {
+              return '<option value="' + String(loc).replace(/"/g, "&quot;") + '"></option>';
+            }).join("");
+          }
+          if (locationHint) {
+            locationHint.textContent = locations.length
+              ? ("Locations found: " + locations.length + ". You can select or type a new one.")
+              : "No saved locations for this ward yet — type a new location.";
+          }
+          locationEl.disabled = false;
+        })
+        .catch(function () {
+          if (locationHint) locationHint.textContent = "Could not load locations — you can still type one.";
+          locationEl.disabled = false;
+        });
+    }
+
+    countyEl.addEventListener("change", function () {
+      populateSubCounties();
+    });
+
+    subEl.addEventListener("change", function () {
+      populateWards();
+    });
+
+    wardEl.addEventListener("change", function () {
+      populateLocationsForWard();
+    });
+
+    function loadData() {
+      try {
+        var cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          kenyaData = JSON.parse(cached);
+          populateSubCounties();
+          return Promise.resolve();
+        }
+      } catch (e) {}
+      return fetch(DATA_URL)
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          if (!j) return;
+          kenyaData = j;
+          try { localStorage.setItem(cacheKey, JSON.stringify(j)); } catch (e) {}
+          populateSubCounties();
+        })
+        .catch(function () {
+          // If fetch fails, keep dropdowns disabled rather than showing wrong data.
+          reset();
+        });
+    }
+
+    reset();
+    loadData();
+  })();
+</script>
+<script>
+  (function () {
+    var btn = document.querySelector("[data-gps-detect]");
+    var input = document.getElementById("f_gps");
+    var farmLoc = document.getElementById("f_farm_loc");
+    if (!btn || !input) return;
+    btn.addEventListener("click", function () {
+      if (!navigator.geolocation) return alert("Geolocation not supported on this device/browser.");
+      btn.disabled = true;
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          var lat = pos.coords.latitude.toFixed(6);
+          var lng = pos.coords.longitude.toFixed(6);
+          input.value = lat + ", " + lng;
+          if (farmLoc) {
+            // Lightweight reverse geocode (no key required)
+            fetch(
+              "https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=" +
+                encodeURIComponent(lat) +
+                "&longitude=" +
+                encodeURIComponent(lng) +
+                "&localityLanguage=en"
+            )
+              .then(function (r) { return r.ok ? r.json() : null; })
+              .then(function (j) {
+                if (!j) return;
+                var parts = [];
+                if (j.locality) parts.push(j.locality);
+                if (j.city) parts.push(j.city);
+                if (j.principalSubdivision) parts.push(j.principalSubdivision);
+                if (j.countryName) parts.push(j.countryName);
+                var name = parts.filter(Boolean).join(", ");
+                farmLoc.value = name || farmLoc.value || (lat + ", " + lng);
+              })
+              .catch(function () {
+                // If reverse geocode fails, at least copy coordinates to farm location if empty.
+                if (!farmLoc.value) farmLoc.value = lat + ", " + lng;
+              });
+          }
+          btn.disabled = false;
+        },
+        function () {
+          btn.disabled = false;
+          alert("Unable to auto-detect location. You can enter coordinates manually.");
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    });
+  })();
+</script>
+<script>
+  (function () {
+    var unit = document.getElementById("f_land_unit");
+    var size = document.querySelector("[data-land-size]");
+    var suffix = document.querySelector("[data-land-suffix]");
+    if (!unit || !size || !suffix) return;
+    function sync() {
+      var v = unit.value;
+      suffix.textContent = v ? v : "—";
+      size.placeholder = v ? ("Enter land size in " + v) : "Select unit first";
+    }
+    unit.addEventListener("change", sync);
+    sync();
+  })();
+</script>
+<script>
+  (function () {
+    var own = document.getElementById("f_ownership");
+    var wrap = document.getElementById("lease_period_field");
+    if (!own || !wrap) return;
+    var valueEl = wrap.querySelector('input[name="lease_period_value"]');
+    var unitEl = wrap.querySelector('select[name="lease_period_unit"]');
+    function sync() {
+      var leased = own.value === "leased";
+      wrap.hidden = !leased;
+      if (valueEl) valueEl.required = leased;
+      if (unitEl) unitEl.required = leased;
+      if (!leased) {
+        if (valueEl) valueEl.value = "";
+        if (unitEl) unitEl.value = "";
+      }
+    }
+    own.addEventListener("change", sync);
+    sync();
+  })();
+</script>
+<script>
+  (function () {
+    var full = document.getElementById("f_full_name");
+    var farm = document.getElementById("f_farm_name");
+    if (!full || !farm) return;
+
+    var touched = false;
+    farm.addEventListener("input", function () {
+      touched = true;
+    });
+
+    function makeFarmName(fullName) {
+      var parts = String(fullName || "")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+      if (!parts.length) return "";
+      var last = parts[parts.length - 1];
+      return (last + " FARM").toUpperCase();
+    }
+
+    function maybeAutofill() {
+      var suggested = makeFarmName(full.value);
+      if (!suggested) return;
+      // Only auto-fill if user hasn't typed a custom farm name yet
+      if (!touched && !String(farm.value || "").trim()) {
+        farm.value = suggested;
+      }
+    }
+
+    full.addEventListener("blur", maybeAutofill);
+    full.addEventListener("change", maybeAutofill);
+  })();
+</script>
+<script>
+  (function () {
+    var modalBackdrop = document.querySelector("[data-farmer-edit-modal]");
+    var form = document.querySelector("[data-farmer-edit-form]");
+    if (!modalBackdrop || !form) return;
+
+    var modal = modalBackdrop.querySelector(".modal");
+    var closeEls = modalBackdrop.querySelectorAll("[data-farmer-edit-close]");
+    var STATIC_BASE = "{{ url_for('static', filename='') }}";
+    var gpsBtn = form.querySelector("[data-modal-gps-detect]");
+    var gpsInput = form.querySelector("[data-modal-gps]");
+    var ownEl = form.querySelector("[data-modal-ownership]");
+    var leaseEls = form.querySelectorAll("[data-modal-lease]");
+    var profileWrap = form.querySelector("[data-profile-preview-wrap]");
+    var profileImg = form.querySelector("[data-profile-preview]");
+    var profileLink = form.querySelector("[data-profile-preview-link]");
+    var profileEmpty = form.querySelector("[data-profile-preview-empty]");
+    var idWrap = form.querySelector("[data-id-preview-wrap]");
+    var idLink = form.querySelector("[data-id-preview-link]");
+    var idEmpty = form.querySelector("[data-id-preview-empty]");
+
+    function setVal(name, v) {
+      var el = form.querySelector('[name="' + name + '"]');
+      if (el) el.value = v || "";
+    }
+
+    function setPreview(relPath, kind) {
+      if (kind === "profile") {
+        if (!profileWrap || !profileImg || !profileLink || !profileEmpty) return;
+        if (!relPath) {
+          profileWrap.hidden = true;
+          profileEmpty.textContent = "No photo uploaded.";
+          return;
+        }
+        var url = STATIC_BASE + String(relPath).replace(/^\/+/, "");
+        profileImg.src = url;
+        profileLink.href = url;
+        profileWrap.hidden = false;
+        profileEmpty.textContent = "";
+        return;
+      }
+      if (kind === "id") {
+        if (!idWrap || !idLink || !idEmpty) return;
+        if (!relPath) {
+          idWrap.hidden = true;
+          idEmpty.textContent = "No ID file uploaded.";
+          return;
+        }
+        var url2 = STATIC_BASE + String(relPath).replace(/^\/+/, "");
+        idLink.href = url2;
+        idWrap.hidden = false;
+        idEmpty.textContent = "";
+      }
+    }
+
+    function syncLeaseFields() {
+      if (!ownEl || !leaseEls) return;
+      var leased = ownEl.value === "leased";
+      leaseEls.forEach(function (el) {
+        el.hidden = !leased;
+      });
+    }
+
+    function openFromButton(btn) {
+      var id = btn.getAttribute("data-farmer-edit");
+      setVal("farmer_id", id);
+
+      modalBackdrop.hidden = false;
+      document.body.classList.add("modal-open");
+      if (modal) modal.focus();
+
+      fetch("/api/farmers/" + encodeURIComponent(id), { credentials: "same-origin" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          var f = j && j.farmer ? j.farmer : null;
+          if (!f) return;
+          setVal("full_name", f.full_name);
+          setVal("national_id", f.national_id);
+          setVal("phone_number", f.phone_number);
+          setVal("alt_phone_number", f.alt_phone_number);
+          setVal("gender", f.gender);
+          setVal("date_of_birth", f.date_of_birth);
+          setVal("county", f.county);
+          setVal("sub_county", f.sub_county);
+          setVal("ward", f.ward);
+          setVal("location", f.location);
+          setVal("village", f.village);
+          setVal("gps_coordinates", f.gps_coordinates);
+          setVal("farm_name", f.farm_name);
+          setVal("farm_location", f.farm_location);
+          setVal("land_size", f.land_size);
+          setVal("land_size_unit", f.land_size_unit);
+          setVal("ownership_type", f.ownership_type);
+          setVal("lease_period_value", f.lease_period_value);
+          setVal("lease_period_unit", f.lease_period_unit);
+          setVal("cooperative_name", f.cooperative_name);
+          setVal("membership_number", f.membership_number);
+          setVal("collection_center", f.collection_center);
+          setVal("mpesa_number", f.mpesa_number);
+          setVal("bank_account", f.bank_account);
+          setVal("preferred_payment_method", f.preferred_payment_method);
+          setVal("next_of_kin_name", f.next_of_kin_name);
+          setVal("next_of_kin_phone", f.next_of_kin_phone);
+          setVal("next_of_kin_relationship", f.next_of_kin_relationship);
+          setPreview(f.profile_photo, "profile");
+          setPreview(f.national_id_upload, "id");
+          syncLeaseFields();
+
+          var first = form.querySelector('input[name="full_name"]');
+          if (first) first.focus();
+        })
+        .catch(function () {});
+    }
+
+    function close() {
+      modalBackdrop.hidden = true;
+      document.body.classList.remove("modal-open");
+    }
+
+    document.addEventListener("click", function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest("[data-farmer-edit]") : null;
+      if (btn) {
+        e.preventDefault();
+        return openFromButton(btn);
+      }
+    });
+
+    closeEls.forEach(function (el) {
+      el.addEventListener("click", function (e) {
+        e.preventDefault();
+        close();
+      });
+    });
+
+    modalBackdrop.addEventListener("click", function (e) {
+      if (e.target === modalBackdrop) close();
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (modalBackdrop.hidden) return;
+      if (e.key === "Escape") close();
+    });
+
+    if (ownEl) {
+      ownEl.addEventListener("change", syncLeaseFields);
+      syncLeaseFields();
+    }
+
+    if (gpsBtn && gpsInput) {
+      gpsBtn.addEventListener("click", function () {
+        if (!navigator.geolocation) return alert("Geolocation not supported on this device/browser.");
+        gpsBtn.disabled = true;
+        navigator.geolocation.getCurrentPosition(
+          function (pos) {
+            var lat = pos.coords.latitude.toFixed(6);
+            var lng = pos.coords.longitude.toFixed(6);
+            gpsInput.value = lat + ", " + lng;
+            gpsBtn.disabled = false;
+          },
+          function () {
+            gpsBtn.disabled = false;
+            alert("Unable to auto-detect location. You can enter coordinates manually.");
+          },
+          { enableHighAccuracy: true, timeout: 8000 }
+        );
+      });
+    }
+  })();
+</script>
+<script>
+  (function () {
+    var input = document.querySelector("[data-farmer-search]");
+    var count = document.querySelector("[data-farmer-search-count]");
+    var rows = Array.prototype.slice.call(document.querySelectorAll(".data-table tbody tr"));
+    if (!input || !rows.length) return;
+
+    function norm(s) {
+      return String(s || "").toLowerCase().replace(/\s+/g, " ").trim();
+    }
+
+    function apply() {
+      var q = norm(input.value);
+      var shown = 0;
+      rows.forEach(function (tr) {
+        var hay = norm(tr.getAttribute("data-membership")) + " " + norm(tr.getAttribute("data-name")) + " " + norm(tr.getAttribute("data-phone")) + " " + norm(tr.getAttribute("data-land"));
+        var ok = !q || hay.indexOf(q) !== -1;
+        tr.style.display = ok ? "" : "none";
+        if (ok) shown += 1;
+      });
+      if (count) count.textContent = shown + " shown";
+    }
+
+    input.addEventListener("input", apply);
+    apply();
+  })();
+</script>
+<script>
+  (function () {
+    var modalBackdrop = document.querySelector("[data-farmer-view-modal]");
+    if (!modalBackdrop) return;
+    var modal = modalBackdrop.querySelector(".modal");
+    var closeEls = modalBackdrop.querySelectorAll("[data-farmer-view-close]");
+    var STATIC_BASE = "{{ url_for('static', filename='') }}";
+
+    function setText(sel, v) {
+      var el = modalBackdrop.querySelector(sel);
+      if (el) el.textContent = v && String(v).trim() ? String(v) : "—";
+    }
+
+    function setPhoto(relPath) {
+      var wrap = modalBackdrop.querySelector("[data-v-photo-wrap]");
+      var img = modalBackdrop.querySelector("[data-v-photo]");
+      var link = modalBackdrop.querySelector("[data-v-photo-link]");
+      var empty = modalBackdrop.querySelector("[data-v-photo-empty]");
+      if (!wrap || !img || !link || !empty) return;
+      if (!relPath) {
+        wrap.hidden = true;
+        empty.textContent = "No photo uploaded.";
+        return;
+      }
+      var url = STATIC_BASE + String(relPath).replace(/^\/+/, "");
+      img.src = url;
+      link.href = url;
+      wrap.hidden = false;
+      empty.textContent = "";
+    }
+
+    function setIdFile(relPath) {
+      var wrap = modalBackdrop.querySelector("[data-v-id-wrap]");
+      var link = modalBackdrop.querySelector("[data-v-id-link]");
+      var empty = modalBackdrop.querySelector("[data-v-id-empty]");
+      if (!wrap || !link || !empty) return;
+      if (!relPath) {
+        wrap.hidden = true;
+        empty.textContent = "No ID file uploaded.";
+        return;
+      }
+      var url = STATIC_BASE + String(relPath).replace(/^\/+/, "");
+      link.href = url;
+      wrap.hidden = false;
+      empty.textContent = "";
+    }
+
+    function open(id) {
+      modalBackdrop.hidden = false;
+      document.body.classList.add("modal-open");
+      if (modal) modal.focus();
+
+      fetch("/api/farmers/" + encodeURIComponent(id), { credentials: "same-origin" })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          var f = j && j.farmer ? j.farmer : null;
+          if (!f) return;
+          setText("[data-v-full-name]", f.full_name);
+          setText("[data-v-membership]", f.membership_number || f.farmer_code);
+          setText("[data-v-national-id]", f.national_id);
+          setText("[data-v-phone]", f.phone_number);
+          setText("[data-v-status]", (f.status || "").replace(/_/g, " "));
+          setPhoto(f.profile_photo);
+          setText("[data-v-county]", f.county);
+          setText("[data-v-sub-county]", f.sub_county);
+          setText("[data-v-ward]", f.ward);
+          setText("[data-v-location]", f.location);
+          setText("[data-v-village]", f.village);
+          setText("[data-v-gps]", f.gps_coordinates);
+          setText("[data-v-farm-name]", f.farm_name);
+          setText("[data-v-farm-location]", f.farm_location);
+          var land = "";
+          if (f.land_size !== null && f.land_size !== undefined) land += String(f.land_size);
+          if (f.land_size_unit) land += (land ? " " : "") + String(f.land_size_unit);
+          setText("[data-v-land-size]", land);
+          setText("[data-v-ownership]", f.ownership_type);
+          setText("[data-v-coop]", f.cooperative_name);
+          setText("[data-v-center]", f.collection_center);
+          setIdFile(f.national_id_upload);
+        })
+        .catch(function () {});
+    }
+
+    function close() {
+      modalBackdrop.hidden = true;
+      document.body.classList.remove("modal-open");
+    }
+
+    document.addEventListener("click", function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest("[data-farmer-view]") : null;
+      if (!btn) return;
+      e.preventDefault();
+      open(btn.getAttribute("data-farmer-view"));
+    });
+
+    closeEls.forEach(function (el) {
+      el.addEventListener("click", function (e) {
+        e.preventDefault();
+        close();
+      });
+    });
+
+    modalBackdrop.addEventListener("click", function (e) {
+      if (e.target === modalBackdrop) close();
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (modalBackdrop.hidden) return;
+      if (e.key === "Escape") close();
+    });
+  })();
+</script>
+<script>
+  (function () {
+    var BASE = "{{ url_for('main.farmer_farming_session', role=session.get('employee_role'))|safe }}".split("?")[0];
+    var link = document.querySelector("[data-farming-session-register-link]");
+    var rows = document.querySelectorAll("tr.farmer-select-row[data-farmer-id]");
+    if (!link || !rows.length) return;
+
+    var selectedIds = [];
+
+    function setHref() {
+      var q = selectedIds
+        .map(function (id) {
+          return "farmer_id=" + encodeURIComponent(String(id));
+        })
+        .join("&");
+      link.setAttribute("href", selectedIds.length ? BASE + "?" + q : BASE);
+      link.title =
+        selectedIds.length === 0
+          ? "Register farming session (choose farmers on the form or select rows below)"
+          : "Register farming session for " +
+            selectedIds.length +
+            " selected farmer" +
+            (selectedIds.length === 1 ? "" : "s");
+    }
+
+    function highlight() {
+      rows.forEach(function (tr) {
+        var fid = tr.getAttribute("data-farmer-id");
+        tr.classList.toggle("is-selected", !!(fid && selectedIds.indexOf(fid) !== -1));
+      });
+    }
+
+    setHref();
+
+    document.addEventListener("click", function (e) {
+      var tr = e.target && e.target.closest ? e.target.closest("tr.farmer-select-row[data-farmer-id]") : null;
+      if (!tr || !document.body.contains(tr)) return;
+      if (e.target.closest("button") || e.target.closest("form")) return;
+      var fid = tr.getAttribute("data-farmer-id");
+      if (!fid) return;
+      var idx = selectedIds.indexOf(fid);
+      if (idx !== -1) {
+        selectedIds.splice(idx, 1);
+      } else {
+        selectedIds.push(fid);
+      }
+      highlight();
+      setHref();
+    });
+  })();
+</script>
+{% endblock %}
+

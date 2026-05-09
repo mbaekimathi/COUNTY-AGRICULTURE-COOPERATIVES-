@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
+    <p class="dash-meta">{{ module_desc }}</p>
+    <p class="hint" style="margin-top: 0.85rem">
+      <a href="{{ url_for('main.farmers_manage_page', role=session.get('employee_role')) }}">{{ i("users_cog") }} Farmer management</a>
+      <span aria-hidden="true"> · </span>
+      <a href="{{ url_for('main.farmer_farming_session', role=session.get('employee_role')) }}">{{ i("leaf") }} Register farming session</a>
+    </p>
+  </div>
+</div>
+
+<section class="panel">
+  <h3>{{ i("leaf") }} Active session enrolments</h3>
+  <p class="hint" style="margin-bottom: 1rem">
+    One row per farmer. All <strong>active</strong> crops/sessions are listed with acres per crop; totals compare session acreage to recorded farm size.
+  </p>
+
+  <div class="table-wrap">
+    <table class="data-table farmers-in-session-table">
+      <thead>
+        <tr>
+          <th scope="col">Farmer &amp; phone</th>
+          <th scope="col">Code / member #</th>
+          <th scope="col">Location</th>
+          <th scope="col">Crops in session (acres each)</th>
+          <th scope="col">Σ Session acres</th>
+          <th scope="col">Farm on file (acres)</th>
+          <th scope="col">vs land</th>
+          <th scope="col">Farmer status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for g in farmer_session_groups %}
+        <tr
+          class="farmers-in-session-table__row--link"
+          tabindex="0"
+          role="link"
+          data-href="{{ url_for('main.farmer_all_active_sessions', role=session.get('employee_role'), farmer_id=g.farmer_id) }}"
+          aria-label="Open all active sessions for {{ g.full_name or 'farmer' }}"
+        >
+          <td>
+            <div><strong>{{ g.full_name or "—" }}</strong></div>
+            {% if g.phone_number %}
+              <div class="hint farmer-session-phone">{{ g.phone_number }}</div>
+            {% else %}
+              <div class="hint">—</div>
+            {% endif %}
+          </td>
+          <td>
+            {% if g.farmer_code or g.membership_number %}
+              {{ g.farmer_code or "—" }} / {{ g.membership_number or "—" }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>
+            {% if g.county or g.ward %}
+              {{ g.county or "" }}{% if g.county and g.ward %}, {% endif %}{{ g.ward or "" }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>
+            <ul class="farmer-session-crop-list">
+              {% for s in g.sessions %}
+              <li>
+                <strong>{{ s.crop_display }}</strong>
+                · <span class="num">{{ "%.4f"|format(s.acreage_used_acres) }}</span> ac
+                {% if s.season_name %}· {{ s.season_name }}{% endif %}
+              </li>
+              {% endfor %}
+            </ul>
+          </td>
+          <td><strong>{{ "%.4f"|format(g.sessions_total_acres) }}</strong></td>
+          <td>
+            {% if g.land_total_acres is not none %}
+              <strong>{{ "%.2f"|format(g.land_total_acres) }}</strong>
+              {% if g.land_size_unit %}<span class="hint">({{ g.land_size }} {{ g.land_size_unit }})</span>{% endif %}
+            {% else %}
+              <span class="hint">Not on file</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if g.land_total_acres is not none %}
+              {% if g.land_over_by_acres %}
+                <span class="farmer-land-compare farmer-land-compare--over">Over by {{ "%.4f"|format(g.land_over_by_acres) }} ac</span>
+              {% else %}
+                <span class="farmer-land-compare farmer-land-compare--ok">{{ "%.4f"|format(g.land_remaining_acres) }} ac left</span>
+              {% endif %}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>{{ g.farmer_status or "—" }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="table-empty">No active farming sessions. Register a session or open Farmer management to add farmers.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+<script>
+  (function () {
+    document.querySelectorAll(".farmers-in-session-table__row--link[data-href]").forEach(function (tr) {
+      var href = tr.getAttribute("data-href");
+      if (!href) return;
+      function go() {
+        window.location.href = href;
+      }
+      tr.addEventListener("click", function (e) {
+        if (e.target.closest && e.target.closest("a, button")) return;
+        go();
+      });
+      tr.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          go();
+        }
+      });
+    });
+  })();
+</script>
+{% endblock %}

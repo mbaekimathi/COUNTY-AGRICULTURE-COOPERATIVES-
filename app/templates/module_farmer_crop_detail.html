@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header farmer-crop-detail-header">
+  <div class="farmer-crop-detail-header__main">
+    <h2 class="dash-title">{{ i("leaf") }} {{ product.crop_code }} — {{ product.crop_name }}</h2>
+    <p class="dash-meta farmer-crop-detail-header__meta">
+      Category: <strong>{{ product.crop_category or "—" }}</strong>
+      {% if product.crop_image %}
+        <span class="farmer-crop-detail-thumb-wrap">
+          <img class="product-thumb" src="{{ url_for('static', filename=product.crop_image) }}" alt="" loading="lazy" />
+        </span>
+      {% endif %}
+    </p>
+    <div class="farmer-crop-detail-items" aria-label="Session dates for this crop">
+      {% if crop_sessions and crop_sessions|length > 0 %}
+        {% for s in crop_sessions %}
+        <div class="farmer-crop-detail-items__session">
+          {% if crop_sessions|length > 1 %}
+          <p class="farmer-crop-detail-items__session-head">{{ s.season_name or ("Session " ~ loop.index) }}</p>
+          {% endif %}
+          <div class="farmer-crop-detail-items__session-inner">
+            <div class="farmer-crop-detail-items__item">
+              <span class="farmer-crop-detail-items__label">Session started</span>
+              <span class="farmer-crop-detail-items__value">{{ s.session_started_on or "—" }}</span>
+            </div>
+            <div class="farmer-crop-detail-items__item">
+              <span class="farmer-crop-detail-items__label">Session ended</span>
+              <span class="farmer-crop-detail-items__value">{{ s.session_ended_on or "—" }}</span>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="farmer-crop-detail-items__session-inner">
+          <div class="farmer-crop-detail-items__item">
+            <span class="farmer-crop-detail-items__label">Session started</span>
+            <span class="farmer-crop-detail-items__value">—</span>
+          </div>
+          <div class="farmer-crop-detail-items__item">
+            <span class="farmer-crop-detail-items__label">Session ended</span>
+            <span class="farmer-crop-detail-items__value">—</span>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="farmer-crop-profile-anchor">
+  <details class="farmer-crop-profile">
+    <summary class="farmer-crop-profile__summary">
+      <span class="farmer-crop-profile__avatar-wrap">
+        {% if farmer.profile_photo %}
+          <img
+            class="farmer-crop-profile__avatar-img"
+            src="{{ url_for('static', filename=farmer.profile_photo) }}"
+            alt=""
+            width="48"
+            height="48"
+            loading="lazy"
+          />
+        {% else %}
+          <span class="farmer-crop-profile__avatar-fallback" aria-hidden="true">{{ farmer.full_name | initials }}</span>
+        {% endif %}
+      </span>
+      <span class="farmer-crop-profile__summary-text">
+        <span class="farmer-crop-profile__kicker">Profile</span>
+        <span class="farmer-crop-profile__name-line">{{ farmer.full_name or "Farmer" }}</span>
+      </span>
+      <span class="farmer-crop-profile__chev" aria-hidden="true">{{ i("chevron_down") }}</span>
+    </summary>
+    <div class="farmer-crop-profile__panel">
+      <ul class="farmer-crop-profile__details">
+        <li class="farmer-crop-profile__detail">
+          <span class="farmer-crop-profile__detail-label">{{ i("id") }} <span>Farmer code / Membership</span></span>
+          <span class="farmer-crop-profile__detail-value">{{ farmer.farmer_code or "—" }} / {{ farmer.membership_number or "—" }}</span>
+        </li>
+        <li class="farmer-crop-profile__detail">
+          <span class="farmer-crop-profile__detail-label">{{ i("keypad") }} <span>Phone</span></span>
+          <span class="farmer-crop-profile__detail-value">{{ farmer.phone_number or "—" }}</span>
+        </li>
+        <li class="farmer-crop-profile__detail">
+          <span class="farmer-crop-profile__detail-label">{{ i("shield") }} <span>Location</span></span>
+          <span class="farmer-crop-profile__detail-value">
+            {% if farmer.county or farmer.ward %}
+              {{ farmer.county or "" }}{% if farmer.county and farmer.ward %}, {% endif %}{{ farmer.ward or "" }}
+            {% else %}
+              —
+            {% endif %}
+          </span>
+        </li>
+        {% if farmer.location or farmer.village %}
+        <li class="farmer-crop-profile__detail">
+          <span class="farmer-crop-profile__detail-label">{{ i("shield") }} <span>Location detail</span></span>
+          <span class="farmer-crop-profile__detail-value">
+            {% if farmer.location %}{{ farmer.location }}{% endif %}
+            {% if farmer.location and farmer.village %}, {% endif %}
+            {% if farmer.village %}{{ farmer.village }}{% endif %}
+          </span>
+        </li>
+        {% endif %}
+        <li class="farmer-crop-profile__detail">
+          <span class="farmer-crop-profile__detail-label">{{ i("boxes") }} <span>Land on file</span></span>
+          <span class="farmer-crop-profile__detail-value">
+            {% if farmer.land_size is not none %}
+              {{ farmer.land_size }}{% if farmer.land_size_unit %} {{ (farmer.land_size_unit|string)|upper }}{% endif %}
+            {% else %}
+              —
+            {% endif %}
+          </span>
+        </li>
+        <li class="farmer-crop-profile__detail">
+          <span class="farmer-crop-profile__detail-label">{{ i("shield") }} <span>Farmer status</span></span>
+          <span class="farmer-crop-profile__detail-value">{{ (farmer.status or "—") | replace("_", " ") }}</span>
+        </li>
+        <li class="farmer-crop-profile__detail">
+          <span class="farmer-crop-profile__detail-label">{{ i("id") }} <span>National ID</span></span>
+          <span class="farmer-crop-profile__detail-value">{{ farmer.national_id or "—" }}</span>
+        </li>
+      </ul>
+    </div>
+  </details>
+  </div>
+</div>
+
+<section class="panel" style="margin-top: 1rem">
+  <div class="row-buttons" style="justify-content:space-between; gap:0.75rem; flex-wrap:wrap">
+    <div style="display:flex; flex-direction:column; gap:0.2rem">
+      <h3 style="margin:0">{{ i("file_text") }} Scheduled activities</h3>
+      <p class="hint" style="margin:0">
+        Farm size in session: <strong>{{ "%.2f"|format(farm_acres or 0) }}</strong> acres
+      </p>
+    </div>
+    <a
+      class="button button-ghost"
+      href="{{ url_for('main.crops_session_crop_activities', role=session.get('employee_role'), product_id=product.id) }}"
+      style="text-decoration:none"
+    >{{ i("chevron_down") }} Manage activities</a>
+  </div>
+
+  <div class="table-wrap" style="margin-top: 0.75rem">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>DAY</th>
+          <th>TYPE</th>
+          <th>NAME</th>
+          <th>EQUIPMENT / TOOLS</th>
+          <th class="numeric-col">UNITS / ACRE</th>
+          <th class="numeric-col">COST / ACRE</th>
+          <th class="numeric-col">REQUIRED (THIS FARM)</th>
+          <th>PROGRESS</th>
+          <th>ACTION</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if activities and activities|length %}
+          {% for a in activities %}
+          {% set st = (a.activity_status or 'ACTIVE')|upper %}
+          {# DB decimals can come through as decimal.Decimal; cast to float for arithmetic #}
+          {% set cost_val = (a.equipment_cost_per_acre if a.equipment_cost_per_acre is not none else a.estimated_cost) %}
+          {% set cost_val_f = (cost_val|float) if cost_val is not none else none %}
+          {% set units_val = a.equipment_units_per_acre %}
+          {% set units_val_f = (units_val|float) if units_val is not none else none %}
+          {% set uom = (a.equipment_unit_of_measure or 'UNIT')|upper %}
+          {% set acres = (farm_acres|float) if farm_acres is not none else 0 %}
+          {% set total_units = (units_val_f * acres) if (units_val_f is not none and acres > 0) else none %}
+          {% set total_cost = (cost_val_f * acres) if (cost_val_f is not none and acres > 0) else none %}
+          <tr class="{% if st == 'SUSPENDED' %}activity-row--suspended{% endif %}">
+            <td><span class="pill">Day {{ a.scheduled_day }}</span></td>
+            <td>{{ (a.activity_type or '—')|replace('_',' ') }}</td>
+            <td>
+              <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:0.5rem">
+                <strong>{{ a.activity_name }}</strong>
+                <button
+                  type="button"
+                  class="button button-ghost"
+                  style="padding:0.15rem 0.35rem;font-size:0.82rem"
+                  title="View description"
+                  data-activity-desc-open
+                  data-activity-title="{{ (a.activity_name or '')|e }}"
+                  data-activity-desc="{{ (a.activity_description or '—')|e }}"
+                >{{ i("eye") }}</button>
+              </div>
+            </td>
+            <td>
+              {% if a.equipment_product_id %}
+                <strong>{{ a.equipment_code }} — {{ a.equipment_name }}</strong>
+                <div class="hint" style="margin-top: 0.15rem">
+                  {{ a.equipment_category or a.equipment_type or '—' }}
+                </div>
+              {% else %}
+                {{ a.equipment_tools or "—" }}
+              {% endif %}
+            </td>
+            <td class="numeric-col">
+              {% if units_val_f is not none %}
+                {{ "%.4f"|format(units_val_f)|replace('0000','')|replace('000','') }}
+                <span class="pill">{{ uom }}</span>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td class="numeric-col">
+              {% if cost_val_f is not none %}
+                KES {{ "%.2f"|format(cost_val_f) }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td class="numeric-col">
+              {% if acres <= 0 %}
+                <span class="hint">No acreage set</span>
+              {% else %}
+                {% if total_units is not none %}
+                  <div><strong>{{ "%.4f"|format(total_units)|replace('0000','')|replace('000','') }}</strong> <span class="pill">{{ uom }}</span></div>
+                {% else %}
+                  <div>—</div>
+                {% endif %}
+                {% if total_cost is not none %}
+                  <div class="hint" style="margin-top:0.15rem">KES {{ "%.2f"|format(total_cost) }}</div>
+                {% else %}
+                  <div class="hint" style="margin-top:0.15rem">KES —</div>
+                {% endif %}
+              {% endif %}
+            </td>
+            <td>
+              {% set ps = (a.progress_status or 'NOT_YET')|upper %}
+              {% if ps == 'DONE' %}
+                <span class="pill" style="background:#ecfdf5;color:#065f46;border-color:#a7f3d0">Done</span>
+              {% elif ps == 'OVERDUE' %}
+                <span class="pill" style="background:#fee2e2;color:#7f1d1d;border-color:#fecaca">Over due</span>
+              {% elif ps == 'PENDING' %}
+                <span class="pill" style="background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe">Pending</span>
+              {% elif ps == 'UPCOMING' %}
+                <span class="pill" style="background:#f1f5f9;color:#334155;border-color:#e2e8f0">Upcoming</span>
+              {% elif ps == 'SUSPENDED' %}
+                <span class="pill" style="background:#fef3c7;color:#92400e;border-color:#fcd34d">Suspended</span>
+              {% else %}
+                <span class="pill" style="background:#f1f5f9;color:#334155;border-color:#e2e8f0">Not yet</span>
+              {% endif %}
+              {% if a.scheduled_on %}
+                <div class="hint" style="margin-top:0.15rem">Due: {{ a.scheduled_on }}</div>
+              {% endif %}
+            </td>
+            <td>
+              {% if (a.progress_status or '')|upper == 'DONE' %}
+                <span class="hint">Completed</span>
+              {% elif acres <= 0 %}
+                <span class="hint">Set acreage</span>
+              {% elif (a.progress_status or '')|upper in ['PENDING','OVERDUE'] %}
+                <form method="post" action="{{ url_for('main.farmer_crop_session_detail', role=session.get('employee_role'), farmer_id=farmer.id, product_id=product.id) }}" style="display:flex; flex-direction:column; gap:0.35rem; min-width: 12rem">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                  <input type="hidden" name="activity_action" value="complete_activity" />
+                  <input type="hidden" name="activity_id" value="{{ a.id }}" />
+                  <input type="date" name="done_date" required />
+                  <input type="text" name="completion_note" required placeholder="Completion note" />
+                  <button type="submit" class="button" style="padding:0.25rem 0.45rem;font-size:0.82rem">Mark done</button>
+                </form>
+              {% else %}
+                <span class="hint">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="9" class="table-empty">No activities scheduled yet for this crop.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="modal-backdrop" data-activity-desc-modal hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="activity_desc_title" tabindex="-1">
+    <div class="modal__head">
+      <h3 id="activity_desc_title" class="modal__title">{{ i("eye") }} Activity description</h3>
+      <button type="button" class="button button-ghost modal__close" data-activity-desc-close aria-label="Close" title="Close">×</button>
+    </div>
+    <div class="modal__body">
+      <div class="row-form">
+        <div class="modal-field modal-field--span2">
+          <label class="modal-label">Activity</label>
+          <div class="modal-value" data-v-act-title>—</div>
+        </div>
+        <div class="modal-field modal-field--span2">
+          <label class="modal-label">Description</label>
+          <div class="modal-value" data-v-act-desc style="white-space:pre-wrap">—</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal__footer">
+      <button type="button" class="button button-ghost" data-activity-desc-close>Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var backdrop = document.querySelector("[data-activity-desc-modal]");
+    if (!backdrop) return;
+
+    function set(sel, val) {
+      var el = backdrop.querySelector(sel);
+      if (el) el.textContent = String(val == null ? "" : val) || "—";
+    }
+
+    function openFrom(btn) {
+      if (!btn || !btn.dataset) return;
+      set("[data-v-act-title]", btn.dataset.activityTitle);
+      set("[data-v-act-desc]", btn.dataset.activityDesc);
+      backdrop.hidden = false;
+      document.body.classList.add("modal-open");
+      var closeBtn = backdrop.querySelector("[data-activity-desc-close]");
+      if (closeBtn && closeBtn.focus) closeBtn.focus();
+    }
+
+    function close() {
+      backdrop.hidden = true;
+      document.body.classList.remove("modal-open");
+    }
+
+    document.addEventListener("click", function (e) {
+      var btn = e.target && e.target.closest && e.target.closest("[data-activity-desc-open]");
+      if (btn) {
+        e.preventDefault();
+        openFrom(btn);
+        return;
+      }
+      if (e.target === backdrop) close();
+    });
+
+    backdrop.querySelectorAll("[data-activity-desc-close]").forEach(function (b) {
+      b.addEventListener("click", close);
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && backdrop && !backdrop.hidden) close();
+    });
+  })();
+</script>
+
+{% endblock %}

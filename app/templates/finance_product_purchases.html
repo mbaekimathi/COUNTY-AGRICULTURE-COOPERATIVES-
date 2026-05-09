@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="finance-purchase-list-page">
+  <header class="dashboard-header finance-purchase-list-page__hero">
+    <div>
+      <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
+      <p class="dash-meta">{{ module_desc }}</p>
+      <div class="finance-purchase-list-page__badge-row" aria-label="List summary">
+        <span class="finance-purchase-list-page__badge">{{ product_count }} product{% if product_count != 1 %}s{% endif %}</span>
+        <span class="finance-purchase-list-page__badge is-muted">Sorted by type &amp; name</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="panel">
+    <div class="finance-purchase-list-page__panel-head">
+      <div>
+        <h3>{{ i("shopping_cart") }} Products &amp; purchase analytics</h3>
+        <p class="finance-purchase-list-page__panel-desc">
+          Stock on hand and average buying price from stock-in movements. Row estimates use the same average price × quantity.
+          Click a row or the eye icon to open transactions and allocation detail.
+        </p>
+      </div>
+    </div>
+
+    <div class="finance-purchase-list-page__stats" role="list">
+      <div class="finance-purchase-list-page__stat" role="listitem">
+        <span class="finance-purchase-list-page__stat-label">Products listed</span>
+        <span class="finance-purchase-list-page__stat-value">{{ product_count }}</span>
+      </div>
+      <div class="finance-purchase-list-page__stat" role="listitem">
+        <span class="finance-purchase-list-page__stat-label">Combined est. stock value</span>
+        <span class="finance-purchase-list-page__stat-value">KES {{ "%.2f"|format(total_est_value|float) }}</span>
+      </div>
+      <div class="finance-purchase-list-page__stat finance-purchase-list-page__stat--note" role="listitem">
+        <span class="finance-purchase-list-page__stat-label">Tip</span>
+        <span class="finance-purchase-list-page__stat-value finance-purchase-list-page__stat-value--small">Use keyboard: focus a row and press Enter to open.</span>
+      </div>
+    </div>
+
+    <div class="table-wrap finance-purchase-list-page__table-wrap">
+      <table class="data-table finance-purchase-list-page__table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Category</th>
+            <th>Type</th>
+            <th class="numeric-col">Stock qty</th>
+            <th class="numeric-col">Avg buying price</th>
+            <th class="numeric-col">Est. value</th>
+            <th class="finance-purchase-list-page__col-view"><span class="sr-only">View</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if rows and rows|length %}
+            {% for r in rows %}
+            {% set uom = (r.unit_of_measure or 'UNIT')|upper %}
+            {% set detail_url = url_for('main.finance_product_purchase_detail', role=session.get('employee_role'), product_id=r.id) %}
+            <tr
+              class="finance-purchase-list-page__row"
+              data-href="{{ detail_url }}"
+              tabindex="0"
+              role="link"
+              aria-label="Open purchase detail for {{ r.crop_code }} {{ r.crop_name | e }}"
+            >
+              <td>
+                <div class="finance-purchase-list-page__product-cell">
+                  <span class="finance-purchase-list-page__code">{{ r.crop_code }}</span>
+                  <span class="finance-purchase-list-page__name">{{ r.crop_name }}</span>
+                </div>
+              </td>
+              <td><span class="finance-purchase-list-page__muted">{{ r.crop_category or "—" }}</span></td>
+              <td><span class="finance-purchase-list-page__type-pill">{{ r.product_type or "—" }}</span></td>
+              <td class="numeric-col">
+                {{ "%.2f"|format((r.stock_quantity|float) if r.stock_quantity is not none else 0) }}
+                <span class="pill">{{ uom }}</span>
+              </td>
+              <td class="numeric-col">
+                {% if r.avg_buying_price is not none %}
+                  KES {{ "%.2f"|format(r.avg_buying_price|float) }}
+                {% else %}
+                  <span class="finance-purchase-list-page__muted">—</span>
+                {% endif %}
+              </td>
+              <td class="numeric-col">
+                {% if r.est_stock_value is not none and (r.est_stock_value|float) > 0 %}
+                  KES {{ "%.2f"|format(r.est_stock_value|float) }}
+                {% else %}
+                  <span class="finance-purchase-list-page__muted">—</span>
+                {% endif %}
+              </td>
+              <td class="finance-purchase-list-page__action-cell">
+                <a
+                  class="finance-purchase-list-page__view-btn"
+                  href="{{ detail_url }}"
+                  title="View purchase detail"
+                  aria-label="View purchase detail for {{ r.crop_code }} {{ r.crop_name | e }}"
+                >{{ i("eye") }}</a>
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="7" class="table-empty">No products found.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+  (function () {
+    var rows = document.querySelectorAll(".finance-purchase-list-page__row[data-href]");
+    rows.forEach(function (row) {
+      row.addEventListener("click", function (e) {
+        if (e.target && (e.target.closest("a") || e.target.closest("button"))) return;
+        var href = row.getAttribute("data-href");
+        if (href) window.location.href = href;
+      });
+      row.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          var href = row.getAttribute("data-href");
+          if (href) window.location.href = href;
+        }
+      });
+    });
+  })();
+</script>
+
+{% endblock %}

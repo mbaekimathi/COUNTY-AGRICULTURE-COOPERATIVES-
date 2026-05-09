@@ -1,0 +1,668 @@
+{% extends "base.html" %}
+{% block title %}{{ section_title }} — Warehouse — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i(section_icon) }} {{ section_title }}</h2>
+    <p class="dash-meta">{{ section_desc }}</p>
+  </div>
+  <a
+    href="{{ url_for('main.warehouse_stock_transactions', role=session.get('employee_role')) }}"
+    class="button button-ghost"
+  >
+    {{ i("file_text") }} Stock audit / transactions
+  </a>
+</div>
+
+<section class="panel">
+  <h3>{{ i("repeat") }} Stock movement</h3>
+  <p class="lede">Choose an item, then record a stock in or stock out movement.</p>
+  <p class="hint warehouse-session-legend" style="margin-top: 0.35rem">
+    Item list: <span class="warehouse-session-legend__swatch warehouse-session-legend__swatch--in">In farming session</span>
+    <span class="warehouse-session-legend__swatch warehouse-session-legend__swatch--out">No active session</span>
+  </p>
+  <div class="warehouse-stock-actions">
+    <button type="button" class="button button-ghost warehouse-action-btn" data-open-stock-form="stock_in">
+      {{ i("plus_circle") }} Stock in
+    </button>
+    <button type="button" class="button button-ghost warehouse-action-btn" data-open-stock-form="stock_out">
+      {{ i("minus_circle") }} Stock out
+    </button>
+  </div>
+
+  <details class="form-disclosure" data-stock-form="stock_in" hidden>
+    <summary class="form-disclosure__summary">
+      <span class="form-disclosure__summary-inner">{{ i("plus_circle") }} Stock in</span>
+    </summary>
+    <div class="form-disclosure__body">
+      <form
+        method="post"
+        action="{{ url_for('main.warehouse_stock', role=session.get('employee_role')) }}"
+        novalidate
+        class="warehouse-stock-form"
+        data-stock-in-form
+        data-supplier-lookup-form
+        data-supplier-lookup-url="{{ url_for('main.api_suppliers_lookup') }}"
+      >
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <input type="hidden" name="action" value="stock_in" />
+
+        <div class="warehouse-form-banner" role="status" aria-live="polite">
+          <div class="warehouse-form-banner__left">
+            <span class="pill">{{ i("plus_circle") }} STOCK IN</span>
+            <span class="warehouse-form-banner__title">Add stock to inventory</span>
+          </div>
+          <div class="warehouse-form-banner__right warehouse-stock-in-banner-stats">
+            <div class="warehouse-stock-in-banner__row">
+              <span class="warehouse-stock-in-banner__label">{{ i("boxes") }} Current stock</span>
+              <strong class="warehouse-stock-in-banner__value" data-current-stock>—</strong>
+            </div>
+            <div class="warehouse-stock-in-banner__row">
+              <span class="warehouse-stock-in-banner__label">{{ i("wallet") }} Purchase total</span>
+              <strong class="warehouse-stock-in-banner__value" data-purchase-total>KES 0.00</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid warehouse-stock-grid" style="margin-top: 0.85rem">
+
+          <div class="field">
+            <label class="label-row" for="w_product_in">{{ i("package") }} <span>Item</span></label>
+            <input type="hidden" name="product_id" value="" data-item-id />
+            <input type="hidden" name="unit_of_measure" value="" data-item-uom />
+            <div class="input-wrap warehouse-item-picker">{{ i("search") }}
+              <input
+                id="w_product_in"
+                type="text"
+                placeholder="Start typing to search item (code, type, name, category)…"
+                autocomplete="off"
+                required
+                data-item-input
+                data-uppercase
+                style="text-transform: uppercase"
+              />
+              <div class="warehouse-item-suggestions" data-warehouse-suggestions hidden></div>
+            </div>
+            <p class="hint" data-item-search-meta style="margin-bottom: 0">Type to search; each row shows <strong>current stock</strong> on the right.</p>
+          </div>
+
+          <div class="field">
+            <label class="label-row">{{ i("boxes") }} <span>Current stock</span></label>
+            <div class="warehouse-stock-kpi">
+              <span class="pill" data-current-stock>—</span>
+              <span class="hint" style="margin: 0">Before this stock in.</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label-row" for="w_qty_in">{{ i("hash") }} <span>Quantity <span class="pill" style="margin-left:.35rem" data-qty-unit>—</span></span></label>
+            <div class="input-wrap input-wrap--addon">{{ i("hash") }}
+              <input id="w_qty_in" name="quantity" type="number" min="0.01" step="0.01" required class="num-input" inputmode="decimal" />
+              <span class="input-addon" data-qty-unit-addon>—</span>
+            </div>
+            <p class="hint">Use decimals if needed (e.g. 0.5).</p>
+          </div>
+
+          <div class="warehouse-subhead" style="grid-column: 1 / -1">
+            <h4 class="warehouse-subhead__title">{{ i("plus_circle") }} Stock in details</h4>
+            <p class="warehouse-subhead__meta">Phone number first (unique), then supplier name and other details.</p>
+          </div>
+
+          <div class="field">
+            <label class="label-row" for="w_buying_price_in">{{ i("wallet") }} <span>Buying price <span class="pill" style="margin-left: 0.35rem" data-qty-unit>—</span></span></label>
+            <div class="input-wrap input-wrap--addon warehouse-buying-price-wrap">{{ i("wallet") }}
+              <span class="input-addon input-addon--prefix">KES</span>
+              <input id="w_buying_price_in" name="buying_price" type="number" min="0" step="0.01" class="num-input" inputmode="decimal" required />
+              <span class="input-addon" data-qty-unit-addon>—</span>
+            </div>
+            <p class="hint" style="margin-top: 0.35rem">Amount is <strong>per</strong> the unit of measure shown on the right (from the selected item).</p>
+          </div>
+
+          <div class="field">
+            <label class="label-row" for="w_supplier_contact_in">{{ i("keypad") }} <span>Supplier phone number</span></label>
+            <div class="input-wrap">{{ i("keypad") }}<input id="w_supplier_contact_in" name="supplier_contact" type="text" required data-uppercase style="text-transform: uppercase" inputmode="tel" autocomplete="off" /></div>
+            <p class="hint" style="margin-top: 0.35rem">Enter first — <strong>unique</strong> key used to find registered suppliers (9+ digits; e.g. 07… or 254…).</p>
+          </div>
+
+          <div class="field">
+            <label class="label-row" for="w_supplier_name_in">{{ i("user") }} <span>Supplier name</span></label>
+            <div class="input-wrap">{{ i("user") }}<input id="w_supplier_name_in" name="supplier_name" type="text" required data-uppercase style="text-transform: uppercase" autocomplete="off" /></div>
+            <p class="hint" style="margin-top: 0.35rem">Auto-filled when the phone matches a saved supplier; otherwise enter the name for a new registration.</p>
+          </div>
+
+          <div class="field" style="grid-column: 1 / -1">
+            <p class="warehouse-supplier-status hint" data-supplier-status hidden aria-live="polite"></p>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="button" type="submit">{{ i("plus_circle") }} Record stock in</button>
+        </div>
+      </form>
+    </div>
+  </details>
+
+  <details class="form-disclosure" data-stock-form="stock_out" hidden style="margin-top: 0.85rem">
+    <summary class="form-disclosure__summary">
+      <span class="form-disclosure__summary-inner">{{ i("minus_circle") }} Stock out</span>
+    </summary>
+    <div class="form-disclosure__body">
+      <form method="post" action="{{ url_for('main.warehouse_stock', role=session.get('employee_role')) }}" novalidate class="warehouse-stock-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <input type="hidden" name="action" value="stock_out" />
+
+        <div class="warehouse-form-banner" role="status" aria-live="polite">
+          <div class="warehouse-form-banner__left">
+            <span class="pill pill-warn">{{ i("minus_circle") }} STOCK OUT</span>
+            <span class="warehouse-form-banner__title">Remove stock from inventory</span>
+          </div>
+          <div class="warehouse-form-banner__right">
+            <span class="hint" style="margin: 0">Ensure stock is available before saving.</span>
+          </div>
+        </div>
+
+        <div class="form-grid warehouse-stock-grid" style="margin-top: 0.85rem">
+          <div class="field">
+            <label class="label-row" for="w_product_out">{{ i("package") }} <span>Item</span></label>
+            <input type="hidden" name="product_id" value="" data-item-id />
+            <input type="hidden" name="unit_of_measure" value="" data-item-uom />
+            <div class="input-wrap warehouse-item-picker">{{ i("search") }}
+              <input
+                id="w_product_out"
+                type="text"
+                placeholder="Start typing to search item (code, type, name, category)…"
+                autocomplete="off"
+                required
+                data-item-input
+                data-uppercase
+                style="text-transform: uppercase"
+              />
+              <div class="warehouse-item-suggestions" data-warehouse-suggestions hidden></div>
+            </div>
+            <p class="hint" style="margin-bottom: 0">Type to search; each row shows <strong>current stock</strong> on the right.</p>
+          </div>
+
+          <div class="field">
+            <label class="label-row">{{ i("boxes") }} <span>Current stock</span></label>
+            <div class="warehouse-stock-kpi">
+              <span class="pill pill-warn" data-current-stock>—</span>
+              <span class="hint" style="margin: 0">Shown after you pick an item.</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label-row" for="w_qty_out">{{ i("hash") }} <span>Quantity <span class="pill" style="margin-left:.35rem" data-qty-unit>—</span></span></label>
+            <div class="input-wrap input-wrap--addon">{{ i("hash") }}
+              <input id="w_qty_out" name="quantity" type="number" min="0.01" step="0.01" required class="num-input" inputmode="decimal" />
+              <span class="input-addon" data-qty-unit-addon>—</span>
+            </div>
+            <p class="hint">Use decimals if needed (e.g. 0.5).</p>
+          </div>
+
+          <div class="warehouse-subhead" style="grid-column: 1 / -1">
+            <h4 class="warehouse-subhead__title">{{ i("minus_circle") }} Stock out details</h4>
+            <p class="warehouse-subhead__meta">Reason and optional notes for auditing.</p>
+          </div>
+
+          <div class="field">
+            <label class="label-row" for="w_reason_out">{{ i("list") }} <span>Reason for stock out</span></label>
+            <div class="input-wrap">{{ i("list") }}
+              <select id="w_reason_out" name="reason" required style="text-transform: uppercase">
+                <option value="">Select…</option>
+                <option value="SALE">SALE</option>
+                <option value="DAMAGE">DAMAGE</option>
+                <option value="EXPIRED">EXPIRED</option>
+                <option value="TRANSFER">TRANSFER</option>
+                <option value="SAMPLE">SAMPLE</option>
+                <option value="ADJUSTMENT">ADJUSTMENT</option>
+                <option value="OTHER">OTHER</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field" style="grid-column: 1 / -1">
+            <label class="label-row" for="w_note_out">{{ i("file_text") }} <span>Note (optional)</span></label>
+            <textarea id="w_note_out" name="note" rows="3" data-uppercase style="text-transform: uppercase"></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="button" type="submit">{{ i("minus_circle") }} Record stock out</button>
+        </div>
+      </form>
+    </div>
+  </details>
+</section>
+
+<section class="panel">
+  <h3>{{ i("boxes") }} Active items &amp; stock quantities</h3>
+  <p class="lede">Items with an <strong>active farming session</strong> are listed first (green rows). Others follow by type and category.</p>
+  <div class="table-wrap">
+    <table class="data-table warehouse-active-items-table">
+      <thead>
+        <tr>
+          <th>CODE</th>
+          <th>TYPE</th>
+          <th>CATEGORY</th>
+          <th>NAME</th>
+          <th>VARIETY / MODEL</th>
+          <th>UOM</th>
+          <th>STOCK QTY</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if items and items|length %}
+          {% for it in items %}
+            <tr class="warehouse-active-items-table__row{% if it.in_session %} warehouse-active-items-table__row--in-session{% endif %}">
+              <td><strong>{{ it.crop_code }}</strong></td>
+              <td>{{ it.product_type }}</td>
+              <td>{{ it.crop_category }}</td>
+              <td>{{ it.crop_name }}</td>
+              <td>{{ it.crop_variety }}</td>
+              <td>{{ it.unit_of_measure or "—" }}</td>
+              <td><code class="profile-code">{{ "%.2f"|format(it.stock_quantity or 0) }}</code></td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="7" class="table-empty">No active items found.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script type="application/json" id="warehouse-stock-items-json">{{ picker_items | tojson }}</script>
+<script>
+  (function () {
+    var jsonEl = document.getElementById("warehouse-stock-items-json");
+    var ITEMS = [];
+    if (jsonEl && jsonEl.textContent) {
+      try {
+        ITEMS = JSON.parse(jsonEl.textContent);
+        if (!Array.isArray(ITEMS)) ITEMS = [];
+      } catch (err) {
+        ITEMS = [];
+      }
+    }
+
+    function findItemByLabel(v) {
+      var val = String(v || "").trim().toUpperCase();
+      if (!val) return null;
+      for (var i = 0; i < ITEMS.length; i++) {
+        if (String(ITEMS[i].label || "").trim().toUpperCase() === val) return ITEMS[i];
+      }
+      return null;
+    }
+
+    function filterItems(q) {
+      var qq = String(q || "").trim().toUpperCase();
+      if (!qq) return ITEMS.slice(0, 120);
+      var parts = qq.split(/\s+/).filter(Boolean);
+      var out = [];
+      for (var i = 0; i < ITEMS.length; i++) {
+        var L = String(ITEMS[i].label || "").toUpperCase();
+        var ok = true;
+        for (var j = 0; j < parts.length; j++) {
+          if (L.indexOf(parts[j]) === -1) {
+            ok = false;
+            break;
+          }
+        }
+        if (ok) out.push(ITEMS[i]);
+        if (out.length >= 120) break;
+      }
+      return out;
+    }
+
+    function setupPicker(form) {
+      if (!form) return;
+      var input = form.querySelector("[data-item-input]");
+      var idEl = form.querySelector("[data-item-id]");
+      var uomEl = form.querySelector("[data-item-uom]");
+      var unitBadges = form.querySelectorAll("[data-qty-unit]");
+      var unitAddons = form.querySelectorAll("[data-qty-unit-addon]");
+      var panel = form.querySelector("[data-warehouse-suggestions]");
+      var wrap = input ? input.closest(".warehouse-item-picker") : null;
+      if (!input || !idEl || !panel || !wrap) return;
+
+      function renderSuggestions(list) {
+        panel.innerHTML = "";
+        if (!list.length) {
+          panel.hidden = true;
+          return;
+        }
+        for (var i = 0; i < list.length; i++) {
+          (function (it) {
+            var btn = document.createElement("button");
+            btn.type = "button";
+            btn.className =
+              "warehouse-item-suggestions__row " +
+              (it.in_session
+                ? "warehouse-item-suggestions__row--in-session"
+                : "warehouse-item-suggestions__row--no-session");
+            btn.setAttribute("role", "option");
+
+            var main = document.createElement("span");
+            main.className = "warehouse-item-suggestions__main";
+            main.textContent = it.label || "";
+
+            var meta = document.createElement("span");
+            meta.className = "warehouse-item-suggestions__stock";
+            var u = it.uom ? String(it.uom).toUpperCase() : "";
+            var sq = it.stock != null ? String(it.stock) : "0.00";
+            meta.textContent = "Stock " + sq + (u ? " " + u : "");
+
+            btn.appendChild(main);
+            btn.appendChild(meta);
+
+            btn.addEventListener("mousedown", function (ev) {
+              ev.preventDefault();
+              input.value = it.label;
+              panel.hidden = true;
+              sync();
+              try {
+                input.dispatchEvent(new Event("change", { bubbles: true }));
+              } catch (e2) {}
+            });
+            panel.appendChild(btn);
+          })(list[i]);
+        }
+        panel.hidden = false;
+      }
+
+      function openSuggestions() {
+        renderSuggestions(filterItems(input.value));
+      }
+
+      function sync() {
+        var item = findItemByLabel(input.value);
+        idEl.value = item ? String(item.id) : "";
+        var uom = item && item.uom ? String(item.uom).toUpperCase() : "";
+        if (uomEl) uomEl.value = item ? item.uom || "" : "";
+        unitBadges.forEach(function (el) {
+          el.textContent = uom || "—";
+        });
+        unitAddons.forEach(function (el) {
+          el.textContent = uom || "—";
+        });
+
+        var stockEls = form.querySelectorAll("[data-current-stock]");
+        stockEls.forEach(function (stockEl) {
+          if (item && item.stock !== undefined && item.stock !== null && item.stock !== "") {
+            stockEl.textContent = item.stock + " " + (uom || "").trim();
+          } else stockEl.textContent = "—";
+        });
+
+        if (form.getAttribute("data-stock-in-form") !== null) {
+          updatePurchaseTotal(form);
+        }
+      }
+
+      function formatPurchaseKes(n) {
+        if (!isFinite(n) || n < 0) return "KES 0.00";
+        try {
+          return (
+            "KES " +
+            n.toLocaleString("en-KE", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })
+          );
+        } catch (e) {
+          return "KES " + (Math.round(n * 100) / 100).toFixed(2);
+        }
+      }
+
+      function updatePurchaseTotal(form) {
+        var totalEl = form.querySelector("[data-purchase-total]");
+        if (!totalEl) return;
+        var qEl = form.querySelector("#w_qty_in");
+        var pEl = form.querySelector("#w_buying_price_in");
+        var q = qEl ? parseFloat(qEl.value) : NaN;
+        var p = pEl ? parseFloat(pEl.value) : NaN;
+        if (!isFinite(q) || !isFinite(p) || q <= 0 || p < 0) {
+          totalEl.textContent = "KES 0.00";
+          return;
+        }
+        totalEl.textContent = formatPurchaseKes(q * p);
+      }
+
+      function attachStockInPurchaseTotals() {
+        if (form.getAttribute("data-stock-in-form") === null) return;
+        var qIn = form.querySelector("#w_qty_in");
+        var pIn = form.querySelector("#w_buying_price_in");
+        function onPurchaseInput() {
+          updatePurchaseTotal(form);
+        }
+        if (qIn) qIn.addEventListener("input", onPurchaseInput);
+        if (pIn) pIn.addEventListener("input", onPurchaseInput);
+        updatePurchaseTotal(form);
+      }
+
+      input.addEventListener("input", function () {
+        sync();
+        openSuggestions();
+      });
+      input.addEventListener("focus", function () {
+        openSuggestions();
+      });
+      input.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+          panel.hidden = true;
+        }
+      });
+
+      document.addEventListener("click", function (e) {
+        if (wrap.contains(e.target)) return;
+        panel.hidden = true;
+      });
+
+      form.addEventListener("submit", function (e) {
+        sync();
+        if (!idEl.value) {
+          e.preventDefault();
+          alert("Please select a valid item from the dropdown suggestions.");
+          input.focus();
+          openSuggestions();
+        }
+      });
+
+      attachStockInPurchaseTotals();
+      sync();
+    }
+
+    document.querySelectorAll(".warehouse-stock-form").forEach(setupPicker);
+  })();
+</script>
+
+<script>
+  (function () {
+    var inDetails = document.querySelector("[data-stock-form='stock_in']");
+    var outDetails = document.querySelector("[data-stock-form='stock_out']");
+    if (!inDetails || !outDetails) return;
+
+    function openFor(action) {
+      var open = action === "stock_in" ? inDetails : outDetails;
+      var close = action === "stock_in" ? outDetails : inDetails;
+      close.open = false;
+      close.hidden = true;
+      close.querySelectorAll("[data-warehouse-suggestions]").forEach(function (el) {
+        el.hidden = true;
+      });
+      open.hidden = false;
+      open.open = true;
+      var itemInput = open.querySelector("[data-item-input]");
+      if (itemInput) itemInput.focus();
+    }
+
+    document.addEventListener("click", function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest("[data-open-stock-form]") : null;
+      if (!btn) return;
+      var action = btn.getAttribute("data-open-stock-form") || "stock_in";
+      openFor(action);
+    });
+  })();
+</script>
+
+<script>
+  (function () {
+    var form = document.querySelector("form[data-supplier-lookup-form]");
+    if (!form) return;
+
+    var lookupUrl = form.getAttribute("data-supplier-lookup-url") || "";
+    var nameInput = form.querySelector("#w_supplier_name_in");
+    var phoneInput = form.querySelector("#w_supplier_contact_in");
+    var statusEl = form.querySelector("[data-supplier-status]");
+    if (!lookupUrl || !nameInput || !phoneInput) return;
+
+    var skipLookup = false;
+    var debounceMs = 400;
+    var requestSeq = 0;
+
+    function digitsLen(v) {
+      return String(v || "").replace(/\D/g, "").length;
+    }
+
+    function digitsOnly(v) {
+      return String(v || "").replace(/\D/g, "");
+    }
+
+    function setStatus(kind, text) {
+      if (!statusEl) return;
+      if (!text) {
+        statusEl.hidden = true;
+        statusEl.textContent = "";
+        statusEl.removeAttribute("data-supplier-status-kind");
+        return;
+      }
+      statusEl.hidden = false;
+      statusEl.textContent = text;
+      if (kind) statusEl.setAttribute("data-supplier-status-kind", kind);
+      else statusEl.removeAttribute("data-supplier-status-kind");
+    }
+
+    function applySupplier(row, matchKind) {
+      if (!row) return false;
+      var mk = String(matchKind || "");
+      var isPhoneMatch = mk === "phone";
+      var isNameMatch = mk.indexOf("name") === 0;
+      var curDigits = digitsOnly(phoneInput.value);
+      var rowDigits = digitsOnly(row.contact || "");
+      var curName = nameInput.value.trim();
+      var rowName = String(row.name || "").trim();
+
+      var blockPhone =
+        isNameMatch && curDigits.length > 0 && curDigits !== rowDigits;
+      var blockName =
+        isPhoneMatch &&
+        curName.length > 0 &&
+        curName.toUpperCase() !== rowName.toUpperCase();
+
+      if (blockPhone || blockName) {
+        return false;
+      }
+
+      skipLookup = true;
+      if (row.contact) phoneInput.value = row.contact;
+      if (row.name) nameInput.value = row.name;
+      skipLookup = false;
+
+      var registeredMsg =
+        isPhoneMatch
+          ? "Registered supplier — matched by phone; name filled from the directory."
+          : "Registered supplier — matched by name; phone filled from the directory.";
+      setStatus("registered", registeredMsg);
+      return true;
+    }
+
+    function debounce(fn, ms) {
+      var t;
+      return function () {
+        var ctx = this;
+        var args = arguments;
+        clearTimeout(t);
+        t = setTimeout(function () {
+          fn.apply(ctx, args);
+        }, ms);
+      };
+    }
+
+    async function runLookup() {
+      if (skipLookup) return;
+      var myReq = ++requestSeq;
+      var phone = phoneInput.value.trim();
+      var name = nameInput.value.trim();
+
+      if (!phone && !name) {
+        if (requestSeq === myReq) setStatus(null, "");
+        return;
+      }
+
+      var params = new URLSearchParams();
+      if (phone) params.set("phone", phone);
+      if (name) params.set("name", name);
+
+      try {
+        var res = await fetch(lookupUrl + "?" + params.toString(), {
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        });
+        if (myReq !== requestSeq) return;
+        if (!res.ok) return;
+        var data = await res.json();
+        if (myReq !== requestSeq) return;
+
+        if (data.found && data.supplier) {
+          if (applySupplier(data.supplier, data.match)) return;
+          if (requestSeq === myReq) setStatus(null, "");
+          return;
+        }
+
+        if (digitsLen(phone) >= 9 || name.length >= 2) {
+          setStatus(
+            "new",
+            "Not in supplier directory yet — will be registered under this phone when you save stock in."
+          );
+        } else {
+          setStatus(null, "");
+        }
+      } catch (e) {
+        if (myReq === requestSeq) setStatus(null, "");
+      }
+    }
+
+    var debounced = debounce(runLookup, debounceMs);
+
+    function wipeSupplierInputsCompletely() {
+      skipLookup = true;
+      phoneInput.value = "";
+      nameInput.value = "";
+      skipLookup = false;
+      var a = document.activeElement;
+      if (a === phoneInput || a === nameInput) {
+        try {
+          a.setSelectionRange(0, 0);
+        } catch (e) {}
+      }
+    }
+
+    phoneInput.addEventListener("input", function () {
+      if (skipLookup) return;
+      if (phoneInput.value.trim() === "") wipeSupplierInputsCompletely();
+      debounced();
+    });
+
+    nameInput.addEventListener("input", function () {
+      if (skipLookup) return;
+      if (nameInput.value.trim() === "") wipeSupplierInputsCompletely();
+      debounced();
+    });
+  })();
+</script>
+{% endblock %}
+

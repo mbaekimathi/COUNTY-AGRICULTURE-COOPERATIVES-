@@ -1,0 +1,595 @@
+{% extends "base.html" %}
+{% block title %}{{ section_title }} — Warehouse — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="warehouse-dist-page">
+<div class="dashboard-header warehouse-dist-page__header">
+  <div>
+    <h2 class="dash-title">{{ i(section_icon) }} {{ section_title }}</h2>
+    <p class="dash-meta">{{ section_desc }}</p>
+  </div>
+</div>
+
+<section class="warehouse-dist-form" aria-labelledby="dist-form-heading">
+  <h3 id="dist-form-heading" class="warehouse-plain-heading">{{ i("truck") }} Create distribution</h3>
+  <p class="warehouse-plain-meta">Choose the product, then select farmers by active crop registration. In <strong>By farmer land</strong> mode, quantity = <strong>session acres</strong> (editable) × amount per acre. Saving a distribution writes those acres back to the farming session so Farmers and Register session stay aligned.</p>
+
+  <form method="post" action="{{ url_for('main.warehouse_distribution', role=session.get('employee_role')) }}" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+
+    <div class="form-grid warehouse-dist-form-grid warehouse-stock-grid warehouse-dist-form-grid--product">
+          <div class="field" style="grid-column: 1 / -1">
+            <label class="label-row" for="dist_qty_mode">{{ i("sliders") }} <span>Quantity basis</span></label>
+            <div class="input-wrap">{{ i("sliders") }}
+              <select id="dist_qty_mode" name="distribution_qty_mode" style="text-transform: uppercase" data-qty-mode>
+                <option value="manual">Manual quantity (per recipient)</option>
+                <option value="land" selected>By farmer land (auto: acres × amount per acre)</option>
+              </select>
+            </div>
+            <p class="hint"><strong>Manual</strong> — enter <strong>Qty</strong> each row (amt/acre ignored; session acres are not changed). <strong>By farmer land</strong> — qty = <strong>allocated session acres</strong> × amt/acre; you may lower or raise acres up to farm land left after other active sessions — on save, session acreage in the database is updated.</p>
+          </div>
+
+          <div class="field" style="grid-column: 1 / -1">
+            <label class="label-row" for="d_product">{{ i("package") }} <span>Product</span></label>
+            <div class="input-wrap">{{ i("package") }}
+              <select id="d_product" name="product_id" required style="text-transform: uppercase" data-dist-product>
+                <option value="">Select product…</option>
+                {% for p in products %}
+                  <option
+                    value="{{ p.id }}"
+                    data-per-acre="{{ p.package_size if p.package_size is not none else '' }}"
+                    data-uom="{{ p.unit_of_measure if p.unit_of_measure else '' }}"
+                    data-stock-available="{{ '%.4f'|format(p.stock_quantity or 0) }}"
+                  >
+                    {{ p.crop_code }} — {{ p.product_type }} — {{ p.crop_name }} ({{ p.crop_category }}) — STOCK {{ "%.2f"|format(p.stock_quantity or 0) }} {{ p.unit_of_measure or "" }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            {% if not products %}
+            <p class="hint">No products have an active farming registration yet. Register sessions under <strong>Farmers</strong> first.</p>
+            {% endif %}
+            <p class="hint" data-dist-product-hint-manual hidden>Enter <strong>Qty</strong> per selected farmer below. Product <strong>Amt / acre</strong> is not used in this mode.</p>
+            <p class="hint" data-dist-product-hint-land>Lists farmers with an <strong>active session</strong> for this product. <strong>Acres to use</strong> default to allocated session acres; max is farm land minus other active sessions. <strong>Qty</strong> = those acres × amt/acre.</p>
+          </div>
+        </div>
+
+        <div class="warehouse-subhead warehouse-dist-subhead">
+          <h4 class="warehouse-subhead__title">{{ i("users") }} Select farmers</h4>
+          <p class="warehouse-subhead__meta">Only active crop registrations appear. Pick the product first to filter rows. Rows that cannot be fully covered by <strong>available stock</strong> (after earlier selections in table order) are highlighted <strong>red</strong>.</p>
+        </div>
+
+    <div class="form-grid warehouse-dist-form-grid warehouse-dist-form-grid--recipients">
+          <div class="field" style="grid-column: 1 / -1">
+            <label class="label-row" for="farmer_search">{{ i("search") }} <span>Search farmers</span></label>
+            <div class="input-wrap">{{ i("search") }}<input id="farmer_search" type="search" placeholder="Search farmers…" autocomplete="off" data-filter="farmers" /></div>
+          </div>
+
+          <div class="field" style="grid-column: 1 / -1">
+            <div class="table-wrap warehouse-dist-table-wrap warehouse-dist-table-wrap--farmers-only">
+              <div class="recipient-list recipient-list--table" data-list="farmers">
+                <table class="data-table distribution-farmers-table" data-dist-farmer-select-table>
+                  <thead>
+                    <tr>
+                      <th scope="col" class="dist-col-check" aria-label="Select farmer"></th>
+                      <th scope="col">Farmer</th>
+                      <th scope="col">Registered crop</th>
+                      <th scope="col" class="dist-col-land" title="Whole farm on record (reference)">Farm land</th>
+                      <th scope="col" class="dist-col-rate" data-dist-rate-col title="From selected product: amount per acre">Amt / acre</th>
+                      <th scope="col" class="dist-col-use" title="Session acres for this issue (updates registration on save)">Session acres</th>
+                      <th scope="col" class="dist-col-qty" title="Calculated or manual quantity">Qty</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for row in distribution_sessions %}
+                    <tr
+                      class="dist-farmer-select-row dist-row--product-hide"
+                      data-recipient-row
+                      data-product-id="{{ row.product_id }}"
+                      data-session-acres="{{ '%.2f'|format(row.session_acres_display) }}"
+                      {% if row.max_dist_acres is not none %}data-max-acres="{{ row.max_dist_acres }}"{% endif %}
+                      data-text="{{ (row.full_name ~ ' ' ~ (row.farmer_code or '') ~ ' ' ~ (row.reg_crop_name or '') ~ ' ' ~ (row.reg_crop_code or '') ~ ' ' ~ (row.phone_number or ''))|upper }}"
+                    >
+                      <td>
+                        <input type="checkbox" name="distribution_session_ids" value="{{ row.farming_session_id }}" data-recipient-check aria-label="Select {{ row.full_name }} — {{ row.reg_crop_name }}" />
+                      </td>
+                      <td>
+                        <strong>{{ row.full_name }}</strong>
+                        <span class="hint">({{ row.farmer_code }})</span>
+                      </td>
+                      <td class="dist-col-crop">
+                        <strong>{{ row.reg_crop_name }}</strong>
+                        <span class="hint">{{ row.reg_crop_code }}</span>
+                      </td>
+                      <td class="dist-col-land">
+                        {% if row.land_acres is not none %}
+                          {{ "%.2f"|format(row.land_acres) }}
+                        {% else %}
+                          —
+                        {% endif %}
+                      </td>
+                      <td class="dist-col-rate" data-dist-rate-col data-dist-per-acre-display title="Set by product above">—</td>
+                      <td class="dist-col-use">
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          {% if row.max_dist_acres is not none %}max="{{ row.max_dist_acres }}"{% endif %}
+                          inputmode="decimal"
+                          class="num-input farmer-dist-acres"
+                          name="session_dist_acres_{{ row.farming_session_id }}"
+                          placeholder="ACRES"
+                          aria-label="Session acres for {{ row.full_name }}"
+                          data-farmer-acres-input
+                        />
+                      </td>
+                      <td class="dist-col-qty">
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          inputmode="decimal"
+                          class="num-input recipient-qty farmer-recipient-qty"
+                          name="farmer_qty_{{ row.farming_session_id }}"
+                          placeholder="QTY"
+                          disabled
+                          aria-label="Quantity for {{ row.full_name }}"
+                          data-farmer-qty-input
+                        />
+                      </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                      <td colspan="7" class="table-empty">No active crop registrations. Register farming sessions under Farmers first.</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <p class="warehouse-dist-summary" data-selected-count>
+            Selected farmers: 0 · Total qty: 0
+          </p>
+          </div>
+        </div>
+
+    <div class="warehouse-dist-form-actions">
+      <button class="button" type="submit">{{ i("truck") }} Save distribution</button>
+    </div>
+  </form>
+</section>
+
+<section class="warehouse-plain-section warehouse-dist-directory" aria-labelledby="farmer-directory-heading">
+  <h3 id="farmer-directory-heading" class="warehouse-plain-heading">{{ i("users") }} Registered crop sessions</h3>
+  <p class="warehouse-plain-meta">Active registrations: session acreage vs whole farm, and total quantity already issued to each farmer for that crop (from saved distributions).</p>
+  <div class="table-wrap warehouse-dist-table-wrap">
+    <table class="data-table distribution-directory-table distribution-directory-table--sessions">
+      <thead>
+        <tr>
+          <th scope="col">Code</th>
+          <th scope="col">Farmer</th>
+          <th scope="col">Crop</th>
+          <th scope="col" class="numeric-col" title="Registered session acres vs total farm land on file">Session / farm land</th>
+          <th scope="col" class="numeric-col" title="Sum of distribution quantities to this farmer for this product">Crop issued</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in distribution_sessions %}
+        <tr>
+          <td><code class="profile-code">{{ row.farmer_code }}</code></td>
+          <td class="dist-directory-farmer-cell">
+            <strong>{{ row.full_name }}</strong>
+            {% if row.phone_number %}
+              <span class="hint dist-directory-phone">{{ row.phone_number }}</span>
+            {% else %}
+              <span class="hint">—</span>
+            {% endif %}
+          </td>
+          <td>
+            <strong>{{ row.reg_crop_name }}</strong>
+            <span class="hint">({{ row.reg_crop_code }})</span>
+          </td>
+          <td class="numeric-col dist-directory-acres-cell">
+            {% if row.land_acres is not none %}
+              <span class="dist-directory-acres-pair"><span class="dist-directory-acres-session">{{ "%.2f"|format(row.session_acres_display) }}</span><span class="dist-directory-acres-sep">/</span><span class="dist-directory-acres-total">{{ "%.2f"|format(row.land_acres) }}</span></span>
+              <span class="hint dist-directory-acres-unit">acres</span>
+            {% else %}
+              <span class="dist-directory-acres-pair"><span class="dist-directory-acres-session">{{ "%.2f"|format(row.session_acres_display) }}</span><span class="dist-directory-acres-sep">/</span><span class="hint">—</span></span>
+              <span class="hint dist-directory-acres-unit">acres</span>
+            {% endif %}
+          </td>
+          <td class="numeric-col">
+            <strong>{{ "%.2f"|format(row.crop_allocated_qty) }}</strong>
+            {% if row.reg_unit_of_measure %}
+              <span class="hint">{{ row.reg_unit_of_measure }}</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="table-empty">No active crop registrations yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    function filterDistributionSessions() {
+      var sel = document.querySelector("[data-dist-product]");
+      var pid = sel && String(sel.value || "").trim();
+      document.querySelectorAll(".dist-farmer-select-row[data-product-id]").forEach(function (tr) {
+        var match = pid !== "" && String(tr.getAttribute("data-product-id")) === pid;
+        if (match) {
+          tr.classList.remove("dist-row--product-hide");
+        } else {
+          tr.classList.add("dist-row--product-hide");
+          var cb = tr.querySelector('input[name="distribution_session_ids"]');
+          var acresInp = tr.querySelector("[data-farmer-acres-input]");
+          var q = tr.querySelector(".recipient-qty");
+          if (cb) cb.checked = false;
+          if (acresInp) acresInp.value = "";
+          if (q) {
+            q.disabled = true;
+            q.value = "";
+          }
+        }
+      });
+    }
+
+    /** After filter, rows for the chosen product are visible but inputs were cleared while hidden — restore registration acres. */
+    function syncVisibleRowsSessionAcresInputs() {
+      document.querySelectorAll(".dist-farmer-select-row").forEach(function (tr) {
+        if (tr.classList.contains("dist-row--product-hide")) return;
+        var inp = tr.querySelector("[data-farmer-acres-input]");
+        if (!inp || String(inp.value || "").trim()) return;
+        var dr = tr.getAttribute("data-session-acres");
+        if (dr == null || String(dr).trim() === "") return;
+        var dv = parseFloat(String(dr).replace(",", "."));
+        if (!isNaN(dv) && dv > 0) inp.value = dv.toFixed(2);
+      });
+    }
+
+    function getSelectedProductStockQty() {
+      var sel = document.querySelector("[data-dist-product]");
+      if (!sel || !String(sel.value || "").trim()) return NaN;
+      var opt = sel.options[sel.selectedIndex];
+      if (!opt) return NaN;
+      var raw = opt.getAttribute("data-stock-available");
+      if (raw == null || String(raw).trim() === "") return NaN;
+      var n = parseFloat(String(raw).replace(",", "."));
+      return isNaN(n) || n < 0 ? NaN : n;
+    }
+
+    function lineQtyForStockCheck(tr) {
+      var cb = tr.querySelector('input[name="distribution_session_ids"]');
+      if (!cb || !cb.checked) return 0;
+      var qInp = tr.querySelector("[data-farmer-qty-input]");
+      if (!qInp) return 0;
+      var v = parseFloat(String(qInp.value || "").replace(",", "."));
+      return !isNaN(v) && v > 0 ? v : 0;
+    }
+
+    /** Greedy by table order: rows that exceed remaining stock get a red background. */
+    function updateFarmerStockRowHighlight() {
+      document.querySelectorAll("[data-recipient-row].dist-farmer-select-row").forEach(function (tr) {
+        tr.classList.remove("dist-farmer-select-row--stock-short");
+        tr.removeAttribute("title");
+      });
+      var stock = getSelectedProductStockQty();
+      if (isNaN(stock)) return;
+      var tbody = document.querySelector(".distribution-farmers-table tbody");
+      if (!tbody) return;
+      var rows = Array.prototype.slice.call(tbody.querySelectorAll("tr.dist-farmer-select-row"));
+      var remaining = stock;
+      rows.forEach(function (tr) {
+        if (tr.classList.contains("dist-row--product-hide")) return;
+        var cb = tr.querySelector('input[name="distribution_session_ids"]');
+        if (!cb || !cb.checked) return;
+        var need = lineQtyForStockCheck(tr);
+        if (need <= 0) return;
+        if (need > remaining + 1e-6) {
+          tr.classList.add("dist-farmer-select-row--stock-short");
+          tr.title =
+            "Insufficient stock for this row after covering earlier selected farmers (table order). Reduce quantities, selection, or add stock.";
+          remaining = 0;
+        } else {
+          remaining -= need;
+        }
+      });
+    }
+
+    function updateCount() {
+      var el = document.querySelector("[data-selected-count]");
+      if (!el) return;
+      var checks = document.querySelectorAll('input[name="distribution_session_ids"]:checked');
+      var n = checks.length;
+      var total = 0;
+      checks.forEach(function (c) {
+        var row = c.closest("[data-recipient-row]");
+        if (!row) return;
+        var q = row.querySelector(".recipient-qty");
+        if (!q) return;
+        var v = parseFloat(String(q.value || "").trim());
+        if (!isNaN(v) && v > 0) total += v;
+      });
+      var parts = ["Selected farmers: " + n + " · Total qty: " + total.toFixed(2)];
+      var stock = getSelectedProductStockQty();
+      if (!isNaN(stock)) {
+        parts.push(" · Available: " + stock.toFixed(2));
+        if (total > stock + 1e-6) {
+          parts.push(" (short by " + (total - stock).toFixed(2) + ")");
+          el.classList.add("warehouse-dist-summary--stock-short");
+        } else {
+          el.classList.remove("warehouse-dist-summary--stock-short");
+        }
+      } else {
+        el.classList.remove("warehouse-dist-summary--stock-short");
+      }
+      el.textContent = parts.join("");
+    }
+
+    function parsePerAcre(raw) {
+      var s = String(raw || "").trim().replace(",", ".");
+      if (!s) return NaN;
+      var m = s.match(/(\d+(?:\.\d+)?)/);
+      if (!m) return NaN;
+      var n = parseFloat(m[1]);
+      return isNaN(n) || n <= 0 ? NaN : n;
+    }
+
+    function getEffectiveAcres(tr) {
+      var inp = tr.querySelector("[data-farmer-acres-input]");
+      var typed = NaN;
+      if (inp && String(inp.value || "").trim()) {
+        typed = parseFloat(String(inp.value).replace(",", "."));
+      }
+      if (!isNaN(typed) && typed > 0) return typed;
+      var sess = parseFloat(String(tr.getAttribute("data-session-acres") || "").trim());
+      if (!isNaN(sess) && sess > 0) return sess;
+      return NaN;
+    }
+
+    function updatePerAcreRateColumn() {
+      if (getQtyMode() !== "land") return;
+      var sel = document.querySelector("[data-dist-product]");
+      if (!sel) return;
+      var opt = sel.options[sel.selectedIndex];
+      var raw = opt && opt.getAttribute("data-per-acre");
+      var uom = opt && String(opt.getAttribute("data-uom") || "").trim();
+      var label = "—";
+      var hint = "Select a product; amount per acre comes from the Products catalogue.";
+      if (raw != null && String(raw).trim() !== "") {
+        var p = parsePerAcre(raw);
+        if (!isNaN(p)) {
+          label = p.toFixed(2) + (uom ? " " + uom : "") + "/ACRE";
+        } else {
+          label = String(raw).trim().toUpperCase() + (uom ? " " + uom : "") + "/ACRE";
+        }
+        hint = "Required product rate: amount to apply per acre (stock unit).";
+      }
+      document.querySelectorAll("[data-dist-per-acre-display]").forEach(function (el) {
+        el.textContent = label === "—" ? "—" : label.toUpperCase();
+        el.title = hint;
+      });
+    }
+
+    function updateFarmerLandNeeds() {
+      if (getQtyMode() !== "land") {
+        var listManual = document.querySelector('[data-list="farmers"]');
+        if (listManual) {
+          listManual.querySelectorAll(".dist-farmer-select-row").forEach(function (tr) {
+            tr.removeAttribute("data-computed-need");
+            var qtyInp = tr.querySelector("[data-farmer-qty-input]");
+            if (qtyInp) qtyInp.title = "Enter issue quantity for this farmer.";
+          });
+        }
+        return;
+      }
+      var sel = document.querySelector("[data-dist-product]");
+      if (!sel) return;
+      var opt = sel.options[sel.selectedIndex];
+      var perAcre = opt ? parsePerAcre(opt.getAttribute("data-per-acre")) : NaN;
+      var uom = opt ? String(opt.getAttribute("data-uom") || "").trim() : "";
+      var list = document.querySelector('[data-list="farmers"]');
+      if (!list) return;
+      list.querySelectorAll(".dist-farmer-select-row").forEach(function (tr) {
+        if (tr.classList.contains("dist-row--product-hide")) return;
+        tr.removeAttribute("data-computed-need");
+        var qtyInp = tr.querySelector("[data-farmer-qty-input]");
+        var acres = getEffectiveAcres(tr);
+        if (isNaN(perAcre) || isNaN(acres) || acres <= 0) {
+          if (qtyInp) {
+            if (isNaN(perAcre)) {
+              qtyInp.title = "Choose a product that has amount per acre set in the catalogue.";
+            } else {
+              qtyInp.title = "Enter session acres up to the max (farm land minus other active sessions), or leave default from registration.";
+            }
+          }
+          return;
+        }
+        var est = acres * perAcre;
+        tr.setAttribute("data-computed-need", String(est));
+        if (qtyInp) {
+          qtyInp.title =
+            "Acres " +
+            acres.toFixed(2) +
+            " × " +
+            perAcre +
+            (uom ? " " + uom + "/ac" : "/ac") +
+            " = " +
+            est.toFixed(2) +
+            (uom ? " " + uom : "") +
+            " (issue quantity)";
+        }
+      });
+    }
+
+    function getQtyMode() {
+      var qm = document.querySelector("[data-qty-mode]");
+      return qm && String(qm.value || "").toLowerCase() === "land" ? "land" : "manual";
+    }
+
+    function applyDistQtyModeUI() {
+      var land = getQtyMode() === "land";
+      document.querySelectorAll("[data-dist-rate-col]").forEach(function (el) {
+        el.hidden = !land;
+      });
+      var hintLand = document.querySelector("[data-dist-product-hint-land]");
+      var hintManual = document.querySelector("[data-dist-product-hint-manual]");
+      if (hintLand) hintLand.hidden = !land;
+      if (hintManual) hintManual.hidden = land;
+    }
+
+    function updateFarmerQtyReadonly() {
+      var land = getQtyMode() === "land";
+      document.querySelectorAll("[data-farmer-qty-input]").forEach(function (inp) {
+        inp.readOnly = land;
+        if (land) inp.classList.add("dist-qty--readonly-land");
+        else inp.classList.remove("dist-qty--readonly-land");
+      });
+    }
+
+    function syncFarmerQtyFromLand() {
+      if (getQtyMode() !== "land") return;
+      document.querySelectorAll(".dist-farmer-select-row").forEach(function (tr) {
+        if (tr.classList.contains("dist-row--product-hide")) return;
+        var inp = tr.querySelector("[data-farmer-qty-input]");
+        var cb = tr.querySelector('input[name="distribution_session_ids"]');
+        if (!inp || !cb) return;
+        inp.disabled = !cb.checked;
+        inp.required = !!cb.checked;
+        var raw = tr.getAttribute("data-computed-need");
+        var v = parseFloat(raw || "");
+        if (!isNaN(v) && v > 0) {
+          inp.value = v.toFixed(2);
+        } else {
+          inp.value = "";
+        }
+      });
+    }
+
+    function refreshDistributionMath() {
+      applyDistQtyModeUI();
+      filterDistributionSessions();
+      syncVisibleRowsSessionAcresInputs();
+      updatePerAcreRateColumn();
+      updateFarmerLandNeeds();
+      updateFarmerQtyReadonly();
+      syncFarmerQtyFromLand();
+      updateCount();
+      updateFarmerStockRowHighlight();
+    }
+
+    function filter(listName, query) {
+      var root = document.querySelector('[data-list=\"' + listName + '\"]');
+      if (!root) return;
+      var q = String(query || "").trim().toUpperCase();
+      root.querySelectorAll("[data-text]").forEach(function (row) {
+        if (row.classList.contains("dist-row--product-hide")) return;
+        var t = String(row.getAttribute("data-text") || "");
+        row.hidden = !!q && t.indexOf(q) === -1;
+      });
+    }
+
+    document.addEventListener("click", function (e) {
+      var table = e.target && e.target.closest ? e.target.closest("[data-dist-farmer-select-table]") : null;
+      if (!table) return;
+      var tr = e.target.closest("tr.dist-farmer-select-row");
+      if (!tr || !table.contains(tr)) return;
+      if (tr.classList.contains("dist-row--product-hide") || tr.hidden) return;
+      if (e.target.closest("button, a, select, textarea, label")) return;
+      var hitInput = e.target.closest("input");
+      if (hitInput) {
+        if (hitInput.matches('input[name="distribution_session_ids"][type="checkbox"]')) return;
+        return;
+      }
+      var cb = tr.querySelector('input[name="distribution_session_ids"][type="checkbox"]');
+      if (!cb || cb.disabled) return;
+      cb.checked = !cb.checked;
+      cb.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    document.addEventListener("input", function (e) {
+      var t = e.target;
+      if (!t || !t.getAttribute) return;
+      var listName = t.getAttribute("data-filter");
+      if (!listName) return;
+      filter(listName, t.value);
+    });
+
+    document.addEventListener("change", function (e) {
+      var t = e.target;
+      if (!t) return;
+      if (t.matches("[data-dist-product]") || t.matches("[data-qty-mode]")) {
+        refreshDistributionMath();
+      }
+      if (t.matches('input[name="distribution_session_ids"]')) {
+        var row = t.closest(".dist-farmer-select-row");
+        var acresInp = row ? row.querySelector("[data-farmer-acres-input]") : null;
+        var q = row ? row.querySelector(".recipient-qty") : null;
+        if (t.checked && acresInp && !String(acresInp.value || "").trim()) {
+          var dr = row.getAttribute("data-session-acres");
+          var dv = parseFloat(String(dr || ""));
+          if (!isNaN(dv) && dv > 0) acresInp.value = dv.toFixed(2);
+        }
+        if (q) {
+          q.disabled = !t.checked;
+          q.required = t.checked;
+          if (!t.checked && getQtyMode() === "manual") q.value = "";
+        }
+        if (!t.checked && acresInp) {
+          acresInp.value = "";
+        }
+        refreshDistributionMath();
+        return;
+      }
+    });
+
+    document.addEventListener("input", function (e) {
+      var t = e.target;
+      if (!t) return;
+      if (t.matches(".farmer-dist-acres")) {
+        var row = t.closest(".dist-farmer-select-row");
+        var cb = row && row.querySelector('input[name="distribution_session_ids"]');
+        if (cb && row) {
+          var raw = String(t.value || "").trim().replace(",", ".");
+          var n = raw ? parseFloat(raw) : NaN;
+          if (!isNaN(n) && n > 0 && !cb.checked) {
+            cb.checked = true;
+            var q = row.querySelector(".recipient-qty");
+            if (q) {
+              q.disabled = false;
+              q.required = true;
+            }
+          }
+        }
+        refreshDistributionMath();
+        return;
+      }
+      if (t.matches(".recipient-qty") && !t.readOnly) {
+        updateCount();
+        updateFarmerStockRowHighlight();
+      }
+    });
+
+    document.addEventListener("input", function (e) {
+      var t = e.target;
+      if (!t || !t.getAttribute) return;
+      var listName = t.getAttribute("data-filter");
+      if (!listName) return;
+      filter(listName, t.value);
+    });
+
+    refreshDistributionMath();
+  })();
+</script>
+{% endblock %}
+

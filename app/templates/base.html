@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{% block title %}Meru Cooperatives{% endblock %}</title>
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem("theme");
+          var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var theme = saved === "dark" || saved === "light" ? saved : prefersDark ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (e) {
+          // If storage is blocked, fall back to default CSS (light).
+        }
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" type="text/css" href="{{ url_for('main.app_stylesheet') }}?v={{ static_asset_version }}" />
+  </head>
+  <body class="{% if session.get('employee_id') %}has-session{% endif %}">
+    <div class="page-bg" aria-hidden="true">
+      <span class="blob blob-a"></span>
+      <span class="blob blob-b"></span>
+    </div>
+
+    {% from "macros/icons.html" import i %}
+
+    {% if session.get("employee_id") %}
+    <div class="layout-session">
+      {% include "partials/header_app.html" %}
+      <div class="layout-session__body">
+        {% include "partials/sidebar_app.html" %}
+        <div class="layout-session__stage">
+          {% else %}
+          <div class="page-frame">
+            {% include "partials/header_guest.html" %}
+            {% endif %}
+
+            <main id="main-content" class="site-main{% if session.get('employee_id') %} site-main--session{% endif %}" tabindex="-1">
+              <div class="shell{% if session.get('employee_id') %} shell--session{% endif %}">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="flash-stack" role="status">
+                  {% for category, message in messages %}
+                  <div class="flash flash-{{ category }}">{{ message }}</div>
+                  {% endfor %}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                {% block content %}{% endblock %}
+              </div>
+            </main>
+
+            {% if session.get("employee_id") %}
+            {% include "partials/footer_app.html" %}
+        </div>
+      </div>
+    </div>
+    {% else %}
+    {% include "partials/footer_guest.html" %}
+    </div>
+            {% endif %}
+
+    {# Alert dialog for stock / inventory shortfalls (shown as popup instead of inline flash). #}
+    <div
+      class="modal-backdrop flash-alert-backdrop"
+      id="flash-stock-alert-backdrop"
+      hidden
+      data-flash-stock-alert-backdrop
+      role="presentation"
+    >
+      <div
+        class="modal flash-alert-modal"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="flash-stock-alert-title"
+        aria-describedby="flash-stock-alert-desc"
+        tabindex="-1"
+        data-flash-stock-alert-dialog
+      >
+        <div class="modal__head flash-alert-modal__head">
+          <h2 id="flash-stock-alert-title" class="modal__title">{{ i("alert_triangle") }} Insufficient stock</h2>
+        </div>
+        <div class="modal__body">
+          <p id="flash-stock-alert-desc" class="flash-alert-modal__body"></p>
+        </div>
+        <div class="modal__footer flash-alert-modal__footer">
+          <button type="button" class="button" data-flash-stock-alert-ok>OK</button>
+        </div>
+      </div>
+    </div>
+
+    {% block scripts %}{% endblock %}
+    <script>
+      (function () {
+        // Force-uppercase for selected inputs (UI). Server still uppercases on save.
+        function toUpper(el) {
+          if (!el) return;
+          if (el.readOnly || el.disabled) return;
+          var v = el.value;
+          if (typeof v !== "string") return;
+          var up = v.toUpperCase();
+          if (up !== v) {
+            var start = el.selectionStart;
+            var end = el.selectionEnd;
+            el.value = up;
+            try {
+              if (typeof start === "number" && typeof end === "number") el.setSelectionRange(start, end);
+            } catch (e) {}
+          }
+        }
+
+        document.addEventListener(
+          "input",
+          function (e) {
+            var el = e.target;
+            if (!el || !el.matches) return;
+            if (el.matches("[data-uppercase]")) toUpper(el);
+          },
+          true
+        );
+
+        document.addEventListener("DOMContentLoaded", function () {
+          document.querySelectorAll("[data-uppercase]").forEach(toUpper);
+        });
+      })();
+    </script>
+    <script>
+      (function () {
+        document.querySelectorAll("[data-pw-toggle]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var input = document.getElementById(btn.getAttribute("aria-controls"));
+            if (!input) return;
+            var reveal = input.type === "password";
+            input.type = reveal ? "text" : "password";
+            btn.setAttribute("aria-pressed", reveal ? "true" : "false");
+            btn.setAttribute("aria-label", reveal ? "Hide password" : "Show password");
+            var showIc = btn.querySelector(".pw-toggle__show");
+            var hideIc = btn.querySelector(".pw-toggle__hide");
+            if (showIc && hideIc) {
+              showIc.hidden = reveal;
+              hideIc.hidden = !reveal;
+            }
+          });
+        });
+      })();
+    </script>
+    <script>
+      (function () {
+        function apply(theme) {
+          document.documentElement.setAttribute("data-theme", theme);
+          try {
+            localStorage.setItem("theme", theme);
+          } catch (e) {}
+
+          document.querySelectorAll("[data-theme-toggle]").forEach(function (btn) {
+            var isDark = theme === "dark";
+            btn.setAttribute("aria-pressed", isDark ? "true" : "false");
+            btn.setAttribute("aria-label", isDark ? "Switch to light mode" : "Switch to dark mode");
+            var sun = btn.querySelector(".theme-toggle__icon--sun");
+            var moon = btn.querySelector(".theme-toggle__icon--moon");
+            if (sun && moon) {
+              sun.hidden = isDark;
+              moon.hidden = !isDark;
+            }
+          });
+        }
+
+        function getCurrentTheme() {
+          var t = document.documentElement.getAttribute("data-theme");
+          return t === "dark" ? "dark" : "light";
+        }
+
+        // Sync UI on load (icons/aria) based on early theme.
+        apply(getCurrentTheme());
+
+        document.addEventListener("click", function (e) {
+          var btn = e.target && e.target.closest ? e.target.closest("[data-theme-toggle]") : null;
+          if (!btn) return;
+          var next = getCurrentTheme() === "dark" ? "light" : "dark";
+          apply(next);
+        });
+      })();
+    </script>
+    <script>
+      (function () {
+        var toggle = document.querySelector("[data-sidebar-toggle]");
+        var sidebar = document.getElementById("app-sidebar");
+        var backdrop = document.querySelector("[data-sidebar-backdrop]");
+        if (!toggle || !sidebar) return;
+
+        function close() {
+          sidebar.classList.remove("is-open");
+          document.body.classList.remove("sidebar-open");
+          toggle.setAttribute("aria-expanded", "false");
+          if (backdrop) backdrop.hidden = true;
+        }
+
+        function open() {
+          sidebar.classList.add("is-open");
+          document.body.classList.add("sidebar-open");
+          toggle.setAttribute("aria-expanded", "true");
+          if (backdrop) backdrop.hidden = false;
+        }
+
+        function isDesktop() {
+          return window.matchMedia("(min-width: 960px)").matches;
+        }
+
+        toggle.addEventListener("click", function () {
+          if (isDesktop()) return;
+          if (sidebar.classList.contains("is-open")) close();
+          else open();
+        });
+
+        if (backdrop) {
+          backdrop.addEventListener("click", close);
+        }
+
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape" && sidebar.classList.contains("is-open") && !isDesktop()) {
+            close();
+          }
+        });
+
+        window.addEventListener("resize", function () {
+          if (isDesktop()) close();
+        });
+      })();
+    </script>
+    <script>
+      (function () {
+        var root = document.querySelector("[data-user-dropdown]");
+        if (!root) return;
+        var btn = root.querySelector("[data-user-dropdown-trigger]");
+        var panel = root.querySelector("[data-user-dropdown-panel]");
+        if (!btn || !panel) return;
+
+        function closeMenu() {
+          panel.hidden = true;
+          btn.setAttribute("aria-expanded", "false");
+          root.classList.remove("is-open");
+        }
+
+        function openMenu() {
+          panel.hidden = false;
+          btn.setAttribute("aria-expanded", "true");
+          root.classList.add("is-open");
+        }
+
+        btn.addEventListener("click", function (e) {
+          e.stopPropagation();
+          if (panel.hidden) openMenu();
+          else closeMenu();
+        });
+
+        document.addEventListener("click", function () {
+          closeMenu();
+        });
+
+        root.addEventListener("click", function (e) {
+          e.stopPropagation();
+        });
+
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape") closeMenu();
+        });
+      })();
+    </script>
+    <script>
+      (function () {
+        function sameOrigin(url) {
+          try {
+            var u = new URL(url, window.location.href);
+            return u.origin === window.location.origin;
+          } catch (e) {
+            return false;
+          }
+        }
+
+        // Track previous in-app URL (so back never jumps outside the app).
+        try {
+          var current = window.location.href;
+          var last = sessionStorage.getItem("app:last_url");
+          if (last && last !== current) {
+            sessionStorage.setItem("app:prev_url", last);
+          }
+          sessionStorage.setItem("app:last_url", current);
+        } catch (e) {}
+
+        document.querySelectorAll("[data-history-back]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var fallback = btn.getAttribute("data-fallback-href");
+
+            // Prefer tracked previous in-app URL.
+            try {
+              var prev = sessionStorage.getItem("app:prev_url");
+              if (prev && prev !== window.location.href && sameOrigin(prev)) {
+                window.location.href = prev;
+                return;
+              }
+            } catch (e) {}
+
+            // Next best: same-origin referrer.
+            if (document.referrer && sameOrigin(document.referrer)) {
+              window.location.href = document.referrer;
+              return;
+            }
+
+            // Fallback: role dashboard (existing behavior).
+            if (fallback) window.location.href = fallback;
+          });
+        });
+      })();
+    </script>
+    <script>
+      (function () {
+        if (!document.body.classList.contains("has-session")) return;
+        var header = document.querySelector(".app-header");
+        if (!header) return;
+
+        function syncHeaderHeight() {
+          var h = header.getBoundingClientRect().height;
+          if (h && h > 0) {
+            document.documentElement.style.setProperty("--app-header-h", Math.ceil(h) + "px");
+          }
+        }
+
+        syncHeaderHeight();
+        window.addEventListener("resize", syncHeaderHeight);
+      })();
+    </script>
+    <script>
+      (function () {
+        var dateEl = document.querySelector("[data-live-date]");
+        var timeEl = document.querySelector("[data-live-time]");
+        if (!dateEl || !timeEl) return;
+
+        var fmtDate = new Intl.DateTimeFormat(undefined, {
+          weekday: "short",
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+        });
+        var fmtTime = new Intl.DateTimeFormat(undefined, {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+
+        function tick() {
+          var now = new Date();
+          dateEl.textContent = fmtDate.format(now);
+          timeEl.textContent = fmtTime.format(now);
+        }
+
+        tick();
+        setInterval(tick, 1000);
+      })();
+    </script>
+    <script>
+      (function () {
+        function promoteInsufficientStockFlashesToModal() {
+          var stack = document.querySelector(".flash-stack");
+          if (!stack) return;
+          var toPromote = [];
+          stack.querySelectorAll(".flash-error").forEach(function (el) {
+            var t = (el.textContent || "").trim();
+            if (t.indexOf("Insufficient stock.") === 0) {
+              toPromote.push(t);
+              el.remove();
+            }
+          });
+          if (!toPromote.length) {
+            if (!stack.querySelector(".flash")) stack.remove();
+            return;
+          }
+          var backdrop = document.querySelector("[data-flash-stock-alert-backdrop]");
+          var bodyEl = document.getElementById("flash-stock-alert-desc");
+          var okBtn = document.querySelector("[data-flash-stock-alert-ok]");
+          if (!backdrop || !bodyEl || !okBtn) return;
+          var full = toPromote.join("\n\n");
+          var prefix = "Insufficient stock.";
+          var detail = full;
+          if (full.indexOf(prefix) === 0) {
+            detail = full.slice(prefix.length).trim().replace(/^[—\-\u2013\u2014]\s*/, "");
+          }
+          bodyEl.textContent = detail || full;
+          var prevFocus = document.activeElement;
+          backdrop.removeAttribute("hidden");
+          document.body.classList.add("modal-open");
+          function close() {
+            document.removeEventListener("keydown", onDocKey);
+            backdrop.removeEventListener("click", onBackdropClick);
+            okBtn.removeEventListener("click", close);
+            backdrop.setAttribute("hidden", "");
+            document.body.classList.remove("modal-open");
+            bodyEl.textContent = "";
+            if (prevFocus && typeof prevFocus.focus === "function") {
+              try {
+                prevFocus.focus();
+              } catch (e) {}
+            }
+          }
+          function onDocKey(e) {
+            if (e.key === "Escape") close();
+          }
+          function onBackdropClick(e) {
+            if (e.target === backdrop) close();
+          }
+          document.addEventListener("keydown", onDocKey);
+          backdrop.addEventListener("click", onBackdropClick);
+          okBtn.addEventListener("click", close);
+          setTimeout(function () {
+            okBtn.focus();
+          }, 0);
+          if (!stack.querySelector(".flash")) stack.remove();
+        }
+        document.addEventListener("DOMContentLoaded", promoteInsufficientStockFlashesToModal);
+      })();
+    </script>
+  </body>
+</html>

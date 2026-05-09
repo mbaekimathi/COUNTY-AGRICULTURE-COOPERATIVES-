@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Employee sign in — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+{% from "macros/forms.html" import password_field %}
+
+<div class="grid-auth">
+  <section class="panel">
+    <h2>{{ i("login") }} Employee sign in</h2>
+    <p class="lede">
+      Enter your 6-digit login code and password. Only <strong>Active</strong> employees may access the system.
+    </p>
+
+    <form method="post" action="{{ url_for('auth.login') }}" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+
+      <div class="form-grid stagger-fields">
+        <div class="field">
+          <label class="label-row" for="login_code">{{ i("keypad") }} <span>Six-digit login code</span></label>
+          <div class="input-wrap">
+            {{ i("keypad") }}
+            <input
+              id="login_code"
+              name="login_code"
+              type="text"
+              inputmode="numeric"
+              pattern="\d{6}"
+              maxlength="6"
+              autocomplete="username"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label-row" for="password">{{ i("lock") }} <span>Password</span></label>
+          {{ password_field("password", "password", "current-password") }}
+        </div>
+
+        <div class="field actions">
+          <button type="submit">{{ i("login") }} Sign in</button>
+          <a class="button button-ghost" href="{{ url_for('auth.register') }}">{{ i("user") }} New employee registration</a>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <aside class="side-note">
+    <div class="note-head">
+      {{ i("shield") }}
+      <p><strong>Account status</strong></p>
+    </div>
+    <p>
+      If your registration is still <strong>pending approval</strong>, wait for an administrator to activate your account
+      before signing in.
+    </p>
+    <p>Forgotten credentials must be reset by ICT or your cooperative administrator.</p>
+  </aside>
+</div>
+{% endblock %}

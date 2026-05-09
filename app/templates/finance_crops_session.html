@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
+    <p class="dash-meta">{{ module_desc }}</p>
+  </div>
+</div>
+
+<section class="panel">
+  <h3 style="margin-top:0">{{ i("leaf") }} Crops currently in session</h3>
+  <div class="table-wrap" style="margin-top: 0.75rem">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>CROP</th>
+          <th>CATEGORY</th>
+          <th class="numeric-col">FARMERS</th>
+          <th class="numeric-col">ACTIVE SESSIONS</th>
+          <th class="numeric-col">TOTAL ACRES</th>
+          <th class="numeric-col">EST. TOTAL (KES)</th>
+          <th class="numeric-col">USED (KES)</th>
+          <th>ACTION</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if crops and crops|length %}
+          {% for c in crops %}
+          <tr data-href="{{ url_for('main.finance_crops_session_crop', role=session.get('employee_role'), product_id=c.id) }}" style="cursor:pointer">
+            <td><strong>{{ c.crop_code }}</strong> — {{ c.crop_name }}</td>
+            <td>{{ c.crop_category or "—" }}</td>
+            <td class="numeric-col">{{ c.farmers_in_session_count or 0 }}</td>
+            <td class="numeric-col">{{ c.active_session_count or 0 }}</td>
+            <td class="numeric-col">{{ "%.2f"|format((c.total_acres_in_session|float) if c.total_acres_in_session is not none else 0) }}</td>
+            <td class="numeric-col">
+              {% set est = (c.estimated_total_amount|float) if c.estimated_total_amount is not none else 0 %}
+              <strong>KES {{ "%.2f"|format(est) }}</strong>
+            </td>
+            <td class="numeric-col">
+              {% set used = (c.used_total_amount|float) if c.used_total_amount is not none else 0 %}
+              {% if used > 0 %}
+                <strong>KES {{ "%.2f"|format(used) }}</strong>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>
+              <a
+                class="button button-ghost"
+                style="padding:0.25rem 0.45rem;font-size:0.82rem;text-decoration:none"
+                href="{{ url_for('main.finance_crops_session_crop', role=session.get('employee_role'), product_id=c.id) }}"
+                title="View finance totals"
+              >{{ i("eye") }} View</a>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8" class="table-empty">No crops are currently in active sessions.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+  // Make table rows clickable (same pattern used in other modules).
+  (function () {
+    var rows = document.querySelectorAll("tr[data-href]");
+    rows.forEach(function (row) {
+      row.addEventListener("click", function (e) {
+        // allow clicking links/buttons inside without double navigation
+        if (e.target && (e.target.closest("a") || e.target.closest("button"))) return;
+        var href = row.getAttribute("data-href");
+        if (href) window.location.href = href;
+      });
+      row.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          var href = row.getAttribute("data-href");
+          if (href) window.location.href = href;
+        }
+      });
+      row.tabIndex = 0;
+    });
+  })();
+</script>
+
+{% endblock %}
+

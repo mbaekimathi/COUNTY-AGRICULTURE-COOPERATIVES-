@@ -1,0 +1,28 @@
+# Environment & secrets
+.env
+.env.local
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+.venv/
+ENV/
+
+# IDE / OS
+.idea/
+.vscode/
+.qodo/
+.DS_Store
+Thumbs.db
+
+# Uploads (created at runtime; do not commit member photos / documents)
+app/static/uploads/
+
+# Logs & caches
+*.log
+.pytest_cache/
+.mypy_cache/

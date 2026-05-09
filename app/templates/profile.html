@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}My profile — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+{% from "macros/forms.html" import password_field %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i("user") }} My profile</h2>
+    <p class="dash-meta">Edit your details and keep your account secure.</p>
+  </div>
+</div>
+
+<section class="panel profile-panel">
+  <form method="post" action="{{ url_for('main.profile', role=session.get('employee_role')) }}" enctype="multipart/form-data" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+
+    <div class="profile-layout">
+      <div class="profile-avatar-block">
+        {% if employee.profile_photo %}
+        <img
+          class="profile-photo-lg"
+          src="{{ url_for('static', filename=employee.profile_photo) }}"
+          alt=""
+          width="160"
+          height="160"
+        />
+        {% else %}
+        <div class="profile-photo-lg profile-photo-lg--fallback" aria-hidden="true">{{ employee.full_name | initials }}</div>
+        {% endif %}
+        <p class="profile-name">{{ employee.full_name }}</p>
+        <p class="profile-role">{{ employee.role | replace("_", " ") | title }}</p>
+        <div class="field" style="margin-top: 0.85rem">
+          <label class="label-row" for="profile_photo">{{ i("camera") }} <span>Change profile photo (optional)</span></label>
+          <input id="profile_photo" name="profile_photo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+        </div>
+      </div>
+
+      <div class="profile-fields">
+        <div class="field">
+          <label class="label-row" for="full_name">{{ i("user") }} <span>Full name</span></label>
+          <div class="input-wrap">
+            {{ i("user") }}
+            <input
+              id="full_name"
+              name="full_name"
+              type="text"
+              autocomplete="name"
+              required
+              value="{{ (form.full_name if form else employee.full_name) }}"
+            />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label-row" for="email">{{ i("mail") }} <span>Personal email</span></label>
+          <div class="input-wrap">
+            {{ i("mail") }}
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              required
+              value="{{ (form.email if form else employee.email) }}"
+            />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label-row" for="national_id">{{ i("id") }} <span>National ID</span></label>
+          <div class="input-wrap">
+            {{ i("id") }}
+            <input
+              id="national_id"
+              name="national_id"
+              type="text"
+              autocomplete="off"
+              required
+              value="{{ (form.national_id if form else employee.national_id) }}"
+            />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label-row" for="login_code">{{ i("keypad") }} <span>Six-digit login code</span></label>
+          <div class="input-wrap">
+            {{ i("keypad") }}
+            <input
+              id="login_code"
+              name="login_code"
+              type="text"
+              inputmode="numeric"
+              pattern="\\d{6}"
+              maxlength="6"
+              autocomplete="off"
+              required
+              value="{{ (form.login_code if form else employee.login_code) }}"
+            />
+          </div>
+          <p class="hint">Your sign-in code must remain exactly 6 digits.</p>
+        </div>
+
+        <div class="field">
+          <label class="label-row">{{ i("shield") }} <span>Status</span></label>
+          <div>
+            {% if employee.status == 'active' %}
+            <span class="pill">Active</span>
+            {% elif employee.status == 'pending_approval' %}
+            <span class="pill pill-warn">Pending approval</span>
+            {% else %}
+            <span class="pill pill-warn">{{ employee.status | replace("_", " ") | title }}</span>
+            {% endif %}
+            <span class="hint" style="display: block; margin-top: 0.25rem">Status is controlled by administrators.</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label-row" for="new_password">{{ i("lock") }} <span>New password (optional)</span></label>
+          {{ password_field("new_password", "new_password", "new-password", 6, false) }}
+          <p class="hint">Leave blank to keep your current password.</p>
+        </div>
+
+        <div class="field">
+          <label class="label-row" for="confirm_password">{{ i("lock") }} <span>Confirm new password</span></label>
+          {{ password_field("confirm_password", "confirm_password", "new-password", 6, false) }}
+        </div>
+
+        <div class="actions">
+          <button type="submit">{{ i("spark") }} Save changes</button>
+          <a class="button button-ghost" href="{{ url_for('main.dashboard', role=session.get('employee_role')) }}">{{ i("spark") }} Back to dashboard</a>
+        </div>
+      </div>
+    </div>
+  </form>
+</section>
+{% endblock %}

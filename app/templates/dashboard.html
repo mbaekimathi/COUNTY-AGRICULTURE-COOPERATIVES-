@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i("spark") }} Welcome, {{ employee_name }}</h2>
+    <p class="dash-meta">
+      Signed in as <span class="role-display">{{ employee_role | replace('_', ' ') }}</span>
+      · Status:
+      {% if employee_status == 'active' %}
+      <span class="pill">Active</span>
+      {% elif employee_status == 'pending_approval' %}
+      <span class="pill pill-warn">Pending approval</span>
+      {% else %}
+      <span class="pill pill-warn">{{ employee_status | replace('_', ' ') | title }}</span>
+      {% endif %}
+    </p>
+    <p class="dash-hint">Use <strong>Sign out</strong> in the top bar when you finish.</p>
+  </div>
+</div>
+
+<section class="panel">
+  <h3>{{ i("shield") }} Next steps</h3>
+  <p class="lede dash-card-lede">
+    This is your landing area after login. Module menus for cooperatives operations, approvals, and reporting can be
+    added here as the programme expands.
+  </p>
+</section>
+{% endblock %}

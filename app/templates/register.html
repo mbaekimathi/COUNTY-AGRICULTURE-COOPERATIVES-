@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Employee registration — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+{% from "macros/forms.html" import password_field %}
+
+<div class="grid-auth">
+  <section class="panel">
+    <h2>{{ i("user") }} Create your employee account</h2>
+    <p class="lede">
+      Submit your details for verification. New accounts start as <strong>Employee</strong> with status
+      <strong>Pending approval</strong>.
+    </p>
+
+    <form method="post" action="{{ url_for('auth.register') }}" enctype="multipart/form-data" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+
+      <div class="form-grid stagger-fields">
+        <div class="field">
+          <label class="label-row" for="full_name">{{ i("user") }} <span>Full name</span></label>
+          <div class="input-wrap">
+            {{ i("user") }}
+            <input
+              id="full_name"
+              name="full_name"
+              type="text"
+              autocomplete="name"
+              required
+              value="{{ form.full_name if form else '' }}"
+            />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label-row" for="email">{{ i("mail") }} <span>Personal email</span></label>
+          <div class="input-wrap">
+            {{ i("mail") }}
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              required
+              value="{{ form.email if form else '' }}"
+            />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label-row" for="national_id">{{ i("id") }} <span>National identification card number</span></label>
+          <div class="input-wrap">
+            {{ i("id") }}
+            <input
+              id="national_id"
+              name="national_id"
+              type="text"
+              autocomplete="off"
+              required
+              value="{{ form.national_id if form else '' }}"
+            />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label-row" for="login_code">{{ i("keypad") }} <span>Six-digit login code</span></label>
+          <div class="input-wrap">
+            {{ i("keypad") }}
+            <input
+              id="login_code"
+              name="login_code"
+              type="text"
+              inputmode="numeric"
+              pattern="\d{6}"
+              maxlength="6"
+              autocomplete="off"
+              required
+              value="{{ form.login_code if form else '' }}"
+            />
+          </div>
+          <p class="hint">Choose a unique 6-digit code you will use together with your password to sign in.</p>
+        </div>
+
+        <div class="field">
+          <label class="label-row" for="password">{{ i("lock") }} <span>Password</span></label>
+          {{ password_field("password", "password", "new-password", 6) }}
+          <p class="hint">At least 6 characters — numbers only (e.g. 6-digit PIN) or letters/words are allowed.</p>
+        </div>
+
+        <div class="field">
+          <label class="label-row" for="confirm_password">{{ i("lock") }} <span>Confirm password</span></label>
+          {{ password_field("confirm_password", "confirm_password", "new-password", 6) }}
+        </div>
+
+        <div class="field">
+          <label class="label-row" for="profile_photo">{{ i("camera") }} <span>Profile photo (optional)</span></label>
+          <input id="profile_photo" name="profile_photo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+        </div>
+
+        <div class="field actions">
+          <button type="submit">{{ i("spark") }} Register</button>
+          <a class="button button-ghost" href="{{ url_for('auth.login') }}">{{ i("login") }} Already registered? Sign in</a>
+        </div>
+      </div>
+    </form>
+  </section>
+
+  <aside class="side-note">
+    <div class="note-head">
+      {{ i("shield") }}
+      <p><strong>Roles &amp; access</strong></p>
+    </div>
+    <p>
+      <strong>Roles in the system</strong> include Administrator, Manager, Health officer, Sales, IT support, Storage,
+      and Employee. Self-registration assigns <strong>Employee</strong>; other roles are granted after approval.
+    </p>
+    <p>
+      You may sign in only when your status is <strong>Active</strong>. Pending and suspended accounts are blocked at
+      login.
+    </p>
+  </aside>
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+<footer class="site-footer">
+  <div class="contain">
+    <div class="footer-grid">
+      <div class="footer-col">
+        <p class="footer-title">Meru County Cooperatives</p>
+        <p class="footer-desc">
+          Digital workspace for cooperative employees — registration, secure access, and future programme modules.
+        </p>
+      </div>
+      <div class="footer-col">
+        <p class="footer-heading">Navigate</p>
+        <ul class="footer-links">
+          <li><a href="{{ url_for('auth.login') }}">Sign in</a></li>
+          <li><a href="{{ url_for('auth.register') }}">Employee registration</a></li>
+          <li><a href="{{ url_for('main.index') }}">Home</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <p class="footer-heading">Support &amp; policy</p>
+        <ul class="footer-links footer-links--plain">
+          <li><span class="footer-plain">Forgotten credentials: contact ICT or your cooperative administrator.</span></li>
+          <li><span class="footer-plain">Protect personal data per county ICT and data-protection guidelines.</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bar">
+      <span class="footer-copy">&copy; 2026 Meru County Government · Internal use</span>
+      <span class="footer-meta">Built for cooperative registration &amp; employee access</span>
+    </div>
+  </div>
+</footer>

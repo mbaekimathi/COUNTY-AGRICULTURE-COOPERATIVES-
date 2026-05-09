@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}{{ section_title }} — Warehouse — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i(section_icon) }} {{ section_title }}</h2>
+    <p class="dash-meta">{{ section_desc }}</p>
+  </div>
+  <a
+    href="{{ url_for('main.warehouse_stock', role=session.get('employee_role')) }}"
+    class="button button-ghost"
+  >
+    {{ i("boxes") }} Back to stock management
+  </a>
+</div>
+
+<section class="panel">
+  <h3>{{ i("file_text") }} All movements</h3>
+  <p class="lede">Newest first. Includes stock in, stock out, and movements from distribution.</p>
+  <div class="table-wrap">
+    <table class="data-table warehouse-stock-tx-table">
+      <thead>
+        <tr>
+          <th>WHEN</th>
+          <th>TYPE</th>
+          <th>CODE</th>
+          <th>ITEM</th>
+          <th class="numeric-col">QTY</th>
+          <th>UOM</th>
+          <th class="numeric-col">BUY PRICE</th>
+          <th class="numeric-col">LINE TOTAL</th>
+          <th>SUPPLIER / DETAIL</th>
+          <th>RECORDED BY</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if transactions and transactions|length %}
+          {% for t in transactions %}
+            <tr class="warehouse-stock-tx-row warehouse-stock-tx-row--{{ (t.movement_type or 'x')|lower }}">
+              <td>{% if t.created_at %}{{ t.created_at.strftime("%Y-%m-%d %H:%M") }}{% else %}—{% endif %}</td>
+              <td>
+                {% if t.movement_type == "IN" %}
+                  <span class="pill">IN</span>
+                {% elif t.movement_type == "OUT" %}
+                  <span class="pill pill-warn">OUT</span>
+                {% else %}
+                  {{ t.movement_type or "—" }}
+                {% endif %}
+              </td>
+              <td><strong>{{ t.crop_code }}</strong></td>
+              <td>
+                {{ t.product_type }} — {{ t.crop_name }}
+                {% if t.crop_category %}<span class="hint">({{ t.crop_category }})</span>{% endif %}
+                {% if t.crop_variety %}<br /><span class="hint">{{ t.crop_variety }}</span>{% endif %}
+              </td>
+              <td class="numeric-col"><code class="profile-code">{{ "%.2f"|format(t.quantity or 0) }}</code></td>
+              <td>{{ t.unit_of_measure or "—" }}</td>
+              <td class="numeric-col">
+                {% if t.movement_type == "IN" and t.buying_price is not none %}
+                  {{ "%.2f"|format(t.buying_price) }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td class="numeric-col">
+                {% if t.movement_type == "IN" and t.buying_price is not none %}
+                  {% set line_total = (t.quantity | default(0) | float) * (t.buying_price | default(0) | float) %}
+                  <strong>KES {{ "%.2f"|format(line_total) }}</strong>
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td>
+                {% if t.movement_type == "IN" %}
+                  {% if t.supplier_name or t.supplier_contact %}
+                    <strong>{{ t.supplier_name or "—" }}</strong>
+                    {% if t.supplier_contact %}<br /><span class="hint">{{ t.supplier_contact }}</span>{% endif %}
+                  {% else %}
+                    —
+                  {% endif %}
+                {% else %}
+                  {% if t.stock_out_reason %}<span class="pill pill-warn" style="margin-right:0.35rem">{{ t.stock_out_reason }}</span>{% endif %}
+                  {% if t.note %}<span class="hint">{{ t.note }}</span>{% elif not t.stock_out_reason %}—{% endif %}
+                {% endif %}
+              </td>
+              <td>{{ t.created_by_name or "—" }}</td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="10" class="table-empty">No stock movements recorded yet.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% endblock %}

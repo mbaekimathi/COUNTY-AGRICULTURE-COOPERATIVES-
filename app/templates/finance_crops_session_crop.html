@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i("wallet") }} {{ product.crop_code }} — {{ product.crop_name }}</h2>
+    <p class="dash-meta">
+      Category: <strong>{{ product.crop_category or "—" }}</strong>
+      · Farmers: <strong>{{ stats.farmers_in_session_count or 0 }}</strong>
+      · Active sessions: <strong>{{ stats.active_session_count or 0 }}</strong>
+      · Total acres: <strong>{{ "%.2f"|format(total_acres or 0) }}</strong>
+    </p>
+  </div>
+</div>
+
+<section class="panel">
+  <h3 style="margin-top:0">{{ i("file_text") }} Activities cost (all farmers in session)</h3>
+  <div class="table-wrap" style="margin-top:0.75rem">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>DAY</th>
+          <th>TYPE</th>
+          <th>ACTIVITY</th>
+          <th class="numeric-col">COST / ACRE</th>
+          <th class="numeric-col">EST. TOTAL (ALL)</th>
+          <th class="numeric-col">COMPLETED</th>
+          <th class="numeric-col">COST USED (ALL)</th>
+          <th class="numeric-col">TOTAL UNITS (ALL)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if activities and activities|length %}
+          {% for a in activities %}
+          {% set st = (a.activity_status or 'ACTIVE')|upper %}
+          <tr class="{% if st == 'SUSPENDED' %}activity-row--suspended{% endif %}">
+            <td><span class="pill">Day {{ a.scheduled_day }}</span></td>
+            <td>{{ (a.activity_type or '—')|replace('_',' ') }}</td>
+            <td>
+              <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:0.5rem">
+                <strong>{{ a.activity_name }}</strong>
+                <button
+                  type="button"
+                  class="button button-ghost"
+                  style="padding:0.15rem 0.35rem;font-size:0.82rem"
+                  title="View description"
+                  data-activity-desc-open
+                  data-activity-title="{{ (a.activity_name or '')|e }}"
+                  data-activity-desc="{{ (a.activity_description or '—')|e }}"
+                >{{ i("eye") }}</button>
+              </div>
+              {% if st == 'SUSPENDED' %}
+                <div class="hint" style="margin-top:0.15rem">Suspended</div>
+              {% endif %}
+            </td>
+            <td class="numeric-col">
+              {% if a.cost_per_acre_f is not none %}
+                KES {{ "%.2f"|format(a.cost_per_acre_f) }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td class="numeric-col">
+              {% if a.total_cost_all_farmers is not none %}
+                <strong>KES {{ "%.2f"|format(a.total_cost_all_farmers) }}</strong>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td class="numeric-col">
+              {% set done_n = (a.completed_farmers_count|int) if a.completed_farmers_count is not none else 0 %}
+              {% if done_n > 0 %}
+                <span class="pill" style="background:#ecfdf5;color:#065f46;border-color:#a7f3d0">{{ done_n }} farmer(s)</span>
+              {% else %}
+                <span class="hint">—</span>
+              {% endif %}
+            </td>
+            <td class="numeric-col">
+              {% if a.total_cost_used_all_farmers is not none %}
+                <strong>KES {{ "%.2f"|format(a.total_cost_used_all_farmers) }}</strong>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td class="numeric-col">
+              {% if a.total_units_all_farmers is not none %}
+                {{ "%.4f"|format(a.total_units_all_farmers)|replace('0000','')|replace('000','') }}
+                <span class="pill">{{ (a.equipment_unit_of_measure or 'UNIT')|upper }}</span>
+              {% else %}
+                —
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          <tr>
+            <td colspan="4" class="numeric-col"><strong>Grand totals</strong></td>
+            <td class="numeric-col"><strong>KES {{ "%.2f"|format(grand_total_cost or 0) }}</strong></td>
+            <td class="numeric-col">—</td>
+            <td class="numeric-col"><strong>KES {{ "%.2f"|format(grand_total_used_cost or 0) }}</strong></td>
+            <td class="numeric-col">—</td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="8" class="table-empty">No activities scheduled for this crop.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="modal-backdrop" data-activity-desc-modal hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="activity_desc_title" tabindex="-1">
+    <div class="modal__head">
+      <h3 id="activity_desc_title" class="modal__title">{{ i("eye") }} Activity description</h3>
+      <button type="button" class="button button-ghost modal__close" data-activity-desc-close aria-label="Close" title="Close">×</button>
+    </div>
+    <div class="modal__body">
+      <div class="row-form">
+        <div class="modal-field modal-field--span2">
+          <label class="modal-label">Activity</label>
+          <div class="modal-value" data-v-act-title>—</div>
+        </div>
+        <div class="modal-field modal-field--span2">
+          <label class="modal-label">Description</label>
+          <div class="modal-value" data-v-act-desc style="white-space:pre-wrap">—</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal__footer">
+      <a class="button button-ghost" href="{{ url_for('main.finance_crops_session', role=session.get('employee_role')) }}" style="text-decoration:none">Back</a>
+      <button type="button" class="button button-ghost" data-activity-desc-close>Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var backdrop = document.querySelector("[data-activity-desc-modal]");
+    if (!backdrop) return;
+
+    function set(sel, val) {
+      var el = backdrop.querySelector(sel);
+      if (el) el.textContent = String(val == null ? "" : val) || "—";
+    }
+
+    function openFrom(btn) {
+      if (!btn || !btn.dataset) return;
+      set("[data-v-act-title]", btn.dataset.activityTitle);
+      set("[data-v-act-desc]", btn.dataset.activityDesc);
+      backdrop.hidden = false;
+      document.body.classList.add("modal-open");
+      var closeBtn = backdrop.querySelector("[data-activity-desc-close]");
+      if (closeBtn && closeBtn.focus) closeBtn.focus();
+    }
+
+    function close() {
+      backdrop.hidden = true;
+      document.body.classList.remove("modal-open");
+    }
+
+    document.addEventListener("click", function (e) {
+      var btn = e.target && e.target.closest && e.target.closest("[data-activity-desc-open]");
+      if (btn) {
+        e.preventDefault();
+        openFrom(btn);
+        return;
+      }
+      if (e.target === backdrop) close();
+    });
+
+    backdrop.querySelectorAll("[data-activity-desc-close]").forEach(function (b) {
+      b.addEventListener("click", close);
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && backdrop && !backdrop.hidden) close();
+    });
+  })();
+</script>
+
+{% endblock %}
+

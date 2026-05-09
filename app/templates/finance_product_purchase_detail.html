@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="finance-purchase-detail-page">
+  <header class="dashboard-header finance-purchase-detail__hero">
+    <div>
+      <h2 class="dash-title">{{ i(module_icon) }} {{ product.crop_code }} — {{ product.crop_name }}</h2>
+      <p class="dash-meta">Purchase finance · stock movements and allocations</p>
+      <div class="finance-purchase-detail__badge-row" aria-label="Product summary">
+        <span class="finance-purchase-detail__badge">{{ product.crop_category or "Uncategorized" }}</span>
+        <span class="finance-purchase-detail__badge is-muted">{{ product.product_type or "—" }}</span>
+        <span class="finance-purchase-detail__badge is-muted">Unit: {{ (product.unit_of_measure or "UNIT")|upper }}</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="panel">
+    <div class="finance-purchase-detail__panel-head">
+      <div>
+        <h3>{{ i("shopping_cart") }} Overall analytics</h3>
+        <p class="finance-purchase-detail__panel-desc">Snapshot from inventory and recorded stock movements for this product.</p>
+      </div>
+    </div>
+    <div class="finance-purchase-detail__stats" role="list">
+      <div class="finance-purchase-detail__stat" role="listitem">
+        <span class="finance-purchase-detail__stat-label">Stock quantity</span>
+        <span class="finance-purchase-detail__stat-value">{{ "%.2f"|format(stock_qty or 0) }} <span class="pill">{{ (product.unit_of_measure or "UNIT")|upper }}</span></span>
+      </div>
+      <div class="finance-purchase-detail__stat" role="listitem">
+        <span class="finance-purchase-detail__stat-label">Total stock-in qty</span>
+        <span class="finance-purchase-detail__stat-value">{{ "%.2f"|format((stats.total_in_qty|float) if stats.total_in_qty is not none else 0) }}</span>
+      </div>
+      <div class="finance-purchase-detail__stat" role="listitem">
+        <span class="finance-purchase-detail__stat-label">Total stock-out qty</span>
+        <span class="finance-purchase-detail__stat-value">{{ "%.2f"|format((stats.total_out_qty|float) if stats.total_out_qty is not none else 0) }}</span>
+      </div>
+      <div class="finance-purchase-detail__stat" role="listitem">
+        <span class="finance-purchase-detail__stat-label">Avg buying price</span>
+        <span class="finance-purchase-detail__stat-value">{% if stats.avg_buying_price is not none %}KES {{ "%.2f"|format(stats.avg_buying_price|float) }}{% else %}—{% endif %}</span>
+      </div>
+      <div class="finance-purchase-detail__stat" role="listitem">
+        <span class="finance-purchase-detail__stat-label">Last buying price</span>
+        <span class="finance-purchase-detail__stat-value">{% if stats.last_buying_price is not none %}KES {{ "%.2f"|format(stats.last_buying_price|float) }}{% else %}—{% endif %}</span>
+      </div>
+      <div class="finance-purchase-detail__stat" role="listitem">
+        <span class="finance-purchase-detail__stat-label">Suppliers</span>
+        <span class="finance-purchase-detail__stat-value">{{ stats.suppliers_count or 0 }}</span>
+      </div>
+      <div class="finance-purchase-detail__stat" role="listitem">
+        <span class="finance-purchase-detail__stat-label">Total spent (stock-ins)</span>
+        <span class="finance-purchase-detail__stat-value">{% if stats.total_spent is not none %}KES {{ "%.2f"|format(stats.total_spent|float) }}{% else %}—{% endif %}</span>
+      </div>
+      <div class="finance-purchase-detail__stat" role="listitem">
+        <span class="finance-purchase-detail__stat-label">Est. stock value</span>
+        <span class="finance-purchase-detail__stat-value">{% if est_stock_value is not none %}KES {{ "%.2f"|format(est_stock_value|float) }}{% else %}—{% endif %}</span>
+      </div>
+      <div class="finance-purchase-detail__stat finance-purchase-detail__stat--wide" role="listitem">
+        <span class="finance-purchase-detail__stat-label">Last stock-in date</span>
+        <span class="finance-purchase-detail__stat-value">{{ stats.last_in_date or "—" }}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" style="margin-top:1rem">
+    <div class="finance-purchase-detail__toolbar">
+      <div>
+        <h3>{{ i("file_text") }} Transactions</h3>
+        <p class="finance-purchase-detail__toolbar-note">Use the eye control on eligible stock-outs to view per-farmer quantities from warehouse distributions.</p>
+      </div>
+      <a class="button button-ghost button-back-soft" style="text-decoration:none" href="{{ url_for('main.finance_product_purchases', role=session.get('employee_role')) }}">{{ i("chevron_left") }} Back to list</a>
+    </div>
+
+    <div class="table-wrap finance-purchase-detail__table-wrap">
+      <table class="data-table finance-purchase-detail__tx-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Allocation</th>
+            <th class="numeric-col">Qty</th>
+            <th class="numeric-col">Buying price</th>
+            <th>Supplier</th>
+            <th>Reason / note</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if transactions and transactions|length %}
+            {% for t in transactions %}
+            {% set mt = (t.movement_type or "")|lower %}
+            <tr class="finance-purchase-detail__tx-row finance-purchase-detail__tx-row--{{ mt }}">
+              <td>{{ t.created_at or "—" }}</td>
+              <td>
+                {% if (t.movement_type or "") == "IN" %}
+                  <span class="finance-purchase-detail__movement-pill finance-purchase-detail__movement-pill--in">IN</span>
+                {% else %}
+                  <span class="finance-purchase-detail__movement-pill finance-purchase-detail__movement-pill--out">OUT</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if (t.movement_type or "") == "OUT" and t.allocation_detail %}
+                  <button
+                    type="button"
+                    class="button button-ghost finance-purchase-detail__alloc-btn alloc-detail-open"
+                    title="View farmers and quantities allocated"
+                    aria-label="View allocation breakdown"
+                    data-alloc-detail="{{ t.allocation_detail | e }}"
+                    data-alloc-date="{{ (t.created_at or '') | e }}"
+                    data-alloc-unit="{{ (product.unit_of_measure or 'UNIT') | upper | e }}"
+                  >{{ i("eye") }}</button>
+                {% else %}
+                  <span class="finance-purchase-detail__alloc-placeholder">—</span>
+                {% endif %}
+              </td>
+              <td class="numeric-col">{{ "%.2f"|format((t.quantity|float) if t.quantity is not none else 0) }}</td>
+              <td class="numeric-col">
+                {% if t.buying_price is not none %}
+                  KES {{ "%.2f"|format(t.buying_price|float) }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td>
+                {% if t.supplier_name %}
+                  <strong>{{ t.supplier_name }}</strong>{% if t.supplier_contact %}<div class="hint">{{ t.supplier_contact }}</div>{% endif %}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td>
+                {% if t.stock_out_reason %}<strong>{{ t.stock_out_reason }}</strong>{% endif %}
+                {% if t.note %}<div class="hint" style="margin-top:0.15rem">{{ t.note }}</div>{% endif %}
+                {% if not t.stock_out_reason and not t.note %}—{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="7" class="table-empty">No transactions found for this item.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<div class="modal-backdrop modal-backdrop--alloc-detail" data-alloc-detail-modal hidden>
+  <div class="modal modal--alloc-detail" role="dialog" aria-modal="true" aria-labelledby="alloc_detail_title" tabindex="-1">
+    <div class="modal__head">
+      <div>
+        <h3 id="alloc_detail_title" class="modal__title">{{ i("users") }} Distribution allocation</h3>
+        <p class="modal__subtitle">Quantities issued per farmer for this stock-out.</p>
+      </div>
+      <button type="button" class="button button-ghost modal__close" data-alloc-detail-close aria-label="Close" title="Close">×</button>
+    </div>
+    <div class="modal__body">
+      <div class="modal-field modal-field--span2">
+        <label class="modal-label">Transaction date</label>
+        <div class="alloc-detail-date-chip"><span aria-hidden="true">{{ i("file_text") }}</span><span data-alloc-detail-date>—</span></div>
+      </div>
+      <div class="modal-field modal-field--span2">
+        <label class="modal-label">Per-farmer quantities (<span data-alloc-detail-unit>UNIT</span>)</label>
+        <div class="alloc-detail-table-wrap">
+          <table class="data-table alloc-detail-table">
+            <thead>
+              <tr>
+                <th>Farmer</th>
+                <th class="numeric-col">Qty</th>
+              </tr>
+            </thead>
+            <tbody data-alloc-detail-rows>
+              <tr><td colspan="2" class="table-empty">No rows.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="modal__footer">
+      <button type="button" class="button button-primary-soft" data-alloc-detail-close>Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var backdrop = document.querySelector("[data-alloc-detail-modal]");
+  if (!backdrop) return;
+
+  function parseLines(raw) {
+    if (!raw || typeof raw !== "string") return [];
+    return raw.split("|||").map(function (chunk) {
+      var ix = chunk.indexOf("\t");
+      if (ix === -1) return { farmer: chunk.trim(), qty: "" };
+      return { farmer: chunk.slice(0, ix).trim(), qty: chunk.slice(ix + 1).trim() };
+    }).filter(function (r) { return r.farmer || r.qty; });
+  }
+
+  function fmtQty(q) {
+    if (q === "" || q == null) return "—";
+    var n = Number(String(q).replace(/,/g, ""));
+    if (!isFinite(n)) return String(q);
+    return n.toFixed(4).replace(/\.?0+$/, "");
+  }
+
+  function openModal(dateStr, unitStr, rawDetail) {
+    var tbody = backdrop.querySelector("[data-alloc-detail-rows]");
+    var dateEl = backdrop.querySelector("[data-alloc-detail-date]");
+    var unitEl = backdrop.querySelector("[data-alloc-detail-unit]");
+    if (dateEl) dateEl.textContent = dateStr || "—";
+    if (unitEl) unitEl.textContent = (unitStr || "UNIT").toUpperCase();
+
+    var rows = parseLines(rawDetail);
+    if (!tbody) return;
+    tbody.innerHTML = "";
+    if (!rows.length) {
+      var tr0 = document.createElement("tr");
+      tr0.innerHTML = '<td colspan="2" class="table-empty">No allocation rows.</td>';
+      tbody.appendChild(tr0);
+    } else {
+      rows.forEach(function (r) {
+        var tr = document.createElement("tr");
+        var td1 = document.createElement("td");
+        td1.textContent = r.farmer || "—";
+        var td2 = document.createElement("td");
+        td2.className = "numeric-col";
+        td2.textContent = fmtQty(r.qty);
+        tr.appendChild(td1);
+        tr.appendChild(td2);
+        tbody.appendChild(tr);
+      });
+    }
+
+    backdrop.hidden = false;
+    document.body.classList.add("modal-open");
+    var modal = backdrop.querySelector(".modal");
+    if (modal) modal.focus();
+  }
+
+  function closeModal() {
+    backdrop.hidden = true;
+    document.body.classList.remove("modal-open");
+  }
+
+  document.addEventListener("click", function (e) {
+    var btn = e.target && e.target.closest && e.target.closest(".alloc-detail-open");
+    if (!btn) return;
+    e.preventDefault();
+    openModal(btn.getAttribute("data-alloc-date") || "", btn.getAttribute("data-alloc-unit") || "UNIT", btn.getAttribute("data-alloc-detail") || "");
+  });
+
+  backdrop.querySelectorAll("[data-alloc-detail-close]").forEach(function (b) {
+    b.addEventListener("click", closeModal);
+  });
+  backdrop.addEventListener("click", function (e) {
+    if (e.target === backdrop) closeModal();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !backdrop.hidden) closeModal();
+  });
+})();
+</script>
+
+{% endblock %}

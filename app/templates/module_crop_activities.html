@@ -1,0 +1,1200 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<style>
+  /* Equipment / tools picker — high-visibility dropdown */
+  .equipment-picker-field { position: relative; }
+  .equipment-picker {
+    position: relative;
+    background: #fff;
+    border: 2px solid #c8cdd4;
+    border-radius: 10px;
+    box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04) inset;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .equipment-picker:focus-within {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+  }
+  .equipment-picker[data-open="true"] {
+    border-color: #2563eb;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+  }
+  .equipment-picker > input[type="text"] {
+    background: transparent;
+    font-size: 0.98rem;
+    padding-right: 2.4rem;
+  }
+  .equipment-picker__chevron {
+    position: absolute;
+    right: 0.35rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 2rem;
+    height: 2rem;
+    border: 0;
+    background: transparent;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #475569;
+  }
+  .equipment-picker__chevron:hover { background: rgba(15, 23, 42, 0.06); color: #0f172a; }
+  .equipment-picker[data-open="true"] .equipment-picker__chevron svg { transform: rotate(180deg); }
+  .equipment-picker__chevron svg { transition: transform .18s ease; }
+
+  .equipment-picker__panel {
+    position: absolute;
+    left: -2px;
+    right: -2px;
+    top: 100%;
+    z-index: 60;
+    background: #ffffff;
+    border: 2px solid #2563eb;
+    border-top: 1px solid #dbeafe;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+    max-height: 360px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-shadow: 0 18px 40px -12px rgba(15, 23, 42, 0.35), 0 4px 12px rgba(15, 23, 42, 0.08);
+    padding: 0.25rem 0 0.4rem;
+  }
+
+  .equipment-picker__group {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-weight: 700;
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.45rem 0.85rem;
+    border-top: 1px solid #dbeafe;
+    border-bottom: 1px solid #dbeafe;
+  }
+  .equipment-picker__group:first-child { border-top: 0; }
+
+  .equipment-picker__row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    text-align: left;
+    padding: 0.7rem 0.9rem;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f5f9;
+    color: #0f172a;
+  }
+  .equipment-picker__row:last-child { border-bottom: 0; }
+  .equipment-picker__row:hover,
+  .equipment-picker__row.is-active {
+    background: #eff6ff;
+  }
+  .equipment-picker__row-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+  .equipment-picker__row-title {
+    font-weight: 600;
+    font-size: 0.96rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .equipment-picker__row-sub {
+    color: #64748b;
+    font-size: 0.78rem;
+  }
+  .equipment-picker__row-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.2rem;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .equipment-picker__row-stock {
+    font-size: 0.78rem;
+    color: #475569;
+    background: #f1f5f9;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+  }
+  .equipment-picker__row-price {
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: #047857;
+  }
+  .equipment-picker__row-price--missing { color: #b45309; font-weight: 500; font-style: italic; }
+
+  .equipment-picker__empty {
+    padding: 1rem;
+    text-align: center;
+    color: #64748b;
+    font-size: 0.9rem;
+  }
+
+  /* Make sure the prefix (KES) and suffix (UoM) chips never overlap the input text. */
+  .equipment-picker-field ~ .field .input-wrap--addon input,
+  .field .input-wrap--addon > input[data-equipment-units-per-acre],
+  .field .input-wrap--addon > input[data-equipment-unit-price],
+  .field .input-wrap--addon > input[data-equipment-cost-per-acre] {
+    text-align: right;
+    padding-right: 5rem;       /* clear the trailing UoM chip */
+    font-variant-numeric: tabular-nums;
+  }
+  /* When a leading KES prefix chip is present, push the text right of it. */
+  .field .input-wrap--addon > .input-addon--prefix + input[data-equipment-unit-price],
+  .field .input-wrap--addon > .input-addon--prefix + input[data-equipment-cost-per-acre] {
+    padding-left: 4.4rem;
+  }
+  /* Cost-per-acre has no trailing UoM addon, so reclaim the right padding. */
+  .field .input-wrap--addon > input[data-equipment-cost-per-acre] {
+    padding-right: 1rem;
+  }
+  /* The right-side UoM chip can otherwise be wider than the icon-prefix slot;
+     ensure it stays compact and visible on top of the input border. */
+  .field .input-wrap--addon .input-addon {
+    z-index: 2;
+  }
+  /* The avg-buying-price field is a readonly text input — keep the readonly
+     styling subtle but with the same numeric layout as cost / acre. */
+  .field .input-wrap--addon > input[data-equipment-unit-price][readonly] {
+    background: #f8fafc;
+    color: #0f172a;
+    font-weight: 600;
+    border-color: #e2e8f0;
+  }
+
+  tr.activity-row--suspended td {
+    background-color: #fee2e2;
+    opacity: 1;
+  }
+  .activity-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+    max-width: 14rem;
+  }
+  .activity-actions form {
+    display: inline;
+    margin: 0;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .field .input-wrap--addon > input[data-equipment-unit-price][readonly] {
+      background: #0b1220;
+      color: #e2e8f0;
+      border-color: #334155;
+    }
+    .equipment-picker { background: #0f172a; border-color: #334155; }
+    .equipment-picker:focus-within,
+    .equipment-picker[data-open="true"] { border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.25); }
+    .equipment-picker__panel { background: #0b1220; border-color: #60a5fa; box-shadow: 0 18px 40px -12px rgba(0,0,0,.7); }
+    .equipment-picker__group { background: #1e293b; color: #93c5fd; border-color: #1f2a44; }
+    .equipment-picker__row { color: #e2e8f0; border-bottom-color: #1e293b; }
+    .equipment-picker__row:hover,
+    .equipment-picker__row.is-active { background: #1e293b; }
+    .equipment-picker__row-sub { color: #94a3b8; }
+    .equipment-picker__row-stock { background: #1e293b; color: #cbd5e1; }
+    .equipment-picker__row-price { color: #34d399; }
+    .equipment-picker__empty { color: #94a3b8; }
+    tr.activity-row--suspended td {
+      background-color: rgba(127, 29, 29, 0.35);
+    }
+  }
+</style>
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
+    <p class="dash-meta">{{ module_desc }}</p>
+  </div>
+</div>
+
+<section class="panel">
+  <p class="hint" style="margin-bottom: 1rem">
+    <a href="{{ url_for('main.crops_session_sessions_for_crop', role=session.get('employee_role'), product_id=product.id) }}">{{ i("chevron_left") }} Back to farmers in session</a>
+    <span aria-hidden="true"> · </span>
+    <a href="{{ url_for('main.crops_session_crop_required_products', role=session.get('employee_role'), product_id=product.id) }}">{{ i("boxes") }} Products required</a>
+  </p>
+
+  <div class="row-buttons" style="gap: 0.5rem; flex-wrap: wrap">
+    <button
+      type="button"
+      class="button button-ghost"
+      data-crop-activity-toggle
+      aria-controls="crop-activity-form-wrap"
+      aria-expanded="{% if show_form %}true{% else %}false{% endif %}"
+    >{{ i("plus_circle") }} Register crop activity</button>
+  </div>
+
+  <div id="crop-activity-form-wrap" {% if not show_form %}hidden{% endif %} style="margin-top: 0.85rem">
+    <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:0.75rem">
+      <h3 style="margin-top: 0">
+        {{ i("file_text") }}
+        {% if edit_mode_id %}Edit scheduled activity{% else %}Schedule a farm activity{% endif %}
+      </h3>
+      {% if edit_mode_id %}
+        <a class="hint" href="{{ url_for('main.crops_session_crop_activities', role=session.get('employee_role'), product_id=product.id) }}">{{ i("chevron_left") }} Cancel edit</a>
+      {% endif %}
+    </div>
+    <form method="post" action="{{ url_for('main.crops_session_crop_activities', role=session.get('employee_role'), product_id=product.id) }}" class="form-grid" style="margin-top: 0.75rem">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <input type="hidden" name="activity_action" value="{{ 'update' if edit_mode_id else 'schedule' }}" />
+      <input type="hidden" name="activity_id" value="{{ edit_mode_id or '' }}" />
+
+    <div class="field" style="grid-column: 1 / -1">
+      <label class="label-row" for="fa_type">{{ i("sliders") }} <span>Type of activity</span></label>
+      <div class="input-wrap">{{ i("sliders") }}
+        <select id="fa_type" name="activity_type" required>
+          {% set t = (form_values.activity_type or '') %}
+          <option value="">Select type…</option>
+          <option value="MECHANICAL" {% if t == "MECHANICAL" %}selected{% endif %}>Mechanical</option>
+          <option value="CHEMICAL" {% if t == "CHEMICAL" %}selected{% endif %}>Chemical</option>
+          <option value="MANUAL" {% if t == "MANUAL" %}selected{% endif %}>Manual</option>
+          <option value="IRRIGATION" {% if t == "IRRIGATION" %}selected{% endif %}>Irrigation</option>
+          <option value="HARVESTING" {% if t == "HARVESTING" %}selected{% endif %}>Harvesting</option>
+          <option value="MONITORING" {% if t == "MONITORING" %}selected{% endif %}>Monitoring</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="label-row" for="fa_name">{{ i("file_text") }} <span>Activity name</span></label>
+      <div class="input-wrap">{{ i("file_text") }}<input id="fa_name" name="activity_name" type="text" required value="{{ form_values.activity_name or '' }}" placeholder="e.g., Fertilizer application" data-default-placeholder="e.g., Fertilizer application" /></div>
+    </div>
+
+    <div class="field">
+      <label class="label-row" for="fa_day">{{ i("file_text") }} <span>Scheduled day</span></label>
+      <div class="input-wrap">{{ i("file_text") }}<input id="fa_day" name="scheduled_day" type="number" min="0" step="1" required value="{{ form_values.scheduled_day or '' }}" placeholder="e.g., 14" /></div>
+      <p class="hint">Number of days since the crop session started (Day 0 is the start date).</p>
+    </div>
+
+    <div class="field">
+      <label class="label-row" for="fa_time">{{ i("file_text") }} <span>Preferred time</span></label>
+      <div class="input-wrap">{{ i("file_text") }}
+        <select id="fa_time" name="preferred_time" required>
+          {% set pt = (form_values.preferred_time or '') %}
+          <option value="">Select time…</option>
+          <option value="MORNING" {% if pt == "MORNING" %}selected{% endif %}>Morning</option>
+          <option value="AFTERNOON" {% if pt == "AFTERNOON" %}selected{% endif %}>Afternoon</option>
+          <option value="EVENING" {% if pt == "EVENING" %}selected{% endif %}>Evening</option>
+          <option value="NIGHT" {% if pt == "NIGHT" %}selected{% endif %}>Night</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field" style="grid-column: 1 / -1">
+      <label class="label-row" for="fa_desc">{{ i("file_text") }} <span>Short description</span></label>
+      <div class="input-wrap">{{ i("file_text") }}
+        <textarea id="fa_desc" name="activity_description" rows="3" placeholder="e.g., Apply NPK fertilizer to boost crop growth" data-default-placeholder="e.g., Apply NPK fertilizer to boost crop growth">{{ form_values.activity_description or '' }}</textarea>
+      </div>
+    </div>
+
+    <div class="field equipment-picker-field" style="grid-column: 1 / -1">
+      <label class="label-row" for="fa_tools">{{ i("package") }} <span>Equipment / tools <span class="hint" style="font-weight:400">(pick from stock or type freely)</span></span></label>
+      <input type="hidden" name="equipment_product_id" value="{{ form_values.equipment_product_id or '' }}" data-equipment-id />
+      <div class="input-wrap equipment-picker" data-equipment-picker>{{ i("search") }}
+        <input
+          id="fa_tools"
+          name="equipment_tools"
+          type="text"
+          value="{{ form_values.equipment_tools or '' }}"
+          placeholder="Browse stock, or type your own list (e.g. hoe, knapsack, gloves)"
+          data-default-placeholder="Browse stock, or type your own list (e.g. hoe, knapsack, gloves)"
+          autocomplete="off"
+          spellcheck="false"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded="false"
+          aria-controls="fa_tools_listbox"
+          data-equipment-input
+        />
+        <button
+          type="button"
+          class="equipment-picker__chevron"
+          aria-label="Browse stock items"
+          data-equipment-toggle
+        >{{ i("chevron_down") }}</button>
+        <div
+          id="fa_tools_listbox"
+          class="equipment-picker__panel"
+          role="listbox"
+          data-equipment-suggestions
+          hidden
+        ></div>
+      </div>
+      <p class="hint" data-equipment-meta style="margin-top: 0.35rem">
+        Optional: open the list to link a stock item (fills pricing automatically). Otherwise describe equipment above and enter numbers manually below.
+      </p>
+    </div>
+
+    <div class="field">
+      <label class="label-row" for="fa_units_per_acre">
+        {{ i("hash") }} <span>Units per acre <span class="pill" style="margin-left:.35rem" data-equipment-uom-badge>—</span> <span class="hint" style="font-weight:400; margin-left:.25rem">(auto from stock item)</span></span>
+      </label>
+      <div class="input-wrap input-wrap--addon">{{ i("hash") }}
+        <input
+          id="fa_units_per_acre"
+          name="equipment_units_per_acre"
+          type="number"
+          min="0"
+          step="0.0001"
+          inputmode="decimal"
+          value="{{ form_values.equipment_units_per_acre or '' }}"
+          placeholder="From stock item or enter manually"
+          data-equipment-units-per-acre
+        />
+        <span class="input-addon" data-equipment-uom-addon>—</span>
+      </div>
+      <p class="hint" data-equipment-upa-source style="margin-top: 0.35rem">
+        Loaded from the product's <strong>amount per acre</strong>. Leave as-is unless overriding.
+      </p>
+    </div>
+
+    <div class="field" data-equipment-stock-price-field {% if not form_values.equipment_product_id %}hidden{% endif %}>
+      <label class="label-row">{{ i("wallet") }} <span>Avg buying price (from stock)</span></label>
+      <div class="input-wrap input-wrap--addon">{{ i("wallet") }}
+        <span class="input-addon input-addon--prefix">KES</span>
+        <input type="text" readonly data-equipment-unit-price value="—" />
+        <span class="input-addon" data-equipment-uom-addon>—</span>
+      </div>
+      <p class="hint" style="margin-top: 0.35rem">Shown when a stock item is linked — average buying price from stock-in movements.</p>
+    </div>
+
+    <div class="field" data-equipment-manual-price-field {% if form_values.equipment_product_id %}hidden{% endif %}>
+      <label class="label-row" for="fa_manual_unit_price">{{ i("wallet") }} <span>Avg unit price <span class="hint" style="font-weight:400">(manual, optional)</span></span></label>
+      <div class="input-wrap input-wrap--addon">{{ i("wallet") }}
+        <span class="input-addon input-addon--prefix">KES</span>
+        <input
+          id="fa_manual_unit_price"
+          name="equipment_manual_unit_price"
+          type="number"
+          min="0"
+          step="0.01"
+          inputmode="decimal"
+          value="{{ form_values.equipment_manual_unit_price or '' }}"
+          placeholder="Manual equipment only"
+          data-equipment-manual-unit-price
+          {% if form_values.equipment_product_id %}disabled{% endif %}
+        />
+      </div>
+      <p class="hint" style="margin-top: 0.35rem">Shown only when <strong>no stock item</strong> is linked. With <strong>units per acre</strong>, <strong>cost per acre</strong> updates below (you can override).</p>
+    </div>
+
+    <div class="field">
+      <label class="label-row" for="fa_cost">{{ i("wallet") }} <span>Cost per acre <span class="hint" style="font-weight:400; margin-left:.25rem">(auto)</span></span></label>
+      <div class="input-wrap input-wrap--addon">{{ i("wallet") }}
+        <span class="input-addon input-addon--prefix">KES</span>
+        <input
+          id="fa_cost"
+          name="estimated_cost"
+          type="number"
+          min="0"
+          step="0.01"
+          inputmode="decimal"
+          value="{{ form_values.estimated_cost or '' }}"
+          placeholder="Auto-calculated"
+          data-default-placeholder="Auto-calculated"
+          data-equipment-cost-per-acre
+        />
+      </div>
+      <p class="hint" style="margin-top: 0.35rem">Auto-calculated as <strong>units per acre × average buying price</strong>. You can override.</p>
+    </div>
+
+      <div class="field" style="display:flex; align-items:flex-end; gap: 0.5rem">
+        <button type="submit" class="button">
+          {{ i("check") }}
+          {% if edit_mode_id %}Update activity{% else %}Save activity{% endif %}
+        </button>
+        <button type="button" class="button button-ghost" data-crop-activity-cancel>Close</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<script type="application/json" id="crop-activity-equipment-json">{{ (equipment_picker_items or []) | tojson }}</script>
+<script>
+  (function () {
+    var wrap = document.getElementById("crop-activity-form-wrap");
+    var toggle = document.querySelector("[data-crop-activity-toggle]");
+    var cancel = document.querySelector("[data-crop-activity-cancel]");
+    function openForm() {
+      if (!wrap) return;
+      wrap.hidden = false;
+      if (toggle) toggle.setAttribute("aria-expanded", "true");
+      var first = document.getElementById("fa_type") || document.getElementById("fa_name");
+      if (first && first.focus) first.focus();
+    }
+    function closeForm() {
+      if (!wrap) return;
+      wrap.hidden = true;
+      if (toggle) toggle.setAttribute("aria-expanded", "false");
+      if (toggle && toggle.focus) toggle.focus();
+    }
+    if (toggle) {
+      toggle.addEventListener("click", function () {
+        if (!wrap) return;
+        if (wrap.hidden) openForm();
+        else closeForm();
+      });
+    }
+    if (cancel) cancel.addEventListener("click", closeForm);
+
+    {% if edit_mode_id %}
+    openForm();
+    {% endif %}
+
+    var typeEl = document.getElementById("fa_type");
+    if (!typeEl) return;
+    var nameEl = document.getElementById("fa_name");
+    var descEl = document.getElementById("fa_desc");
+    var toolsEl = document.getElementById("fa_tools");
+    var costEl = document.getElementById("fa_cost");
+    var dayEl = document.getElementById("fa_day");
+
+    function setPh(el, text) {
+      if (!el) return;
+      if ((el.value || "").trim()) return;
+      el.setAttribute("placeholder", text || el.getAttribute("data-default-placeholder") || "");
+    }
+
+    var examples = {
+      MECHANICAL: {
+        name: "e.g., Land preparation (tillage)",
+        desc: "e.g., Plough and harrow the field to prepare the seedbed.",
+        tools: "e.g., Tractor, plough, harrow",
+        cost: "e.g., 4500",
+        day: "e.g., 0"
+      },
+      CHEMICAL: {
+        name: "e.g., Fertilizer application",
+        desc: "e.g., Apply NPK fertilizer to boost crop growth.",
+        tools: "e.g., Knapsack sprayer, gloves",
+        cost: "e.g., 1500",
+        day: "e.g., 14"
+      },
+      MANUAL: {
+        name: "e.g., Weeding (hand)",
+        desc: "e.g., Remove weeds around plants to reduce competition.",
+        tools: "e.g., Hoe, panga, gloves",
+        cost: "e.g., 800",
+        day: "e.g., 21"
+      },
+      IRRIGATION: {
+        name: "e.g., Irrigation scheduling",
+        desc: "e.g., Water the crop to maintain soil moisture.",
+        tools: "e.g., Water pump, hose, sprinklers",
+        cost: "e.g., 1200",
+        day: "e.g., 7"
+      },
+      HARVESTING: {
+        name: "e.g., Harvesting",
+        desc: "e.g., Harvest mature crop and prepare for transport.",
+        tools: "e.g., Sickle, crates, tarpaulin",
+        cost: "e.g., 3000",
+        day: "e.g., 90"
+      },
+      MONITORING: {
+        name: "e.g., Pest scouting",
+        desc: "e.g., Inspect the field and record pest/disease observations.",
+        tools: "e.g., Notebook, phone camera",
+        cost: "e.g., 0",
+        day: "e.g., 10"
+      }
+    };
+
+    function apply() {
+      var key = String(typeEl.value || "").toUpperCase();
+      var ex = examples[key];
+      if (!ex) return;
+      setPh(nameEl, ex.name);
+      setPh(descEl, ex.desc);
+      setPh(toolsEl, ex.tools);
+      setPh(costEl, ex.cost);
+      if (dayEl && !(dayEl.value || "").trim()) dayEl.setAttribute("placeholder", ex.day || "e.g., 14");
+    }
+
+    typeEl.addEventListener("change", apply);
+    apply();
+
+    // ---------- Equipment / tools picker (sourced from stock) ----------
+    var EQUIP = [];
+    try {
+      var jsonEl = document.getElementById("crop-activity-equipment-json");
+      if (jsonEl && jsonEl.textContent) {
+        var parsed = JSON.parse(jsonEl.textContent);
+        if (Array.isArray(parsed)) EQUIP = parsed;
+      }
+    } catch (e) { EQUIP = []; }
+
+    var equipInput = document.querySelector("[data-equipment-input]");
+    var equipIdEl = document.querySelector("[data-equipment-id]");
+    var equipPanel = document.querySelector("[data-equipment-suggestions]");
+    var equipPicker = document.querySelector("[data-equipment-picker]");
+    var equipToggle = document.querySelector("[data-equipment-toggle]");
+    var unitsPerAcreEl = document.querySelector("[data-equipment-units-per-acre]");
+    var unitPriceEl = document.querySelector("[data-equipment-unit-price]");
+    var stockPriceWrap = document.querySelector("[data-equipment-stock-price-field]");
+    var manualPriceEl = document.querySelector("[data-equipment-manual-unit-price]");
+    var manualPriceWrap = document.querySelector("[data-equipment-manual-price-field]");
+    var costPerAcreEl = document.querySelector("[data-equipment-cost-per-acre]");
+    var uomBadges = document.querySelectorAll("[data-equipment-uom-badge]");
+    var uomAddons = document.querySelectorAll("[data-equipment-uom-addon]");
+    var equipMeta = document.querySelector("[data-equipment-meta]");
+    var activeIdx = -1;
+    var lastRendered = [];
+
+    function fmtKes(n) {
+      if (!isFinite(n)) return "—";
+      try {
+        return n.toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      } catch (e2) {
+        return (Math.round(n * 100) / 100).toFixed(2);
+      }
+    }
+
+    function setUom(uom) {
+      var u = uom ? String(uom).toUpperCase() : "";
+      uomBadges.forEach(function (el) { el.textContent = u || "—"; });
+      uomAddons.forEach(function (el) { el.textContent = u || "—"; });
+    }
+
+    function findEquipByLabel(v) {
+      var val = String(v || "").trim().toUpperCase();
+      if (!val) return null;
+      for (var i = 0; i < EQUIP.length; i++) {
+        if (String(EQUIP[i].label || "").trim().toUpperCase() === val) return EQUIP[i];
+      }
+      return null;
+    }
+
+    function findEquipById(id) {
+      var n = parseInt(id, 10);
+      if (!n) return null;
+      for (var i = 0; i < EQUIP.length; i++) {
+        if (parseInt(EQUIP[i].id, 10) === n) return EQUIP[i];
+      }
+      return null;
+    }
+
+    function filterEquip(q) {
+      var qq = String(q || "").trim().toUpperCase();
+      var parts = qq.split(/\s+/).filter(Boolean);
+      var out = [];
+      for (var i = 0; i < EQUIP.length; i++) {
+        var L = String(EQUIP[i].label || "").toUpperCase();
+        var ok = true;
+        for (var j = 0; j < parts.length; j++) {
+          if (L.indexOf(parts[j]) === -1) { ok = false; break; }
+        }
+        if (ok) out.push(EQUIP[i]);
+        if (out.length >= 80) break;
+      }
+      return out;
+    }
+
+    function recalcCost() {
+      if (!unitsPerAcreEl || !costPerAcreEl) return;
+      var item = equipIdEl ? findEquipById(equipIdEl.value) : null;
+      var price = NaN;
+      var linkedId = equipIdEl && String(equipIdEl.value || "").trim();
+      if (item && item.unit_price != null && linkedId) {
+        price = parseFloat(item.unit_price);
+      } else if (
+        manualPriceEl &&
+        manualPriceWrap &&
+        !manualPriceWrap.hidden &&
+        !manualPriceEl.disabled
+      ) {
+        var mp = parseFloat(manualPriceEl.value);
+        if (isFinite(mp) && mp >= 0) price = mp;
+      }
+      var upa = parseFloat(unitsPerAcreEl.value);
+      if (isFinite(price) && isFinite(upa) && upa >= 0) {
+        costPerAcreEl.value = (Math.round(price * upa * 100) / 100).toFixed(2);
+      }
+    }
+
+    var upaSourceEl = document.querySelector("[data-equipment-upa-source]");
+
+    function setManualUnitPriceFieldVisible(show) {
+      if (manualPriceWrap) manualPriceWrap.hidden = !show;
+      if (manualPriceEl) {
+        manualPriceEl.disabled = !show;
+        if (!show) manualPriceEl.value = "";
+      }
+      recalcCost();
+    }
+
+    function setStockAvgPriceVisible(show) {
+      if (stockPriceWrap) stockPriceWrap.hidden = !show;
+      if (!show && unitPriceEl) unitPriceEl.value = "—";
+    }
+
+    function applyEquipSelection(item) {
+      if (!equipIdEl) return;
+      if (!item) {
+        equipIdEl.value = "";
+        setStockAvgPriceVisible(false);
+        setUom("");
+        if (equipMeta) {
+          equipMeta.innerHTML =
+            "<strong>No stock item linked.</strong> Type equipment above, then optionally enter units per acre and manual avg unit price.";
+        }
+        if (upaSourceEl) {
+          upaSourceEl.innerHTML =
+            "Enter <strong>units per acre</strong> yourself when not using stock (optional).";
+        }
+        setManualUnitPriceFieldVisible(true);
+        return;
+      }
+      setManualUnitPriceFieldVisible(false);
+      setStockAvgPriceVisible(true);
+      equipIdEl.value = String(item.id);
+      setUom(item.uom);
+      if (unitPriceEl) {
+        unitPriceEl.value = item.unit_price != null ? fmtKes(parseFloat(item.unit_price)) : "—";
+      }
+
+      // Auto-fill Units per acre from the product's "amount per acre"
+      // unless the user has typed something different.
+      if (unitsPerAcreEl) {
+        var current = (unitsPerAcreEl.value || "").trim();
+        var prev = unitsPerAcreEl.getAttribute("data-auto-prev") || "";
+        var canOverwrite = !current || current === prev;
+        if (item.units_per_acre != null && canOverwrite) {
+          var v = parseFloat(item.units_per_acre);
+          if (isFinite(v)) {
+            var formatted = (Math.round(v * 10000) / 10000).toString();
+            unitsPerAcreEl.value = formatted;
+            unitsPerAcreEl.setAttribute("data-auto-prev", formatted);
+          }
+        } else if (item.units_per_acre == null && canOverwrite) {
+          unitsPerAcreEl.value = "";
+          unitsPerAcreEl.removeAttribute("data-auto-prev");
+        }
+      }
+
+      if (upaSourceEl) {
+        if (item.units_per_acre != null) {
+          var pkg = item.package_size ? " (<code>" + item.package_size + "</code>)" : "";
+          upaSourceEl.innerHTML =
+            "Auto-filled from product's <strong>amount per acre</strong>" + pkg +
+            ". You can override if needed.";
+        } else {
+          upaSourceEl.innerHTML =
+            "<strong>No amount per acre set on this product.</strong> Enter a value, or set it in the Products module.";
+        }
+      }
+
+      if (equipMeta) {
+        var inStock = item.stock != null ? (item.stock + " " + (item.uom || "").toUpperCase()).trim() : "—";
+        var category = item.category || "—";
+        var typ = item.type || "";
+        equipMeta.innerHTML =
+          "Category: <strong>" + category + "</strong>" +
+          (typ ? " · Type: <strong>" + typ + "</strong>" : "") +
+          " · In stock: <strong>" + inStock + "</strong>" +
+          (item.unit_price != null
+            ? " · Avg buying price: <strong>KES " + fmtKes(parseFloat(item.unit_price)) + "</strong>"
+            : " · Avg buying price: <strong>no stock-ins yet</strong>");
+      }
+      recalcCost();
+    }
+
+    function setOpen(open) {
+      if (!equipPanel) return;
+      equipPanel.hidden = !open;
+      if (equipPicker) equipPicker.setAttribute("data-open", open ? "true" : "false");
+      if (equipInput) equipInput.setAttribute("aria-expanded", open ? "true" : "false");
+      if (!open) {
+        activeIdx = -1;
+        var rows = equipPanel.querySelectorAll(".equipment-picker__row");
+        rows.forEach(function (r) { r.classList.remove("is-active"); });
+      }
+    }
+
+    function setActiveRow(idx) {
+      if (!equipPanel) return;
+      var rows = equipPanel.querySelectorAll(".equipment-picker__row");
+      if (!rows.length) return;
+      if (idx < 0) idx = rows.length - 1;
+      if (idx >= rows.length) idx = 0;
+      rows.forEach(function (r) { r.classList.remove("is-active"); });
+      var el = rows[idx];
+      el.classList.add("is-active");
+      if (el.scrollIntoView) {
+        try { el.scrollIntoView({ block: "nearest" }); } catch (e3) {}
+      }
+      activeIdx = idx;
+    }
+
+    function selectItem(it) {
+      if (!it) return;
+      if (equipInput) equipInput.value = it.label || "";
+      applyEquipSelection(it);
+      setOpen(false);
+      if (equipInput && equipInput.focus) equipInput.focus();
+    }
+
+    function renderEquipSuggestions(list) {
+      if (!equipPanel) return;
+      equipPanel.innerHTML = "";
+      lastRendered = [];
+      activeIdx = -1;
+
+      if (!list.length) {
+        var empty = document.createElement("div");
+        empty.className = "equipment-picker__empty";
+        empty.textContent = "No matching items in stock. Try a different search, or add the item via the Stock module.";
+        equipPanel.appendChild(empty);
+        setOpen(true);
+        return;
+      }
+
+      var groups = {};
+      var orderedCats = [];
+      for (var i = 0; i < list.length; i++) {
+        var k = list[i].category || "GENERAL";
+        if (!groups[k]) { groups[k] = []; orderedCats.push(k); }
+        groups[k].push(list[i]);
+      }
+      orderedCats.sort();
+      orderedCats.forEach(function (cat) {
+        var header = document.createElement("div");
+        header.className = "equipment-picker__group";
+        header.textContent = cat + "  (" + groups[cat].length + ")";
+        equipPanel.appendChild(header);
+        groups[cat].forEach(function (it) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "equipment-picker__row";
+          btn.setAttribute("role", "option");
+
+          var mainWrap = document.createElement("span");
+          mainWrap.className = "equipment-picker__row-main";
+
+          var title = document.createElement("span");
+          title.className = "equipment-picker__row-title";
+          title.textContent = (it.code ? it.code + " — " : "") + (it.name || "");
+
+          var sub = document.createElement("span");
+          sub.className = "equipment-picker__row-sub";
+          var subParts = [];
+          if (it.type) subParts.push(String(it.type));
+          if (it.uom) subParts.push(String(it.uom).toUpperCase());
+          sub.textContent = subParts.join(" · ");
+
+          mainWrap.appendChild(title);
+          mainWrap.appendChild(sub);
+
+          var metaWrap = document.createElement("span");
+          metaWrap.className = "equipment-picker__row-meta";
+
+          var stockEl = document.createElement("span");
+          stockEl.className = "equipment-picker__row-stock";
+          var u = it.uom ? String(it.uom).toUpperCase() : "";
+          var s = it.stock != null ? it.stock : "0.00";
+          stockEl.textContent = "Stock " + s + (u ? " " + u : "");
+
+          var priceEl = document.createElement("span");
+          if (it.unit_price != null) {
+            priceEl.className = "equipment-picker__row-price";
+            priceEl.textContent = "Avg KES " + fmtKes(parseFloat(it.unit_price));
+          } else {
+            priceEl.className = "equipment-picker__row-price equipment-picker__row-price--missing";
+            priceEl.textContent = "no stock-in yet";
+          }
+
+          if (it.units_per_acre != null) {
+            var upaEl = document.createElement("span");
+            upaEl.className = "equipment-picker__row-stock";
+            var upaUom = it.uom ? String(it.uom).toUpperCase() : "";
+            upaEl.textContent = it.units_per_acre + (upaUom ? " " + upaUom : "") + " / acre";
+            metaWrap.appendChild(upaEl);
+          }
+
+          metaWrap.appendChild(stockEl);
+          metaWrap.appendChild(priceEl);
+
+          btn.appendChild(mainWrap);
+          btn.appendChild(metaWrap);
+
+          btn.addEventListener("mousedown", function (ev) {
+            ev.preventDefault();
+            selectItem(it);
+          });
+          btn.addEventListener("mouseenter", function () {
+            var rows = equipPanel.querySelectorAll(".equipment-picker__row");
+            for (var ri = 0; ri < rows.length; ri++) {
+              if (rows[ri] === btn) { setActiveRow(ri); break; }
+            }
+          });
+          equipPanel.appendChild(btn);
+          lastRendered.push(it);
+        });
+      });
+      setOpen(true);
+    }
+
+    if (equipInput && equipPanel) {
+      equipInput.addEventListener("input", function () {
+        var exact = findEquipByLabel(equipInput.value);
+        applyEquipSelection(exact);
+
+        // Live check: only suggest when we have at least one stock match.
+        // If no match, keep manual input mode and don't force-open an empty dropdown.
+        var matches = filterEquip(equipInput.value);
+        if (matches && matches.length) {
+          renderEquipSuggestions(matches);
+        } else {
+          setOpen(false);
+        }
+      });
+      equipInput.addEventListener("focus", function () {
+        var matches = filterEquip(equipInput.value);
+        if (!matches || !matches.length) return;
+        renderEquipSuggestions(matches);
+      });
+      equipInput.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") { setOpen(false); return; }
+        if (e.key === "ArrowDown") {
+          if (equipPanel.hidden) renderEquipSuggestions(filterEquip(equipInput.value));
+          setActiveRow(activeIdx + 1);
+          e.preventDefault();
+          return;
+        }
+        if (e.key === "ArrowUp") {
+          if (equipPanel.hidden) renderEquipSuggestions(filterEquip(equipInput.value));
+          setActiveRow(activeIdx - 1);
+          e.preventDefault();
+          return;
+        }
+        if (e.key === "Enter") {
+          if (!equipPanel.hidden && activeIdx >= 0 && lastRendered[activeIdx]) {
+            e.preventDefault();
+            selectItem(lastRendered[activeIdx]);
+          }
+        }
+      });
+      document.addEventListener("click", function (e) {
+        if (!equipPanel) return;
+        if (equipPicker && equipPicker.contains(e.target)) return;
+        setOpen(false);
+      });
+    }
+
+    if (equipToggle) {
+      equipToggle.addEventListener("mousedown", function (ev) {
+        ev.preventDefault();
+        if (!equipPanel) return;
+        if (equipPanel.hidden) {
+          renderEquipSuggestions(filterEquip(equipInput ? equipInput.value : ""));
+          if (equipInput && equipInput.focus) equipInput.focus();
+        } else {
+          setOpen(false);
+        }
+      });
+    }
+
+    if (unitsPerAcreEl) {
+      unitsPerAcreEl.addEventListener("input", recalcCost);
+    }
+    if (manualPriceEl) {
+      manualPriceEl.addEventListener("input", recalcCost);
+    }
+
+    // Restore selection from server-side form values (e.g. validation failure round-trip).
+    (function restore() {
+      if (!equipIdEl) return;
+      var initialId = equipIdEl.value;
+      var initial = null;
+      if (initialId) initial = findEquipById(initialId);
+      if (!initial && equipInput) initial = findEquipByLabel(equipInput.value);
+      if (initial) {
+        if (equipInput && !(equipInput.value || "").trim()) equipInput.value = initial.label;
+        applyEquipSelection(initial);
+      } else {
+        setManualUnitPriceFieldVisible(true);
+      }
+    })();
+  })();
+</script>
+
+<section class="panel" style="margin-top: 1rem">
+  <h3 style="margin-top:0">{{ i("file_text") }} Scheduled activities</h3>
+  <div class="table-wrap" style="margin-top: 0.75rem">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>DAY</th>
+          <th>TYPE</th>
+          <th>NAME</th>
+          <th>EQUIPMENT (FROM STOCK)</th>
+          <th class="numeric-col">UNITS / ACRE</th>
+          <th class="numeric-col">AVG BUYING PRICE</th>
+          <th class="numeric-col">COST / ACRE</th>
+          <th>STATUS</th>
+          <th>ACTIONS</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if activities and activities|length %}
+          {% for a in activities %}
+          {% set st = (a.activity_status or 'ACTIVE')|upper %}
+          {% set equip_cell = ((a.equipment_code ~ ' — ' ~ a.equipment_name ~ ' · ' ~ (a.equipment_category or a.equipment_type or ''))|trim) if a.equipment_product_id else ((a.equipment_tools or '')|trim) %}
+          {% set cost_val = a.equipment_cost_per_acre if a.equipment_cost_per_acre is not none else a.estimated_cost %}
+          <tr class="{% if st == 'SUSPENDED' %}activity-row--suspended{% endif %}">
+            <td><span class="pill">Day {{ a.scheduled_day }}</span></td>
+            <td>{{ (a.activity_type or '—')|replace('_',' ') }}</td>
+            <td>
+              <strong>{{ a.activity_name }}</strong>
+              {% if a.activity_description %}
+                <div class="hint" style="margin-top: 0.15rem">{{ a.activity_description }}</div>
+              {% endif %}
+            </td>
+            <td>
+              {% if a.equipment_product_id %}
+                <strong>{{ a.equipment_code }} — {{ a.equipment_name }}</strong>
+                <div class="hint" style="margin-top: 0.15rem">
+                  {{ a.equipment_category or a.equipment_type or '—' }}
+                </div>
+              {% else %}
+                {{ a.equipment_tools or "—" }}
+              {% endif %}
+            </td>
+            <td class="numeric-col">
+              {% if a.equipment_units_per_acre is not none %}
+                {{ "%.4f"|format(a.equipment_units_per_acre)|replace('0000','')|replace('000','') }}{% if a.equipment_unit_of_measure %} <span class="pill">{{ a.equipment_unit_of_measure|upper }}</span>{% endif %}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td class="numeric-col">
+              {% if a.equipment_unit_price is not none %}
+                KES {{ "%.2f"|format(a.equipment_unit_price) }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td class="numeric-col">
+              {% if cost_val is not none %}
+                KES {{ "%.2f"|format(cost_val) }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>
+              {% if st == 'SUSPENDED' %}
+                <span class="pill" style="background:#fef3c7;color:#92400e;border-color:#fcd34d">Suspended</span>
+              {% else %}
+                <span class="pill" style="background:#ecfdf5;color:#065f46;border-color:#a7f3d0">Active</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="activity-actions">
+                <button
+                  type="button"
+                  class="button button-ghost"
+                  style="padding:0.25rem 0.45rem;font-size:0.82rem"
+                  data-crop-activity-view
+                  data-name="{{ (a.activity_name or '')|e }}"
+                  data-type="{{ (a.activity_type or '')|e }}"
+                  data-day="{{ a.scheduled_day }}"
+                  data-time="{{ (a.preferred_time or '')|e }}"
+                  data-desc="{{ (a.activity_description or '')|e }}"
+                  data-equipment="{{ equip_cell|trim|e }}"
+                  data-status="{{ st|e }}"
+                  data-created="{{ (a.created_at|string) if a.created_at else '' }}"
+                  data-units="{% if a.equipment_units_per_acre is not none %}{{ '%.4f'|format(a.equipment_units_per_acre) }}{% if a.equipment_unit_of_measure %} {{ a.equipment_unit_of_measure|upper }}{% endif %}{% else %}—{% endif %}"
+                  data-price="{% if a.equipment_unit_price is not none %}KES {{ '%.2f'|format(a.equipment_unit_price) }}{% else %}—{% endif %}"
+                  data-cost="{% if cost_val is not none %}KES {{ '%.2f'|format(cost_val) }}{% else %}—{% endif %}"
+                  title="View details"
+                >{{ i("eye") }}</button>
+                <a
+                  class="button button-ghost"
+                  style="padding:0.25rem 0.45rem;font-size:0.82rem;display:inline-flex;align-items:center;gap:0.2rem;text-decoration:none"
+                  href="{{ url_for('main.crops_session_crop_activities', role=session.get('employee_role'), product_id=product.id) }}?edit={{ a.id }}"
+                  title="Edit"
+                >{{ i("pencil") }}</a>
+                {% if st == 'ACTIVE' %}
+                <form
+                  method="post"
+                  action="{{ url_for('main.crops_session_crop_activities', role=session.get('employee_role'), product_id=product.id) }}"
+                  onsubmit="return confirm('Suspend this scheduled activity?');"
+                >
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                  <input type="hidden" name="activity_action" value="suspend" />
+                  <input type="hidden" name="activity_id" value="{{ a.id }}" />
+                  <button type="submit" class="button button-ghost" style="padding:0.25rem 0.45rem;font-size:0.82rem" title="Suspend">Pause</button>
+                </form>
+                {% else %}
+                <form method="post" action="{{ url_for('main.crops_session_crop_activities', role=session.get('employee_role'), product_id=product.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                  <input type="hidden" name="activity_action" value="resume" />
+                  <input type="hidden" name="activity_id" value="{{ a.id }}" />
+                  <button type="submit" class="button button-ghost" style="padding:0.25rem 0.45rem;font-size:0.82rem" title="Resume">Resume</button>
+                </form>
+                {% endif %}
+                <form
+                  method="post"
+                  action="{{ url_for('main.crops_session_crop_activities', role=session.get('employee_role'), product_id=product.id) }}"
+                  onsubmit="return confirm('Delete this activity permanently?');"
+                >
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                  <input type="hidden" name="activity_action" value="delete" />
+                  <input type="hidden" name="activity_id" value="{{ a.id }}" />
+                  <button type="submit" class="button button-ghost" style="padding:0.25rem 0.45rem;font-size:0.82rem;color:#b91c1c" title="Delete">{{ i("trash") }}</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="9" class="table-empty">No activities scheduled yet for this crop.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="modal-backdrop" data-crop-activity-view-modal hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="crop_activity_view_title" tabindex="-1">
+    <div class="modal__head">
+      <h3 id="crop_activity_view_title" class="modal__title">{{ i("eye") }} Activity details</h3>
+      <button type="button" class="button button-ghost modal__close" data-crop-activity-view-close aria-label="Close" title="Close">×</button>
+    </div>
+    <div class="modal__body">
+      <div class="row-form">
+        <div class="modal-field">
+          <label class="modal-label">Status</label>
+          <div class="modal-value" data-v-act-status>—</div>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Scheduled day</label>
+          <div class="modal-value" data-v-act-day>—</div>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Preferred time</label>
+          <div class="modal-value" data-v-act-time>—</div>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Activity type</label>
+          <div class="modal-value" data-v-act-type>—</div>
+        </div>
+        <div class="modal-field modal-field--span2">
+          <label class="modal-label">Name</label>
+          <div class="modal-value" data-v-act-name>—</div>
+        </div>
+        <div class="modal-field modal-field--span2">
+          <label class="modal-label">Description</label>
+          <div class="modal-value" data-v-act-desc style="white-space:pre-wrap">—</div>
+        </div>
+        <div class="modal-field modal-field--span2">
+          <label class="modal-label">Equipment / tools</label>
+          <div class="modal-value" data-v-act-equip style="white-space:pre-wrap">—</div>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Units per acre</label>
+          <div class="modal-value" data-v-act-units>—</div>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Avg buying price</label>
+          <div class="modal-value" data-v-act-price>—</div>
+        </div>
+        <div class="modal-field">
+          <label class="modal-label">Cost per acre</label>
+          <div class="modal-value" data-v-act-cost>—</div>
+        </div>
+        <div class="modal-field modal-field--span2">
+          <label class="modal-label">Created</label>
+          <div class="modal-value" data-v-act-created>—</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal__footer">
+      <button type="button" class="button button-ghost" data-crop-activity-view-close>Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var backdrop = document.querySelector("[data-crop-activity-view-modal]");
+    if (!backdrop) return;
+
+    function esc(s) {
+      return String(s == null ? "" : s);
+    }
+
+    function openModal(btn) {
+      if (!backdrop || !btn || !btn.dataset) return;
+      var ds = btn.dataset;
+      function set(sel, val) {
+        var el = backdrop.querySelector(sel);
+        if (el) el.textContent = esc(val) || "—";
+      }
+      set("[data-v-act-status]", (ds.status || "").replace(/_/g, " "));
+      set("[data-v-act-day]", ds.day !== undefined && ds.day !== "" ? "Day " + ds.day : "—");
+      set("[data-v-act-time]", (ds.time || "").replace(/_/g, " "));
+      set("[data-v-act-type]", (ds.type || "").replace(/_/g, " "));
+      set("[data-v-act-name]", ds.name);
+      set("[data-v-act-desc]", ds.desc);
+      set("[data-v-act-equip]", ds.equipment);
+      set("[data-v-act-units]", ds.units);
+      set("[data-v-act-price]", ds.price);
+      set("[data-v-act-cost]", ds.cost);
+      set("[data-v-act-created]", ds.created);
+      backdrop.hidden = false;
+      document.body.classList.add("modal-open");
+      var closeBtn = backdrop.querySelector("[data-crop-activity-view-close]");
+      if (closeBtn && closeBtn.focus) closeBtn.focus();
+    }
+
+    function closeModal() {
+      if (!backdrop) return;
+      backdrop.hidden = true;
+      document.body.classList.remove("modal-open");
+    }
+
+    document.addEventListener("click", function (e) {
+      var btn = e.target && e.target.closest && e.target.closest("[data-crop-activity-view]");
+      if (btn) {
+        e.preventDefault();
+        openModal(btn);
+        return;
+      }
+      if (e.target === backdrop) closeModal();
+    });
+
+    backdrop.querySelectorAll("[data-crop-activity-view-close]").forEach(function (b) {
+      b.addEventListener("click", closeModal);
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && backdrop && !backdrop.hidden) closeModal();
+    });
+  })();
+</script>
+
+{% endblock %}
+

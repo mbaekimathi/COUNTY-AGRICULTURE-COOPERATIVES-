@@ -1,0 +1,32 @@
+<header class="site-header">
+  <div class="site-header__inner site-header__inner--full">
+    <a class="site-brand" href="{{ url_for('main.index') }}">
+      <div class="brand-mark brand-mark--header" aria-hidden="true">{{ i("leaf", "icon-svg") }}</div>
+      <div class="brand-text">
+        <p class="site-brand-heading">Meru County Government Cooperatives</p>
+        <p class="site-brand-tagline">County employee workspace</p>
+      </div>
+    </a>
+
+    <nav class="site-nav" aria-label="Primary navigation">
+      <div class="header-clock header-clock--guest" aria-label="Current date and time">
+        <span class="header-clock__date" data-live-date>—</span>
+        <span class="header-clock__time" data-live-time>—</span>
+      </div>
+      <button type="button" class="theme-toggle" data-theme-toggle aria-pressed="false" aria-label="Switch to dark mode">
+        <span class="theme-toggle__icon theme-toggle__icon--sun" aria-hidden="true">{{ i("sun", "icon-svg") }}</span>
+        <span class="theme-toggle__icon theme-toggle__icon--moon" aria-hidden="true" hidden>{{ i("moon", "icon-svg") }}</span>
+      </button>
+      <a
+        href="{{ url_for('auth.login') }}"
+        class="nav-link{% if request.endpoint == 'auth.login' %} is-active{% endif %}"
+        >Sign in</a
+      >
+      <a
+        href="{{ url_for('auth.register') }}"
+        class="nav-link nav-link--cta{% if request.endpoint == 'auth.register' %} is-active{% endif %}"
+        >Register</a
+      >
+    </nav>
+  </div>
+</header>
