@@ -2,6 +2,180 @@
 {% block title %}Dashboard — Meru Cooperatives{% endblock %}
 {% block content %}
 {% from "macros/icons.html" import i %}
+{% set r = session.get("employee_role") %}
+
+{# Projected vs actual progress bars (shared across cooperative overview tabs) #}
+{% macro coop_progress_session_spend(cs, suffix) %}
+{% set p = cs.estimated_total_kes|float %}
+{% set a = cs.used_total_kes|float %}
+{% set pct_raw = ((100 * a / p)|round(1)) if p > 0 else none %}
+{% set fill_w = ([100, ((100 * a / p)|float)]|min) if p > 0 else (100 if a > 0 else 0) %}
+<section class="dashboard-coop-progress" aria-labelledby="coop-prog-spend-{{ suffix }}">
+  <div class="dashboard-coop-progress__top">
+    <span id="coop-prog-spend-{{ suffix }}" class="dashboard-coop-progress__title">Crop session activity spend</span>
+    <span class="dashboard-coop-progress__pill">Projected vs actual</span>
+  </div>
+  <p class="dashboard-coop-progress__lead">Projected = estimated budget from active sessions and activity rates. Actual = spend recorded on completed activities.</p>
+  <div class="dashboard-coop-progress__stats">
+    <div class="dashboard-coop-progress__stat">
+      <span class="dashboard-coop-progress__stat-label">Projected (KES)</span>
+      <strong class="dashboard-coop-progress__stat-value">{{ "%.2f"|format(p) }}</strong>
+    </div>
+    <div class="dashboard-coop-progress__stat">
+      <span class="dashboard-coop-progress__stat-label">Actual (KES)</span>
+      <strong class="dashboard-coop-progress__stat-value">{{ "%.2f"|format(a) }}</strong>
+    </div>
+    {% if pct_raw is not none %}
+    <div class="dashboard-coop-progress__stat dashboard-coop-progress__stat--pct">
+      <span class="dashboard-coop-progress__stat-label">Progress</span>
+      <strong class="dashboard-coop-progress__stat-value">{{ pct_raw }}%</strong>
+      {% if pct_raw > 100 %}<span class="dashboard-coop-progress__warn">Over projected</span>{% endif %}
+    </div>
+    {% elif p <= 0 and a > 0 %}
+    <div class="dashboard-coop-progress__stat dashboard-coop-progress__stat--pct">
+      <span class="dashboard-coop-progress__stat-label">Progress</span>
+      <strong class="dashboard-coop-progress__stat-value">—</strong>
+      <span class="dashboard-coop-progress__hint">Actual spend with no projection baseline</span>
+    </div>
+    {% endif %}
+  </div>
+  <div class="dashboard-coop-progress__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" {% if pct_raw is not none %}aria-valuenow="{{ [100, pct_raw]|min|int }}" aria-label="Actual as percent of projected spend"{% endif %}>
+    <div class="dashboard-coop-progress__fill {% if pct_raw is not none and pct_raw > 100 %}dashboard-coop-progress__fill--over{% endif %}" style="width: {{ fill_w }}%;"></div>
+  </div>
+</section>
+{% endmacro %}
+
+{% macro coop_progress_membership_active(m, suffix) %}
+{% set p = m.total|int %}
+{% set a = m.active|int %}
+{% set pct_raw = ((100 * a / p)|round(1)) if p > 0 else none %}
+{% set fill_w = ([100, ((100 * a / p)|float)]|min) if p > 0 else 0 %}
+<section class="dashboard-coop-progress dashboard-coop-progress--secondary" aria-labelledby="coop-prog-mem-{{ suffix }}">
+  <div class="dashboard-coop-progress__top">
+    <span id="coop-prog-mem-{{ suffix }}" class="dashboard-coop-progress__title">Membership activation</span>
+    <span class="dashboard-coop-progress__pill">Projected vs actual</span>
+  </div>
+  <p class="dashboard-coop-progress__lead">Projected = farmers on file. Actual = accounts in <strong>active</strong> status.</p>
+  <div class="dashboard-coop-progress__stats">
+    <div class="dashboard-coop-progress__stat">
+      <span class="dashboard-coop-progress__stat-label">Projected (roster)</span>
+      <strong class="dashboard-coop-progress__stat-value">{{ p }}</strong>
+    </div>
+    <div class="dashboard-coop-progress__stat">
+      <span class="dashboard-coop-progress__stat-label">Actual (active)</span>
+      <strong class="dashboard-coop-progress__stat-value">{{ a }}</strong>
+    </div>
+    {% if pct_raw is not none %}
+    <div class="dashboard-coop-progress__stat dashboard-coop-progress__stat--pct">
+      <span class="dashboard-coop-progress__stat-label">Progress</span>
+      <strong class="dashboard-coop-progress__stat-value">{{ pct_raw }}%</strong>
+    </div>
+    {% endif %}
+  </div>
+  <div class="dashboard-coop-progress__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" {% if pct_raw is not none %}aria-valuenow="{{ [100, pct_raw]|min|int }}" aria-label="Active farmers as percent of roster"{% endif %}>
+    <div class="dashboard-coop-progress__fill" style="width: {{ fill_w }}%;"></div>
+  </div>
+</section>
+{% endmacro %}
+
+{% macro coop_progress_crop_participation(m, cs, suffix) %}
+{% set p = m.total|int %}
+{% set a = cs.farmers_with_active_session|int %}
+{% set pct_raw = ((100 * a / p)|round(1)) if p > 0 else none %}
+{% set fill_w = ([100, ((100 * a / p)|float)]|min) if p > 0 else 0 %}
+<section class="dashboard-coop-progress dashboard-coop-progress--secondary" aria-labelledby="coop-prog-part-{{ suffix }}">
+  <div class="dashboard-coop-progress__top">
+    <span id="coop-prog-part-{{ suffix }}" class="dashboard-coop-progress__title">Crop session participation</span>
+    <span class="dashboard-coop-progress__pill">Projected vs actual</span>
+  </div>
+  <p class="dashboard-coop-progress__lead">Projected = registered farmers. Actual = distinct farmers with at least one active crop session.</p>
+  <div class="dashboard-coop-progress__stats">
+    <div class="dashboard-coop-progress__stat">
+      <span class="dashboard-coop-progress__stat-label">Projected (registered)</span>
+      <strong class="dashboard-coop-progress__stat-value">{{ p }}</strong>
+    </div>
+    <div class="dashboard-coop-progress__stat">
+      <span class="dashboard-coop-progress__stat-label">Actual (in session)</span>
+      <strong class="dashboard-coop-progress__stat-value">{{ a }}</strong>
+    </div>
+    {% if pct_raw is not none %}
+    <div class="dashboard-coop-progress__stat dashboard-coop-progress__stat--pct">
+      <span class="dashboard-coop-progress__stat-label">Progress</span>
+      <strong class="dashboard-coop-progress__stat-value">{{ pct_raw }}%</strong>
+    </div>
+    {% endif %}
+  </div>
+  <div class="dashboard-coop-progress__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" {% if pct_raw is not none %}aria-valuenow="{{ [100, pct_raw]|min|int }}" aria-label="Farmers in crop session as percent of roster"{% endif %}>
+    <div class="dashboard-coop-progress__fill" style="width: {{ fill_w }}%;"></div>
+  </div>
+</section>
+{% endmacro %}
+
+{% macro coop_progress_member_revenue_share(ep, suffix) %}
+{% set p = ep.total_revenue|float %}
+{% set a = ep.member_revenue|float %}
+{% set pct_raw = ((100 * a / p)|round(1)) if p > 0 else none %}
+{% set fill_w = ([100, ((100 * a / p)|float)]|min) if p > 0 else 0 %}
+<section class="dashboard-coop-progress dashboard-coop-progress--secondary" aria-labelledby="coop-prog-rev-{{ suffix }}">
+  <div class="dashboard-coop-progress__top">
+    <span id="coop-prog-rev-{{ suffix }}" class="dashboard-coop-progress__title">End-product intake revenue</span>
+    <span class="dashboard-coop-progress__pill">Projected vs actual</span>
+  </div>
+  <p class="dashboard-coop-progress__lead">Projected = total intake value (all channels). Actual = value from <strong>cooperative member</strong> sessions.</p>
+  <div class="dashboard-coop-progress__stats">
+    <div class="dashboard-coop-progress__stat">
+      <span class="dashboard-coop-progress__stat-label">Projected (KES)</span>
+      <strong class="dashboard-coop-progress__stat-value">{{ "%.2f"|format(p) }}</strong>
+    </div>
+    <div class="dashboard-coop-progress__stat">
+      <span class="dashboard-coop-progress__stat-label">Actual — members (KES)</span>
+      <strong class="dashboard-coop-progress__stat-value">{{ "%.2f"|format(a) }}</strong>
+    </div>
+    {% if pct_raw is not none %}
+    <div class="dashboard-coop-progress__stat dashboard-coop-progress__stat--pct">
+      <span class="dashboard-coop-progress__stat-label">Member share</span>
+      <strong class="dashboard-coop-progress__stat-value">{{ pct_raw }}%</strong>
+    </div>
+    {% endif %}
+  </div>
+  <div class="dashboard-coop-progress__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" {% if pct_raw is not none %}aria-valuenow="{{ [100, pct_raw]|min|int }}" aria-label="Member revenue as percent of total intake revenue"{% endif %}>
+    <div class="dashboard-coop-progress__fill" style="width: {{ fill_w }}%;"></div>
+  </div>
+</section>
+{% endmacro %}
+
+{% macro coop_progress_member_intake_share(ep, suffix) %}
+{% set p = ep.total_intakes|int %}
+{% set a = ep.member_intakes|int %}
+{% set pct_raw = ((100 * a / p)|round(1)) if p > 0 else none %}
+{% set fill_w = ([100, ((100 * a / p)|float)]|min) if p > 0 else 0 %}
+<section class="dashboard-coop-progress dashboard-coop-progress--secondary" aria-labelledby="coop-prog-int-{{ suffix }}">
+  <div class="dashboard-coop-progress__top">
+    <span id="coop-prog-int-{{ suffix }}" class="dashboard-coop-progress__title">End-product intake movements</span>
+    <span class="dashboard-coop-progress__pill">Projected vs actual</span>
+  </div>
+  <p class="dashboard-coop-progress__lead">Projected = all stock-in movements. Actual = movements tagged as farmer session (members).</p>
+  <div class="dashboard-coop-progress__stats">
+    <div class="dashboard-coop-progress__stat">
+      <span class="dashboard-coop-progress__stat-label">Projected (movements)</span>
+      <strong class="dashboard-coop-progress__stat-value">{{ p }}</strong>
+    </div>
+    <div class="dashboard-coop-progress__stat">
+      <span class="dashboard-coop-progress__stat-label">Actual (member)</span>
+      <strong class="dashboard-coop-progress__stat-value">{{ a }}</strong>
+    </div>
+    {% if pct_raw is not none %}
+    <div class="dashboard-coop-progress__stat dashboard-coop-progress__stat--pct">
+      <span class="dashboard-coop-progress__stat-label">Member share</span>
+      <strong class="dashboard-coop-progress__stat-value">{{ pct_raw }}%</strong>
+    </div>
+    {% endif %}
+  </div>
+  <div class="dashboard-coop-progress__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" {% if pct_raw is not none %}aria-valuenow="{{ [100, pct_raw]|min|int }}" aria-label="Member intake count as percent of all intakes"{% endif %}>
+    <div class="dashboard-coop-progress__fill" style="width: {{ fill_w }}%;"></div>
+  </div>
+</section>
+{% endmacro %}
 
 <div class="dashboard-header">
   <div>
@@ -21,11 +195,819 @@
   </div>
 </div>
 
-<section class="panel">
+{% if dashboard_metrics %}
+{% set m = dashboard_metrics.members %}
+{% set ep = dashboard_metrics.end_product %}
+{% set cs = dashboard_metrics.crops_session %}
+<section class="panel dashboard-analytics-panel">
+  <div class="dashboard-analytics-panel__head">
+    <div>
+      <h3>{{ i("bar_chart") }} Cooperative overview</h3>
+      <p class="dashboard-analytics-panel__lede">
+        Each tab includes <strong>projected vs actual</strong> progress for crop-session spend; tab-specific bars compare roster, participation, or end-product intake channels using the same snapshot data.
+      </p>
+    </div>
+  </div>
+
+  <div class="dashboard-coop-tabs" data-dashboard-coop-tabs>
+    <div class="dashboard-coop-tablist" role="tablist" aria-label="Cooperative overview categories">
+      <button
+        type="button"
+        class="dashboard-coop-tab"
+        role="tab"
+        id="tab-coop-farmers"
+        data-coop-tab="farmers"
+        aria-selected="true"
+        aria-controls="panel-coop-farmers"
+        tabindex="0"
+      >
+        {{ i("users") }} Farmers
+      </button>
+      <button
+        type="button"
+        class="dashboard-coop-tab"
+        role="tab"
+        id="tab-coop-finance"
+        data-coop-tab="finance"
+        aria-selected="false"
+        aria-controls="panel-coop-finance"
+        tabindex="-1"
+      >
+        {{ i("wallet") }} Finance
+      </button>
+      <button
+        type="button"
+        class="dashboard-coop-tab"
+        role="tab"
+        id="tab-coop-crops"
+        data-coop-tab="crops"
+        aria-selected="false"
+        aria-controls="panel-coop-crops"
+        tabindex="-1"
+      >
+        {{ i("leaf") }} Crops
+      </button>
+      <button
+        type="button"
+        class="dashboard-coop-tab"
+        role="tab"
+        id="tab-coop-endproducts"
+        data-coop-tab="endproducts"
+        aria-selected="false"
+        aria-controls="panel-coop-endproducts"
+        tabindex="-1"
+      >
+        {{ i("package") }} End products
+      </button>
+    </div>
+
+    <div
+      class="dashboard-coop-tabpanel"
+      id="panel-coop-farmers"
+      role="tabpanel"
+      aria-labelledby="tab-coop-farmers"
+      data-coop-panel="farmers"
+    >
+      <div class="dashboard-coop-kpi-grid">
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">Farmers recorded</span>
+          <strong class="dashboard-coop-kpi-value">{{ m.total }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">Active</span>
+          <strong class="dashboard-coop-kpi-value">{{ m.active }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">Pending approval</span>
+          <strong class="dashboard-coop-kpi-value">{{ m.pending }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">Suspended</span>
+          <strong class="dashboard-coop-kpi-value">{{ m.suspended }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card dashboard-coop-kpi-card--accent">
+          <span class="dashboard-coop-kpi-label">In active crop session</span>
+          <strong class="dashboard-coop-kpi-value">{{ cs.farmers_with_active_session }}</strong>
+        </div>
+      </div>
+
+      <div class="dashboard-coop-progress-stack">
+        {{ coop_progress_session_spend(cs, "farmers-spend") }}
+        {{ coop_progress_membership_active(m, "farmers-mem") }}
+      </div>
+
+      <div class="dashboard-analytics-grid">
+        <figure class="dashboard-analytics-card">
+          <figcaption>Members by registration status</figcaption>
+          <div class="dashboard-analytics-card__canvas">
+            <canvas id="chartDashMembers" role="img" aria-label="Farmers by registration status"></canvas>
+          </div>
+          <p class="dashboard-analytics-card__kpi">
+            <strong>{{ m.total }}</strong> farmers on file · split shown for active, pending, and suspended accounts.
+          </p>
+        </figure>
+
+        <figure class="dashboard-analytics-card">
+          <figcaption>Farmers vs active crop participation</figcaption>
+          <div class="dashboard-analytics-card__canvas">
+            <canvas id="chartDashFarmersCropSession" role="img" aria-label="Farmers with an active crop session versus other registered farmers"></canvas>
+          </div>
+          <p class="dashboard-analytics-card__kpi">
+            Distinct farmers linked to at least one <strong>active</strong> farming session on a crop product.
+          </p>
+        </figure>
+      </div>
+
+      <p class="dashboard-coop-tab-links hint">
+        <a class="button button-ghost button-back-soft" href="{{ url_for('main.module_page', module_key='farmers', role=r) }}">{{ i("users") }} Open Farmers module</a>
+        <a class="button button-ghost button-back-soft" href="{{ url_for('main.farmers_farm_locations_page', role=r) }}">{{ i("map_pin") }} Farm locations map</a>
+      </p>
+    </div>
+
+    <div
+      class="dashboard-coop-tabpanel"
+      id="panel-coop-finance"
+      role="tabpanel"
+      aria-labelledby="tab-coop-finance"
+      data-coop-panel="finance"
+      hidden
+    >
+      <div class="dashboard-coop-kpi-grid">
+        <div class="dashboard-coop-kpi-card dashboard-coop-kpi-card--accent">
+          <span class="dashboard-coop-kpi-label">Session spend — estimated (KES)</span>
+          <strong class="dashboard-coop-kpi-value">{{ "%.2f"|format(cs.estimated_total_kes|float) }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card dashboard-coop-kpi-card--accent">
+          <span class="dashboard-coop-kpi-label">Session spend — used (KES)</span>
+          <strong class="dashboard-coop-kpi-value">{{ "%.2f"|format(cs.used_total_kes|float) }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">End-product revenue (KES)</span>
+          <strong class="dashboard-coop-kpi-value">{{ "%.2f"|format(ep.total_revenue|float) }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">Revenue — members (KES)</span>
+          <strong class="dashboard-coop-kpi-value">{{ "%.2f"|format(ep.member_revenue|float) }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">Revenue — walk-in (KES)</span>
+          <strong class="dashboard-coop-kpi-value">{{ "%.2f"|format(ep.walk_in_revenue|float) }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">Stock-in movements</span>
+          <strong class="dashboard-coop-kpi-value">{{ ep.total_intakes }}</strong>
+        </div>
+      </div>
+
+      <div class="dashboard-coop-progress-stack">
+        {{ coop_progress_session_spend(cs, "finance-spend") }}
+        {{ coop_progress_member_revenue_share(ep, "finance-rev") }}
+      </div>
+
+      <div class="dashboard-analytics-grid">
+        <figure class="dashboard-analytics-card dashboard-analytics-card--wide">
+          <figcaption>Crop sessions — estimated vs used activity spend (KES)</figcaption>
+          <div class="dashboard-analytics-card__canvas dashboard-analytics-card__canvas--wide">
+            <canvas id="chartDashFinanceMoney" role="img" aria-label="Estimated versus used spend on crop activities"></canvas>
+          </div>
+          <p class="dashboard-analytics-card__kpi">
+            Budgeted versus recorded spend across active crop sessions (same basis as finance overview).
+          </p>
+        </figure>
+
+        <figure class="dashboard-analytics-card">
+          <figcaption>End-product revenue by channel (KES)</figcaption>
+          <div class="dashboard-analytics-card__canvas">
+            <canvas id="chartDashFinanceEpRev" role="img" aria-label="Member versus walk-in end product revenue"></canvas>
+          </div>
+          <p class="dashboard-analytics-card__kpi">
+            Cooperative member vs walk-in supplier intake value.
+          </p>
+        </figure>
+      </div>
+
+      <p class="dashboard-coop-tab-links hint">
+        <a class="button button-ghost button-back-soft" href="{{ url_for('main.module_page', module_key='finance', role=r) }}">{{ i("wallet") }} Finance module</a>
+        <a class="button button-ghost button-back-soft" href="{{ url_for('main.finance_farmer_session_stock_purchases', role=r) }}">{{ i("spark") }} End product stock</a>
+      </p>
+    </div>
+
+    <div
+      class="dashboard-coop-tabpanel"
+      id="panel-coop-crops"
+      role="tabpanel"
+      aria-labelledby="tab-coop-crops"
+      data-coop-panel="crops"
+      hidden
+    >
+      <div class="dashboard-coop-kpi-grid">
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">Crops in session</span>
+          <strong class="dashboard-coop-kpi-value">{{ cs.crops_in_session_count }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">Active sessions</span>
+          <strong class="dashboard-coop-kpi-value">{{ cs.active_session_count }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">Farmers (distinct)</span>
+          <strong class="dashboard-coop-kpi-value">{{ cs.farmers_with_active_session }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card dashboard-coop-kpi-card--accent">
+          <span class="dashboard-coop-kpi-label">Total acreage (acres)</span>
+          <strong class="dashboard-coop-kpi-value">{{ "%.2f"|format(cs.total_acres|float) }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">Est. activity spend (KES)</span>
+          <strong class="dashboard-coop-kpi-value">{{ "%.2f"|format(cs.estimated_total_kes|float) }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">Used activity spend (KES)</span>
+          <strong class="dashboard-coop-kpi-value">{{ "%.2f"|format(cs.used_total_kes|float) }}</strong>
+        </div>
+      </div>
+
+      <div class="dashboard-coop-progress-stack">
+        {{ coop_progress_session_spend(cs, "crops-spend") }}
+        {{ coop_progress_crop_participation(m, cs, "crops-part") }}
+      </div>
+
+      <div class="dashboard-analytics-grid">
+        <figure class="dashboard-analytics-card dashboard-analytics-card--wide">
+          <figcaption>Crops in session — footprint</figcaption>
+          <div class="dashboard-analytics-card__canvas dashboard-analytics-card__canvas--wide">
+            <canvas id="chartDashCropsFootprint" role="img" aria-label="Crops sessions farmers footprint"></canvas>
+          </div>
+          <p class="dashboard-analytics-card__kpi">
+            <strong>{{ cs.crops_in_session_count }}</strong> crops ·
+            <strong>{{ cs.active_session_count }}</strong> sessions ·
+            <strong>{{ cs.farmers_with_active_session }}</strong> farmers ·
+            <strong>{{ "%.2f"|format(cs.total_acres|float) }}</strong> acres
+          </p>
+        </figure>
+      </div>
+
+      <p class="dashboard-coop-tab-links hint">
+        <a class="button button-ghost button-back-soft" href="{{ url_for('main.module_page', module_key='crops_session', role=r) }}">{{ i("leaf") }} Open Crops in session</a>
+        <span class="hint">Estimated vs used spend charts are on the <strong>Finance</strong> tab.</span>
+      </p>
+    </div>
+
+    <div
+      class="dashboard-coop-tabpanel"
+      id="panel-coop-endproducts"
+      role="tabpanel"
+      aria-labelledby="tab-coop-endproducts"
+      data-coop-panel="endproducts"
+      hidden
+    >
+      <div class="dashboard-coop-kpi-grid">
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">Stock-in movements</span>
+          <strong class="dashboard-coop-kpi-value">{{ ep.total_intakes }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">Active items</span>
+          <strong class="dashboard-coop-kpi-value">{{ ep.product_count }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card dashboard-coop-kpi-card--accent">
+          <span class="dashboard-coop-kpi-label">Total revenue (KES)</span>
+          <strong class="dashboard-coop-kpi-value">{{ "%.2f"|format(ep.total_revenue|float) }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">Member intakes</span>
+          <strong class="dashboard-coop-kpi-value">{{ ep.member_intakes }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">Walk-in intakes</span>
+          <strong class="dashboard-coop-kpi-value">{{ ep.walk_in_intakes }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">Qty — members</span>
+          <strong class="dashboard-coop-kpi-value">{{ ep.member_qty }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">Qty — walk-in</span>
+          <strong class="dashboard-coop-kpi-value">{{ ep.walk_in_qty }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">Revenue — members (KES)</span>
+          <strong class="dashboard-coop-kpi-value">{{ "%.2f"|format(ep.member_revenue|float) }}</strong>
+        </div>
+        <div class="dashboard-coop-kpi-card">
+          <span class="dashboard-coop-kpi-label">Revenue — walk-in (KES)</span>
+          <strong class="dashboard-coop-kpi-value">{{ "%.2f"|format(ep.walk_in_revenue|float) }}</strong>
+        </div>
+      </div>
+
+      <div class="dashboard-coop-progress-stack">
+        {{ coop_progress_session_spend(cs, "endproducts-spend") }}
+        {{ coop_progress_member_intake_share(ep, "endproducts-int") }}
+      </div>
+
+      <div class="dashboard-analytics-grid">
+        <figure class="dashboard-analytics-card">
+          <figcaption>End-product revenue (KES)</figcaption>
+          <div class="dashboard-analytics-card__canvas">
+            <canvas id="chartDashEndProduct" role="img" aria-label="Member versus walk-in end product revenue"></canvas>
+          </div>
+          <p class="dashboard-analytics-card__kpi">
+            Cooperative member vs walk-in supplier value from recorded intake prices.
+          </p>
+        </figure>
+
+        <figure class="dashboard-analytics-card">
+          <figcaption>End-product intake counts</figcaption>
+          <div class="dashboard-analytics-card__canvas">
+            <canvas id="chartDashEndProductIntakes" role="img" aria-label="Member versus walk-in intake counts"></canvas>
+          </div>
+          <p class="dashboard-analytics-card__kpi">
+            Number of stock-in movements tagged as farmer session vs walk-in end product.
+          </p>
+        </figure>
+
+        <figure class="dashboard-analytics-card dashboard-analytics-card--wide">
+          <figcaption>End-product quantities (member vs walk-in)</figcaption>
+          <div class="dashboard-analytics-card__canvas dashboard-analytics-card__canvas--wide">
+            <canvas id="chartDashEndProductQty" role="img" aria-label="Quantities by channel"></canvas>
+          </div>
+          <p class="dashboard-analytics-card__kpi">
+            Total quantity recorded on intake lines by channel (same movement filters as finance overview).
+          </p>
+        </figure>
+      </div>
+
+      <p class="dashboard-coop-tab-links hint">
+        <a class="button button-ghost button-back-soft" href="{{ url_for('main.finance_farmer_session_stock_purchases', role=r) }}">{{ i("spark") }} End product stock</a>
+        <a class="button button-ghost button-back-soft" href="{{ url_for('main.module_page', module_key='finance', role=r) }}">{{ i("wallet") }} Finance module</a>
+      </p>
+    </div>
+  </div>
+</section>
+
+<script type="application/json" id="dashboard-chart-data">{{ dashboard_metrics|tojson }}</script>
+{% endif %}
+
+<section class="panel" {% if dashboard_metrics %}style="margin-top:1rem"{% endif %}>
   <h3>{{ i("shield") }} Next steps</h3>
   <p class="lede dash-card-lede">
-    This is your landing area after login. Module menus for cooperatives operations, approvals, and reporting can be
-    added here as the programme expands.
+    {% if dashboard_metrics %}
+    Open a module from the sidebar for full lists and forms. Use the tabs above to switch cooperative snapshots.
+    {% else %}
+    This is your landing area after login. Use the sidebar to open modules you have access to.
+    {% endif %}
   </p>
 </section>
+{% endblock %}
+
+{% block scripts %}
+{% if dashboard_metrics %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+<script>
+(function () {
+  var dataEl = document.getElementById("dashboard-chart-data");
+  if (!dataEl || typeof Chart === "undefined") return;
+
+  var raw;
+  try {
+    raw = JSON.parse(dataEl.textContent || "{}");
+  } catch (e) {
+    return;
+  }
+
+  var m = raw.members || {};
+  var ep = raw.end_product || {};
+  var cs = raw.crops_session || {};
+
+  var dashState = { farmers: false, finance: false, crops: false, endproducts: false };
+
+  function theme() {
+    var dark = document.documentElement.getAttribute("data-theme") === "dark";
+    var border = dark ? "#071713" : "#ffffff";
+    return {
+      dark: dark,
+      border: border,
+      accent: dark ? "#34d399" : "#047857",
+      accent2: dark ? "#2dd4bf" : "#059669",
+      accent3: dark ? "#a7f3d0" : "#10b981",
+      pending: dark ? "#fbbf24" : "#d97706",
+      suspended: dark ? "#f87171" : "#b91c1c",
+      muted: dark ? "rgba(230,255,246,0.55)" : "#4f6f61",
+      grid: dark ? "rgba(110,231,183,0.18)" : "rgba(16,100,70,0.12)",
+      text: dark ? "#e6fff6" : "#0f1f17",
+      surface: dark ? "rgba(52,211,153,0.14)" : "rgba(4,120,87,0.08)",
+    };
+  }
+
+  var th = theme();
+
+  function fmtKes(n) {
+    var x = Number(n) || 0;
+    return "KES " + x.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  Chart.defaults.font.family = '"Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif';
+  Chart.defaults.color = th.text;
+
+  function resizeCharts(ids) {
+    ids.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      var ch = Chart.getChart(el);
+      if (ch) ch.resize();
+    });
+  }
+
+  function initFarmersCharts() {
+    if (dashState.farmers) return;
+    dashState.farmers = true;
+
+    var act = Number(m.active) || 0;
+    var pend = Number(m.pending) || 0;
+    var susp = Number(m.suspended) || 0;
+
+    new Chart(document.getElementById("chartDashMembers"), {
+      type: "doughnut",
+      data: {
+        labels: ["Active", "Pending approval", "Suspended"],
+        datasets: [
+          {
+            data: [act, pend, susp],
+            backgroundColor: [th.accent, th.pending, th.suspended],
+            borderWidth: 2,
+            borderColor: th.border,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: "bottom", labels: { boxWidth: 11, padding: 10, font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                var v = Number(ctx.raw) || 0;
+                var sum = act + pend + susp;
+                var pct = sum > 0 ? ((v / sum) * 100).toFixed(1) : "0";
+                return ctx.label + ": " + v + " (" + pct + "%)";
+              },
+            },
+          },
+        },
+        cutout: "54%",
+      },
+    });
+
+    var totalReg = Number(m.total) || act + pend + susp;
+    var withCrop = Number(cs.farmers_with_active_session) || 0;
+    var other = Math.max(0, totalReg - withCrop);
+
+    new Chart(document.getElementById("chartDashFarmersCropSession"), {
+      type: "bar",
+      data: {
+        labels: ["With active crop session", "Other registered"],
+        datasets: [
+          {
+            label: "Farmers",
+            data: [withCrop, other],
+            backgroundColor: [th.accent, th.surface],
+            borderRadius: 10,
+            borderSkipped: false,
+          },
+        ],
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                return ctx.label + ": " + String(Math.round(Number(ctx.raw) || 0));
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            ticks: { precision: 0, color: th.muted },
+            grid: { color: th.grid },
+          },
+          y: { grid: { display: false }, ticks: { color: th.muted } },
+        },
+      },
+    });
+  }
+
+  function initFinanceCharts() {
+    if (dashState.finance) return;
+    dashState.finance = true;
+
+    var est = Number(cs.estimated_total_kes) || 0;
+    var used = Number(cs.used_total_kes) || 0;
+
+    new Chart(document.getElementById("chartDashFinanceMoney"), {
+      type: "bar",
+      data: {
+        labels: ["Estimated total", "Used (recorded)"],
+        datasets: [
+          {
+            label: "KES",
+            data: [est, used],
+            backgroundColor: [th.surface, th.accent2],
+            borderRadius: 10,
+            borderSkipped: false,
+          },
+        ],
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                return fmtKes(ctx.raw);
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            ticks: {
+              color: th.muted,
+              callback: function (v) {
+                if (v >= 1e9) return (v / 1e9).toFixed(1) + "B";
+                if (v >= 1e6) return (v / 1e6).toFixed(1) + "M";
+                if (v >= 1e3) return (v / 1e3).toFixed(1) + "k";
+                return v;
+              },
+            },
+            grid: { color: th.grid },
+          },
+          y: { grid: { display: false }, ticks: { color: th.muted } },
+        },
+      },
+    });
+
+    var memRev = Number(ep.member_revenue) || 0;
+    var walkRev = Number(ep.walk_in_revenue) || 0;
+
+    new Chart(document.getElementById("chartDashFinanceEpRev"), {
+      type: "doughnut",
+      data: {
+        labels: ["Cooperative member", "Walk-in supplier"],
+        datasets: [
+          {
+            data: [memRev, walkRev],
+            backgroundColor: [th.accent, th.accent2],
+            borderWidth: 2,
+            borderColor: th.border,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: "bottom", labels: { boxWidth: 11, padding: 10, font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                var v = Number(ctx.raw) || 0;
+                var sum = memRev + walkRev;
+                var pct = sum > 0 ? ((v / sum) * 100).toFixed(1) : "0";
+                return ctx.label + ": " + fmtKes(v) + " (" + pct + "%)";
+              },
+            },
+          },
+        },
+        cutout: "54%",
+      },
+    });
+  }
+
+  function initCropsCharts() {
+    if (dashState.crops) return;
+    dashState.crops = true;
+
+    var cropsN = Number(cs.crops_in_session_count) || 0;
+    var sessN = Number(cs.active_session_count) || 0;
+    var farmN = Number(cs.farmers_with_active_session) || 0;
+
+    new Chart(document.getElementById("chartDashCropsFootprint"), {
+      type: "bar",
+      data: {
+        labels: ["Crops", "Active sessions", "Farmers"],
+        datasets: [
+          {
+            label: "Count",
+            data: [cropsN, sessN, farmN],
+            backgroundColor: [th.accent, th.accent2, th.accent],
+            borderRadius: 8,
+            borderSkipped: false,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                return ctx.label + ": " + String(Math.round(Number(ctx.raw) || 0));
+              },
+            },
+          },
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: th.muted } },
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0, color: th.muted },
+            grid: { color: th.grid },
+          },
+        },
+      },
+    });
+  }
+
+  function initEndProductCharts() {
+    if (dashState.endproducts) return;
+    dashState.endproducts = true;
+
+    var memRev = Number(ep.member_revenue) || 0;
+    var walkRev = Number(ep.walk_in_revenue) || 0;
+
+    new Chart(document.getElementById("chartDashEndProduct"), {
+      type: "doughnut",
+      data: {
+        labels: ["Cooperative member", "Walk-in supplier"],
+        datasets: [
+          {
+            data: [memRev, walkRev],
+            backgroundColor: [th.accent, th.accent2],
+            borderWidth: 2,
+            borderColor: th.border,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: "bottom", labels: { boxWidth: 11, padding: 10, font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                var v = Number(ctx.raw) || 0;
+                var sum = memRev + walkRev;
+                var pct = sum > 0 ? ((v / sum) * 100).toFixed(1) : "0";
+                return ctx.label + ": " + fmtKes(v) + " (" + pct + "%)";
+              },
+            },
+          },
+        },
+        cutout: "54%",
+      },
+    });
+
+    var mi = Number(ep.member_intakes) || 0;
+    var wi = Number(ep.walk_in_intakes) || 0;
+
+    new Chart(document.getElementById("chartDashEndProductIntakes"), {
+      type: "doughnut",
+      data: {
+        labels: ["Member intakes", "Walk-in intakes"],
+        datasets: [
+          {
+            data: [mi, wi],
+            backgroundColor: [th.accent3, th.accent2],
+            borderWidth: 2,
+            borderColor: th.border,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: "bottom", labels: { boxWidth: 11, padding: 10, font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                var v = Number(ctx.raw) || 0;
+                var sum = mi + wi;
+                var pct = sum > 0 ? ((v / sum) * 100).toFixed(1) : "0";
+                return ctx.label + ": " + v + " (" + pct + "%)";
+              },
+            },
+          },
+        },
+        cutout: "54%",
+      },
+    });
+
+    var mq = Number(ep.member_qty) || 0;
+    var wq = Number(ep.walk_in_qty) || 0;
+
+    new Chart(document.getElementById("chartDashEndProductQty"), {
+      type: "bar",
+      data: {
+        labels: ["Member qty", "Walk-in qty"],
+        datasets: [
+          {
+            label: "Quantity",
+            data: [mq, wq],
+            backgroundColor: [th.accent, th.surface],
+            borderRadius: 10,
+            borderSkipped: false,
+          },
+        ],
+      },
+      options: {
+        indexAxis: "y",
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                var v = Number(ctx.raw) || 0;
+                return "Quantity: " + v.toLocaleString(undefined, { maximumFractionDigits: 4 });
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            ticks: { color: th.muted },
+            grid: { color: th.grid },
+          },
+          y: { grid: { display: false }, ticks: { color: th.muted } },
+        },
+      },
+    });
+  }
+
+  var root = document.querySelector("[data-dashboard-coop-tabs]");
+  if (!root) return;
+
+  var tabs = root.querySelectorAll('.dashboard-coop-tab[role="tab"]');
+
+  function activateTab(key) {
+    tabs.forEach(function (btn) {
+      var sel = btn.getAttribute("data-coop-tab") === key;
+      btn.setAttribute("aria-selected", sel ? "true" : "false");
+      btn.tabIndex = sel ? 0 : -1;
+    });
+    root.querySelectorAll('[role="tabpanel"]').forEach(function (panel) {
+      var match = panel.getAttribute("data-coop-panel") === key;
+      panel.hidden = !match;
+    });
+
+    if (key === "farmers") {
+      initFarmersCharts();
+      requestAnimationFrame(function () {
+        resizeCharts(["chartDashMembers", "chartDashFarmersCropSession"]);
+      });
+    } else if (key === "finance") {
+      initFinanceCharts();
+      requestAnimationFrame(function () {
+        resizeCharts(["chartDashFinanceMoney", "chartDashFinanceEpRev"]);
+      });
+    } else if (key === "crops") {
+      initCropsCharts();
+      requestAnimationFrame(function () {
+        resizeCharts(["chartDashCropsFootprint"]);
+      });
+    } else if (key === "endproducts") {
+      initEndProductCharts();
+      requestAnimationFrame(function () {
+        resizeCharts(["chartDashEndProduct", "chartDashEndProductIntakes", "chartDashEndProductQty"]);
+      });
+    }
+  }
+
+  tabs.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      activateTab(btn.getAttribute("data-coop-tab"));
+    });
+  });
+
+  activateTab("farmers");
+})();
+</script>
+{% endif %}
 {% endblock %}

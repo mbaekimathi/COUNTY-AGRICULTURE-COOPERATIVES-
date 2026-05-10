@@ -12,7 +12,7 @@
     href="{{ url_for('main.warehouse_stock', role=session.get('employee_role')) }}"
     class="button button-ghost"
   >
-    {{ i("boxes") }} Back to stock management
+    {{ i("boxes") }} Back to item stock management
   </a>
 </div>
 
@@ -80,6 +80,7 @@
                   {% else %}
                     —
                   {% endif %}
+                  {% if t.note %}<br /><span class="hint">{{ t.note }}</span>{% endif %}
                 {% else %}
                   {% if t.stock_out_reason %}<span class="pill pill-warn" style="margin-right:0.35rem">{{ t.stock_out_reason }}</span>{% endif %}
                   {% if t.note %}<span class="hint">{{ t.note }}</span>{% elif not t.stock_out_reason %}—{% endif %}

@@ -2,112 +2,104 @@
 {% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
 {% block content %}
 {% from "macros/icons.html" import i %}
+{% set enrol_count = farmer_session_groups|length %}
 
-<div class="dashboard-header">
-  <div>
-    <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
-    <p class="dash-meta">{{ module_desc }}</p>
-    <p class="hint" style="margin-top: 0.85rem">
-      <a href="{{ url_for('main.farmers_manage_page', role=session.get('employee_role')) }}">{{ i("users_cog") }} Farmer management</a>
-      <span aria-hidden="true"> · </span>
-      <a href="{{ url_for('main.farmer_farming_session', role=session.get('employee_role')) }}">{{ i("leaf") }} Register farming session</a>
+<div class="farmers-session-page">
+  <div class="dashboard-header farmers-session-page__hero">
+    <div>
+      <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
+      {% if module_desc %}
+      <p class="dash-meta">{{ module_desc }}</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <section class="panel farmers-session-page__panel">
+    <div class="farmers-session-page__panel-head">
+      <div>
+        <h3 class="farmers-session-page__title">{{ i("leaf") }} Active session enrolments</h3>
+        <p class="lede farmers-session-page__lede">
+          Each row is one farmer with at least one <strong>active</strong> session.
+        </p>
+      </div>
+      <div class="farmers-session-page__count" aria-live="polite">
+        <span class="farmers-session-page__count-value">{{ enrol_count }}</span>
+        <span class="farmers-session-page__count-label">farmer{% if enrol_count != 1 %}s{% endif %} listed</span>
+      </div>
+    </div>
+
+    {% if enrol_count %}
+    <p class="farmers-session-page__click-hint" role="note">
+      <strong>Click any row</strong> (or press Enter when focused) to open that farmer’s sessions.
     </p>
-  </div>
-</div>
+    {% endif %}
 
-<section class="panel">
-  <h3>{{ i("leaf") }} Active session enrolments</h3>
-  <p class="hint" style="margin-bottom: 1rem">
-    One row per farmer. All <strong>active</strong> crops/sessions are listed with acres per crop; totals compare session acreage to recorded farm size.
-  </p>
-
-  <div class="table-wrap">
-    <table class="data-table farmers-in-session-table">
-      <thead>
-        <tr>
-          <th scope="col">Farmer &amp; phone</th>
-          <th scope="col">Code / member #</th>
-          <th scope="col">Location</th>
-          <th scope="col">Crops in session (acres each)</th>
-          <th scope="col">Σ Session acres</th>
-          <th scope="col">Farm on file (acres)</th>
-          <th scope="col">vs land</th>
-          <th scope="col">Farmer status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for g in farmer_session_groups %}
-        <tr
-          class="farmers-in-session-table__row--link"
-          tabindex="0"
-          role="link"
-          data-href="{{ url_for('main.farmer_all_active_sessions', role=session.get('employee_role'), farmer_id=g.farmer_id) }}"
-          aria-label="Open all active sessions for {{ g.full_name or 'farmer' }}"
-        >
-          <td>
-            <div><strong>{{ g.full_name or "—" }}</strong></div>
-            {% if g.phone_number %}
-              <div class="hint farmer-session-phone">{{ g.phone_number }}</div>
-            {% else %}
-              <div class="hint">—</div>
-            {% endif %}
-          </td>
-          <td>
-            {% if g.farmer_code or g.membership_number %}
-              {{ g.farmer_code or "—" }} / {{ g.membership_number or "—" }}
-            {% else %}
-              —
-            {% endif %}
-          </td>
-          <td>
-            {% if g.county or g.ward %}
-              {{ g.county or "" }}{% if g.county and g.ward %}, {% endif %}{{ g.ward or "" }}
-            {% else %}
-              —
-            {% endif %}
-          </td>
-          <td>
-            <ul class="farmer-session-crop-list">
-              {% for s in g.sessions %}
-              <li>
-                <strong>{{ s.crop_display }}</strong>
-                · <span class="num">{{ "%.4f"|format(s.acreage_used_acres) }}</span> ac
-                {% if s.season_name %}· {{ s.season_name }}{% endif %}
-              </li>
-              {% endfor %}
-            </ul>
-          </td>
-          <td><strong>{{ "%.4f"|format(g.sessions_total_acres) }}</strong></td>
-          <td>
-            {% if g.land_total_acres is not none %}
-              <strong>{{ "%.2f"|format(g.land_total_acres) }}</strong>
-              {% if g.land_size_unit %}<span class="hint">({{ g.land_size }} {{ g.land_size_unit }})</span>{% endif %}
-            {% else %}
-              <span class="hint">Not on file</span>
-            {% endif %}
-          </td>
-          <td>
-            {% if g.land_total_acres is not none %}
-              {% if g.land_over_by_acres %}
-                <span class="farmer-land-compare farmer-land-compare--over">Over by {{ "%.4f"|format(g.land_over_by_acres) }} ac</span>
+    <div class="table-wrap farmers-session-page__table-wrap">
+      <table class="data-table farmers-in-session-table">
+        <thead>
+          <tr>
+            <th scope="col">Farmer</th>
+            <th scope="col">Location</th>
+            <th scope="col"><span class="farmers-session-page__th-action">Open</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for g in farmer_session_groups %}
+          <tr
+            class="farmers-in-session-table__row--link"
+            tabindex="0"
+            role="link"
+            data-href="{{ url_for('main.farmer_all_active_sessions', role=session.get('employee_role'), farmer_id=g.farmer_id) }}"
+            aria-label="Open all active sessions for {{ g.full_name or 'farmer' }}"
+          >
+            <td class="farmers-in-session-table__farmer">
+              <div class="farmers-in-session-table__name">{{ g.full_name or "—" }}</div>
+              {% if g.phone_number %}
+              <div class="farmers-in-session-table__phone">{{ g.phone_number }}</div>
               {% else %}
-                <span class="farmer-land-compare farmer-land-compare--ok">{{ "%.4f"|format(g.land_remaining_acres) }} ac left</span>
+              <div class="farmers-in-session-table__phone farmers-in-session-table__phone--muted">No phone</div>
               {% endif %}
-            {% else %}
-              —
-            {% endif %}
-          </td>
-          <td>{{ g.farmer_status or "—" }}</td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="8" class="table-empty">No active farming sessions. Register a session or open Farmer management to add farmers.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</section>
+              {% if g.membership_number %}
+              <div class="farmers-in-session-table__ids">
+                <span class="farmers-in-session-table__id-chip">Member #{{ g.membership_number }}</span>
+              </div>
+              {% endif %}
+              <div class="farmers-in-session-table__status-inline">
+                {% set fs = (g.farmer_status or "")|trim|lower %}
+                {% if fs == "active" %}
+                  <span class="pill farmers-in-session-table__pill farmers-in-session-table__pill--active">Active</span>
+                {% elif fs == "pending" %}
+                  <span class="pill pill-warn farmers-in-session-table__pill">Pending</span>
+                {% elif fs == "suspended" %}
+                  <span class="pill farmers-in-session-table__pill farmers-in-session-table__pill--suspended">Suspended</span>
+                {% elif g.farmer_status %}
+                  <span class="pill farmers-in-session-table__pill">{{ g.farmer_status | replace("_", " ") | title }}</span>
+                {% else %}
+                  <span class="farmers-in-session-table__status-dash hint">—</span>
+                {% endif %}
+              </div>
+            </td>
+            <td class="farmers-in-session-table__loc">
+              {% if g.county or g.ward %}
+                {{ g.county or "" }}{% if g.county and g.ward %}, {% endif %}{{ g.ward or "" }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td class="farmers-in-session-table__go">
+              <span class="farmers-in-session-table__go-inner">{{ i("chevron_right", "icon-svg farmers-in-session-table__go-icon") }} Open</span>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="3" class="table-empty farmers-session-page__empty">No active farming sessions yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
 <script>
   (function () {
     document.querySelectorAll(".farmers-in-session-table__row--link[data-href]").forEach(function (tr) {

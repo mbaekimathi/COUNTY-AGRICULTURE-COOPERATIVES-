@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="finance-purchase-list-page">
+  <header class="dashboard-header finance-purchase-list-page__hero">
+    <div>
+      <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
+      <p class="dash-meta">{{ module_desc }}</p>
+      <div class="finance-purchase-list-page__badge-row" aria-label="Summary">
+        <span class="finance-purchase-list-page__badge">{{ movement_count }} movement{% if movement_count != 1 %}s{% endif %}</span>
+        <span class="finance-purchase-list-page__badge is-muted">Total qty {{ "%.2f"|format(total_qty|float) }}</span>
+        <span class="finance-purchase-list-page__badge is-muted">Total value KES {{ "%.2f"|format(total_purchase_value|float) }}</span>
+      </div>
+      <p style="margin-top:0.85rem">
+        <a
+          class="button button-ghost button-back-soft"
+          style="text-decoration:none"
+          href="{{ url_for('main.finance_product_purchases', role=session.get('employee_role')) }}"
+        >{{ i("chevron_left") }} Back to item finance</a>
+      </p>
+    </div>
+  </header>
+
+  <section class="panel">
+    <div class="finance-purchase-list-page__panel-head">
+      <div>
+        <h3>{{ i("package") }} End product stock</h3>
+        <p class="finance-purchase-list-page__panel-desc">
+          Each row is a warehouse stock-in from end product intake: cooperative member (active farming session) or walk-in supplier.
+          Amounts use quantity × buying price where a unit price was recorded.
+          “Transactions” is how many end-product intakes exist for that item overall (same rules as this list).
+          Click a row (or press Enter while focused) to open full intake details — session, supplier, quality, and note.
+        </p>
+      </div>
+    </div>
+
+    <div class="finance-purchase-list-page__stats" role="list">
+      <div class="finance-purchase-list-page__stat" role="listitem">
+        <span class="finance-purchase-list-page__stat-label">Movements</span>
+        <span class="finance-purchase-list-page__stat-value">{{ movement_count }}</span>
+      </div>
+      <div class="finance-purchase-list-page__stat" role="listitem">
+        <span class="finance-purchase-list-page__stat-label">Total quantity (all UOM)</span>
+        <span class="finance-purchase-list-page__stat-value">{{ "%.2f"|format(total_qty|float) }}</span>
+      </div>
+      <div class="finance-purchase-list-page__stat" role="listitem">
+        <span class="finance-purchase-list-page__stat-label">Total purchase value</span>
+        <span class="finance-purchase-list-page__stat-value">KES {{ "%.2f"|format(total_purchase_value|float) }}</span>
+      </div>
+    </div>
+
+    <div class="table-wrap finance-purchase-list-page__table-wrap">
+      <table class="data-table finance-purchase-list-page__table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th class="numeric-col" title="End-product intake movements recorded for this item (all time, matching session/walk-in rules)">Transactions</th>
+            <th class="numeric-col">Qty</th>
+            <th>UOM</th>
+            <th class="numeric-col">Unit price</th>
+            <th class="numeric-col">Line total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if purchase_rows and purchase_rows|length %}
+            {% for r in purchase_rows %}
+            {% set uom = (r.unit_of_measure or 'UNIT')|upper %}
+            {% set detail_url = url_for(
+              'main.finance_end_product_stock_detail',
+              role=session.get('employee_role'),
+              movement_id=r.id
+            ) %}
+            <tr
+              class="finance-purchase-list-page__row"
+              data-href="{{ detail_url }}"
+              tabindex="0"
+              role="link"
+              aria-label="Open end product intake detail for {{ r.crop_code }} {{ r.crop_name | e }}, movement {{ r.id }}"
+            >
+              <td>
+                <div class="finance-purchase-list-page__product-cell">
+                  <span class="finance-purchase-list-page__code">{{ r.crop_code }}</span>
+                  <span class="finance-purchase-list-page__name">{{ r.crop_name }}</span>
+                </div>
+              </td>
+              <td class="numeric-col finance-purchase-list-page__tx-count-cell">{{ r.item_end_product_tx_count | int }}</td>
+              <td class="numeric-col">{{ "%.2f"|format((r.quantity|float) if r.quantity is not none else 0) }}</td>
+              <td><span class="pill">{{ uom }}</span></td>
+              <td class="numeric-col">
+                {% if r.buying_price is not none %}
+                  KES {{ "%.2f"|format(r.buying_price|float) }}
+                {% else %}
+                  <span class="finance-purchase-list-page__muted">—</span>
+                {% endif %}
+              </td>
+              <td class="numeric-col">
+                {% if r.line_total is not none %}
+                  KES {{ "%.2f"|format(r.line_total|float) }}
+                {% else %}
+                  <span class="finance-purchase-list-page__muted">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          {% else %}
+            <tr>
+              <td colspan="6" class="table-empty">No end product stock intakes recorded yet.</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+  (function () {
+    var rows = document.querySelectorAll(".finance-purchase-list-page__row[data-href]");
+    rows.forEach(function (row) {
+      row.addEventListener("click", function (e) {
+        if (e.target && (e.target.closest("a") || e.target.closest("button"))) return;
+        var href = row.getAttribute("data-href");
+        if (href) window.location.href = href;
+      });
+      row.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          var href = row.getAttribute("data-href");
+          if (href) window.location.href = href;
+        }
+      });
+    });
+  })();
+</script>
+
+{% endblock %}

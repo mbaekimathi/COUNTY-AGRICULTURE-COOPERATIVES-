@@ -3,7 +3,8 @@
 {% block content %}
 {% from "macros/icons.html" import i %}
 
-<div class="dashboard-header farmer-crop-detail-header">
+<div class="farmer-crop-detail-page">
+<div class="dashboard-header farmer-crop-detail-header farmer-crop-detail-page__header">
   <div class="farmer-crop-detail-header__main">
     <h2 class="dash-title">{{ i("leaf") }} {{ product.crop_code }} — {{ product.crop_name }}</h2>
     <p class="dash-meta farmer-crop-detail-header__meta">
@@ -125,34 +126,30 @@
   </div>
 </div>
 
-<section class="panel" style="margin-top: 1rem">
-  <div class="row-buttons" style="justify-content:space-between; gap:0.75rem; flex-wrap:wrap">
-    <div style="display:flex; flex-direction:column; gap:0.2rem">
-      <h3 style="margin:0">{{ i("file_text") }} Scheduled activities</h3>
-      <p class="hint" style="margin:0">
-        Farm size in session: <strong>{{ "%.2f"|format(farm_acres or 0) }}</strong> acres
-      </p>
-    </div>
-    <a
-      class="button button-ghost"
-      href="{{ url_for('main.crops_session_crop_activities', role=session.get('employee_role'), product_id=product.id) }}"
-      style="text-decoration:none"
-    >{{ i("chevron_down") }} Manage activities</a>
+<section class="panel farmer-crop-detail-page__activities-panel">
+  <div class="farmer-crop-detail-page__activities-intro">
+    <h3 class="farmer-crop-detail-page__activities-title">{{ i("file_text") }} Scheduled activities</h3>
+    <p class="hint farmer-crop-detail-page__activities-meta">
+      Farm size in session: <strong>{{ "%.2f"|format(farm_acres or 0) }}</strong> acres
+    </p>
   </div>
 
-  <div class="table-wrap" style="margin-top: 0.75rem">
-    <table class="data-table">
+  <div class="table-wrap farmer-crop-detail-page__activities-table-wrap">
+    <table class="data-table farmer-crop-activities-table">
       <thead>
         <tr>
-          <th>DAY</th>
-          <th>TYPE</th>
-          <th>NAME</th>
-          <th>EQUIPMENT / TOOLS</th>
-          <th class="numeric-col">UNITS / ACRE</th>
-          <th class="numeric-col">COST / ACRE</th>
-          <th class="numeric-col">REQUIRED (THIS FARM)</th>
-          <th>PROGRESS</th>
-          <th>ACTION</th>
+          <th scope="col">DAY</th>
+          <th scope="col">ACTIVITY</th>
+          <th scope="col">EQUIPMENT / TOOLS</th>
+          <th class="numeric-col" scope="col">PER ACRE</th>
+          <th class="numeric-col" scope="col">REQUIRED (THIS FARM)</th>
+          <th scope="col">PROGRESS</th>
+          <th scope="col" class="farmer-crop-activities-table__action-col">
+            <span class="farmer-crop-activities-table__action-head">
+              <span class="farmer-crop-activities-table__action-head-title">Completion</span>
+              <span class="farmer-crop-activities-table__action-head-sub">Date done · short note</span>
+            </span>
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -169,48 +166,53 @@
           {% set total_units = (units_val_f * acres) if (units_val_f is not none and acres > 0) else none %}
           {% set total_cost = (cost_val_f * acres) if (cost_val_f is not none and acres > 0) else none %}
           <tr class="{% if st == 'SUSPENDED' %}activity-row--suspended{% endif %}">
-            <td><span class="pill">Day {{ a.scheduled_day }}</span></td>
-            <td>{{ (a.activity_type or '—')|replace('_',' ') }}</td>
-            <td>
-              <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:0.5rem">
-                <strong>{{ a.activity_name }}</strong>
-                <button
-                  type="button"
-                  class="button button-ghost"
-                  style="padding:0.15rem 0.35rem;font-size:0.82rem"
-                  title="View description"
-                  data-activity-desc-open
-                  data-activity-title="{{ (a.activity_name or '')|e }}"
-                  data-activity-desc="{{ (a.activity_description or '—')|e }}"
-                >{{ i("eye") }}</button>
+            <td data-label="Day"><span class="pill">Day {{ a.scheduled_day }}</span></td>
+            <td class="farmer-crop-activities-table__activity-cell" data-label="Activity">
+              <div class="farmer-crop-activities-table__activity-stack">
+                <span class="farmer-crop-activities-table__type-tag">{{ (a.activity_type or '—')|replace('_',' ') }}</span>
+                <div class="farmer-crop-activities-table__name-row">
+                  <strong>{{ a.activity_name }}</strong>
+                  <button
+                    type="button"
+                    class="button button-ghost farmer-crop-activities-table__desc-btn"
+                    title="View description"
+                    data-activity-desc-open
+                    data-activity-title="{{ (a.activity_name or '')|e }}"
+                    data-activity-desc="{{ (a.activity_description or '—')|e }}"
+                  >{{ i("eye") }}</button>
+                </div>
               </div>
             </td>
-            <td>
+            <td data-label="Equipment / tools">
               {% if a.equipment_product_id %}
                 <strong>{{ a.equipment_code }} — {{ a.equipment_name }}</strong>
-                <div class="hint" style="margin-top: 0.15rem">
+                <div class="hint farmer-crop-activities-table__equip-meta">
                   {{ a.equipment_category or a.equipment_type or '—' }}
                 </div>
               {% else %}
                 {{ a.equipment_tools or "—" }}
               {% endif %}
             </td>
-            <td class="numeric-col">
-              {% if units_val_f is not none %}
-                {{ "%.4f"|format(units_val_f)|replace('0000','')|replace('000','') }}
-                <span class="pill">{{ uom }}</span>
-              {% else %}
-                —
-              {% endif %}
+            <td class="numeric-col farmer-crop-activities-table__peracre-cell" data-label="Per acre">
+              <div class="farmer-crop-activities-table__peracre-stack">
+                <div class="farmer-crop-activities-table__peracre-units">
+                  {% if units_val_f is not none %}
+                    {{ "%.4f"|format(units_val_f)|replace('0000','')|replace('000','') }}
+                    <span class="pill">{{ uom }}</span>
+                  {% else %}
+                    —
+                  {% endif %}
+                </div>
+                <div class="farmer-crop-activities-table__peracre-cost hint">
+                  {% if cost_val_f is not none %}
+                    KES {{ "%.2f"|format(cost_val_f) }}
+                  {% else %}
+                    KES —
+                  {% endif %}
+                </div>
+              </div>
             </td>
-            <td class="numeric-col">
-              {% if cost_val_f is not none %}
-                KES {{ "%.2f"|format(cost_val_f) }}
-              {% else %}
-                —
-              {% endif %}
-            </td>
-            <td class="numeric-col">
+            <td class="numeric-col" data-label="Required (this farm)">
               {% if acres <= 0 %}
                 <span class="hint">No acreage set</span>
               {% else %}
@@ -220,54 +222,82 @@
                   <div>—</div>
                 {% endif %}
                 {% if total_cost is not none %}
-                  <div class="hint" style="margin-top:0.15rem">KES {{ "%.2f"|format(total_cost) }}</div>
+                  <div class="hint farmer-crop-activities-table__req-cost">KES {{ "%.2f"|format(total_cost) }}</div>
                 {% else %}
-                  <div class="hint" style="margin-top:0.15rem">KES —</div>
+                  <div class="hint farmer-crop-activities-table__req-cost">KES —</div>
                 {% endif %}
               {% endif %}
             </td>
-            <td>
+            <td data-label="Progress">
               {% set ps = (a.progress_status or 'NOT_YET')|upper %}
               {% if ps == 'DONE' %}
-                <span class="pill" style="background:#ecfdf5;color:#065f46;border-color:#a7f3d0">Done</span>
+                <span class="pill farmer-crop-activities-table__pill farmer-crop-activities-table__pill--done">Done</span>
               {% elif ps == 'OVERDUE' %}
-                <span class="pill" style="background:#fee2e2;color:#7f1d1d;border-color:#fecaca">Over due</span>
+                <span class="pill farmer-crop-activities-table__pill farmer-crop-activities-table__pill--overdue">Over due</span>
               {% elif ps == 'PENDING' %}
-                <span class="pill" style="background:#dbeafe;color:#1d4ed8;border-color:#bfdbfe">Pending</span>
+                <span class="pill farmer-crop-activities-table__pill farmer-crop-activities-table__pill--pending">Pending</span>
               {% elif ps == 'UPCOMING' %}
-                <span class="pill" style="background:#f1f5f9;color:#334155;border-color:#e2e8f0">Upcoming</span>
+                <span class="pill farmer-crop-activities-table__pill farmer-crop-activities-table__pill--upcoming">Upcoming</span>
               {% elif ps == 'SUSPENDED' %}
-                <span class="pill" style="background:#fef3c7;color:#92400e;border-color:#fcd34d">Suspended</span>
+                <span class="pill farmer-crop-activities-table__pill farmer-crop-activities-table__pill--suspended-act">Suspended</span>
               {% else %}
-                <span class="pill" style="background:#f1f5f9;color:#334155;border-color:#e2e8f0">Not yet</span>
+                <span class="pill farmer-crop-activities-table__pill farmer-crop-activities-table__pill--notyet">Not yet</span>
               {% endif %}
               {% if a.scheduled_on %}
-                <div class="hint" style="margin-top:0.15rem">Due: {{ a.scheduled_on }}</div>
+                <div class="hint farmer-crop-activities-table__due">Due: {{ a.scheduled_on }}</div>
               {% endif %}
             </td>
-            <td>
-              {% if (a.progress_status or '')|upper == 'DONE' %}
-                <span class="hint">Completed</span>
-              {% elif acres <= 0 %}
-                <span class="hint">Set acreage</span>
-              {% elif (a.progress_status or '')|upper in ['PENDING','OVERDUE'] %}
-                <form method="post" action="{{ url_for('main.farmer_crop_session_detail', role=session.get('employee_role'), farmer_id=farmer.id, product_id=product.id) }}" style="display:flex; flex-direction:column; gap:0.35rem; min-width: 12rem">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                  <input type="hidden" name="activity_action" value="complete_activity" />
-                  <input type="hidden" name="activity_id" value="{{ a.id }}" />
-                  <input type="date" name="done_date" required />
-                  <input type="text" name="completion_note" required placeholder="Completion note" />
-                  <button type="submit" class="button" style="padding:0.25rem 0.45rem;font-size:0.82rem">Mark done</button>
-                </form>
-              {% else %}
-                <span class="hint">—</span>
-              {% endif %}
+            <td class="farmer-crop-activities-table__action-col" data-label="Completion">
+              <div class="farmer-crop-activities-table__action-slot">
+                {% if (a.progress_status or '')|upper == 'DONE' %}
+                  <div class="farmer-crop-activities-table__action-chip farmer-crop-activities-table__action-chip--logged" role="status">
+                    {{ i("check", "icon-svg farmer-crop-activities-table__action-ico") }}
+                    <span>Logged</span>
+                  </div>
+                {% elif acres <= 0 %}
+                  <div class="farmer-crop-activities-table__action-chip farmer-crop-activities-table__action-chip--blocked" role="status">
+                    {{ i("lock", "icon-svg farmer-crop-activities-table__action-ico") }}
+                    <span>Needs acreage</span>
+                  </div>
+                {% elif (a.progress_status or '')|upper in ['PENDING','OVERDUE'] %}
+                  <form
+                    method="post"
+                    action="{{ url_for('main.farmer_crop_session_detail', role=session.get('employee_role'), farmer_id=farmer.id, product_id=product.id) }}"
+                    class="farmer-crop-activities-table__complete-form farmer-crop-activities-table__action-well"
+                  >
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                    <input type="hidden" name="activity_action" value="complete_activity" />
+                    <input type="hidden" name="activity_id" value="{{ a.id }}" />
+                    <div class="farmer-crop-activities-table__field">
+                      <label for="activity-done-date-{{ a.id }}">Date completed</label>
+                      <input id="activity-done-date-{{ a.id }}" type="date" name="done_date" required />
+                    </div>
+                    <div class="farmer-crop-activities-table__field">
+                      <label for="activity-done-note-{{ a.id }}">Note</label>
+                      <input
+                        id="activity-done-note-{{ a.id }}"
+                        type="text"
+                        name="completion_note"
+                        required
+                        placeholder="e.g. fertilizer applied"
+                        autocomplete="off"
+                      />
+                    </div>
+                    <button type="submit" class="button farmer-crop-activities-table__mark-done">{{ i("check", "icon-svg farmer-crop-activities-table__action-ico farmer-crop-activities-table__action-ico--btn") }} Save</button>
+                  </form>
+                {% else %}
+                  <div class="farmer-crop-activities-table__action-chip farmer-crop-activities-table__action-chip--idle" role="status">
+                    <span class="farmer-crop-activities-table__action-pulse" aria-hidden="true"></span>
+                    <span>Not ready to log</span>
+                  </div>
+                {% endif %}
+              </div>
             </td>
           </tr>
           {% endfor %}
         {% else %}
           <tr>
-            <td colspan="9" class="table-empty">No activities scheduled yet for this crop.</td>
+            <td colspan="7" class="table-empty">No activities scheduled yet for this crop.</td>
           </tr>
         {% endif %}
       </tbody>
@@ -343,5 +373,6 @@
     });
   })();
 </script>
+</div>
 
 {% endblock %}

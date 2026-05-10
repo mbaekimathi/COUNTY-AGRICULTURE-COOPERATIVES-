@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="csrf-token" content="{{ csrf_token }}" />
     <title>{% block title %}Meru Cooperatives{% endblock %}</title>
     <script>
       (function () {
@@ -24,7 +25,7 @@
     />
     <link rel="stylesheet" type="text/css" href="{{ url_for('main.app_stylesheet') }}?v={{ static_asset_version }}" />
   </head>
-  <body class="{% if session.get('employee_id') %}has-session{% endif %}">
+  <body class="{% if session.get('employee_id') %}has-session {% endif %}{% block body_class %}{% endblock %}">
     <div class="page-bg" aria-hidden="true">
       <span class="blob blob-a"></span>
       <span class="blob blob-b"></span>
@@ -165,12 +166,6 @@
             var isDark = theme === "dark";
             btn.setAttribute("aria-pressed", isDark ? "true" : "false");
             btn.setAttribute("aria-label", isDark ? "Switch to light mode" : "Switch to dark mode");
-            var sun = btn.querySelector(".theme-toggle__icon--sun");
-            var moon = btn.querySelector(".theme-toggle__icon--moon");
-            if (sun && moon) {
-              sun.hidden = isDark;
-              moon.hidden = !isDark;
-            }
           });
         }
 
@@ -277,45 +272,16 @@
     </script>
     <script>
       (function () {
-        function sameOrigin(url) {
-          try {
-            var u = new URL(url, window.location.href);
-            return u.origin === window.location.origin;
-          } catch (e) {
-            return false;
-          }
-        }
-
-        // Track previous in-app URL (so back never jumps outside the app).
-        try {
-          var current = window.location.href;
-          var last = sessionStorage.getItem("app:last_url");
-          if (last && last !== current) {
-            sessionStorage.setItem("app:prev_url", last);
-          }
-          sessionStorage.setItem("app:last_url", current);
-        } catch (e) {}
-
         document.querySelectorAll("[data-history-back]").forEach(function (btn) {
           btn.addEventListener("click", function () {
             var fallback = btn.getAttribute("data-fallback-href");
-
-            // Prefer tracked previous in-app URL.
+            // Go to the real previous entry in the tab's session history (same as browser Back).
             try {
-              var prev = sessionStorage.getItem("app:prev_url");
-              if (prev && prev !== window.location.href && sameOrigin(prev)) {
-                window.location.href = prev;
+              if (window.history.length > 1) {
+                window.history.back();
                 return;
               }
             } catch (e) {}
-
-            // Next best: same-origin referrer.
-            if (document.referrer && sameOrigin(document.referrer)) {
-              window.location.href = document.referrer;
-              return;
-            }
-
-            // Fallback: role dashboard (existing behavior).
             if (fallback) window.location.href = fallback;
           });
         });
@@ -364,6 +330,25 @@
 
         tick();
         setInterval(tick, 1000);
+      })();
+    </script>
+    <script>
+      (function () {
+        if (!document.body.classList.contains("has-session")) return;
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        if (!meta || !meta.content) return;
+        var pingUrl = {{ url_for('auth.session_ping') | tojson }};
+        var intervalMs = 120000;
+        function ping() {
+          if (document.visibilityState === "hidden") return;
+          var fd = new FormData();
+          fd.append("csrf_token", meta.content);
+          fetch(pingUrl, { method: "POST", body: fd, credentials: "same-origin" }).catch(function () {});
+        }
+        setInterval(ping, intervalMs);
+        document.addEventListener("visibilitychange", function () {
+          if (document.visibilityState === "visible") ping();
+        });
       })();
     </script>
     <script>

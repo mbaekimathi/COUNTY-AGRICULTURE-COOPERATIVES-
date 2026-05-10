@@ -2,78 +2,74 @@
 {% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
 {% block content %}
 {% from "macros/icons.html" import i %}
+{% set uom = (movement.unit_of_measure or 'UNIT')|upper %}
 
-<div class="finance-purchase-detail-page">
+<div class="finance-end-product-detail-page finance-purchase-detail-page">
   <header class="dashboard-header finance-purchase-detail__hero">
     <div>
-      <h2 class="dash-title">{{ i(module_icon) }} {{ product.crop_code }} — {{ product.crop_name }}</h2>
-      <p class="dash-meta">Item finance · stock movements and allocations</p>
-      <div class="finance-purchase-detail__badge-row" aria-label="Item summary">
-        <span class="finance-purchase-detail__badge">{{ product.crop_category or "Uncategorized" }}</span>
-        <span class="finance-purchase-detail__badge is-muted">{{ product.product_type or "—" }}</span>
-        <span class="finance-purchase-detail__badge is-muted">Unit: {{ (product.unit_of_measure or "UNIT")|upper }}</span>
-      </div>
+      <h2 class="dash-title">{{ i(module_icon) }} {{ movement.crop_code }} — {{ movement.crop_name }}</h2>
     </div>
   </header>
 
   <section class="panel">
     <div class="finance-purchase-detail__panel-head">
       <div>
-        <h3>{{ i("shopping_cart") }} Overall analytics</h3>
-        <p class="finance-purchase-detail__panel-desc">Snapshot from inventory and recorded stock movements for this item.</p>
+        <h3>{{ i("bar_chart") }} End product intake analytics</h3>
+        <p class="finance-purchase-detail__panel-desc">Member session versus walk-in intakes for this item.</p>
       </div>
     </div>
-    <div class="finance-purchase-detail__stats" role="list">
-      <div class="finance-purchase-detail__stat" role="listitem">
-        <span class="finance-purchase-detail__stat-label">Stock quantity</span>
-        <span class="finance-purchase-detail__stat-value">{{ "%.2f"|format(stock_qty or 0) }} <span class="pill">{{ (product.unit_of_measure or "UNIT")|upper }}</span></span>
-      </div>
-      <div class="finance-purchase-detail__stat" role="listitem">
-        <span class="finance-purchase-detail__stat-label">Total stock-in qty</span>
-        <span class="finance-purchase-detail__stat-value">{{ "%.2f"|format((stats.total_in_qty|float) if stats.total_in_qty is not none else 0) }}</span>
-      </div>
-      <div class="finance-purchase-detail__stat" role="listitem">
-        <span class="finance-purchase-detail__stat-label">Total stock-out qty</span>
-        <span class="finance-purchase-detail__stat-value">{{ "%.2f"|format((stats.total_out_qty|float) if stats.total_out_qty is not none else 0) }}</span>
-      </div>
-      <div class="finance-purchase-detail__stat" role="listitem">
-        <span class="finance-purchase-detail__stat-label">Avg buying price</span>
-        <span class="finance-purchase-detail__stat-value">{% if stats.avg_buying_price is not none %}KES {{ "%.2f"|format(stats.avg_buying_price|float) }}{% else %}—{% endif %}</span>
-      </div>
-      <div class="finance-purchase-detail__stat" role="listitem">
-        <span class="finance-purchase-detail__stat-label">Last buying price</span>
-        <span class="finance-purchase-detail__stat-value">{% if stats.last_buying_price is not none %}KES {{ "%.2f"|format(stats.last_buying_price|float) }}{% else %}—{% endif %}</span>
-      </div>
-      <div class="finance-purchase-detail__stat" role="listitem">
-        <span class="finance-purchase-detail__stat-label">Suppliers</span>
-        <span class="finance-purchase-detail__stat-value">{{ stats.suppliers_count or 0 }}</span>
-      </div>
-      <div class="finance-purchase-detail__stat" role="listitem">
-        <span class="finance-purchase-detail__stat-label">Total spent (stock-ins)</span>
-        <span class="finance-purchase-detail__stat-value">{% if stats.total_spent is not none %}KES {{ "%.2f"|format(stats.total_spent|float) }}{% else %}—{% endif %}</span>
-      </div>
-      <div class="finance-purchase-detail__stat" role="listitem">
-        <span class="finance-purchase-detail__stat-label">Est. stock value</span>
-        <span class="finance-purchase-detail__stat-value">{% if est_stock_value is not none %}KES {{ "%.2f"|format(est_stock_value|float) }}{% else %}—{% endif %}</span>
-      </div>
-      <div class="finance-purchase-detail__stat finance-purchase-detail__stat--wide" role="listitem">
-        <span class="finance-purchase-detail__stat-label">Last stock-in date</span>
-        <span class="finance-purchase-detail__stat-value">{{ stats.last_in_date or "—" }}</span>
-      </div>
+
+    <div class="table-wrap finance-end-product-detail-page__analytics-wrap">
+      <table class="data-table finance-end-product-detail-page__analytics-table">
+        <thead>
+          <tr>
+            <th>Source</th>
+            <th class="numeric-col">Intakes</th>
+            <th class="numeric-col">Qty</th>
+            <th class="numeric-col">Revenue (KES)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <span class="finance-end-product-detail-page__source-cell">{{ i("users") }} Cooperative member</span>
+              <div class="hint">Notes matching an active farming session intake</div>
+            </td>
+            <td class="numeric-col">{{ intake_split.member_intakes }}</td>
+            <td class="numeric-col">{{ "%.2f"|format(intake_split.member_qty|float) }} <span class="pill">{{ uom }}</span></td>
+            <td class="numeric-col">KES {{ "%.2f"|format(intake_split.member_revenue|float) }}</td>
+          </tr>
+          <tr>
+            <td>
+              <span class="finance-end-product-detail-page__source-cell">{{ i("truck") }} Walk-in supplier</span>
+              <div class="hint">End product walk-in warehouse intake</div>
+            </td>
+            <td class="numeric-col">{{ intake_split.walk_in_intakes }}</td>
+            <td class="numeric-col">{{ "%.2f"|format(intake_split.walk_in_qty|float) }} <span class="pill">{{ uom }}</span></td>
+            <td class="numeric-col">KES {{ "%.2f"|format(intake_split.walk_in_revenue|float) }}</td>
+          </tr>
+          <tr class="finance-end-product-detail-page__analytics-total">
+            <td><strong>Combined</strong></td>
+            <td class="numeric-col"><strong>{{ intake_split.total_intakes }}</strong></td>
+            <td class="numeric-col"><strong>{{ "%.2f"|format(intake_split.total_qty|float) }}</strong> <span class="pill">{{ uom }}</span></td>
+            <td class="numeric-col"><strong>KES {{ "%.2f"|format(intake_split.total_revenue|float) }}</strong></td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </section>
 
   <section class="panel" style="margin-top:1rem">
     <div class="finance-purchase-detail__toolbar">
       <div>
-        <h3>{{ i("file_text") }} Transactions</h3>
-        <p class="finance-purchase-detail__toolbar-note">Use the eye control on eligible stock-outs to view per-farmer quantities from warehouse distributions.</p>
+        <h3>{{ i("file_text") }} All transactions for this item</h3>
+        <p class="finance-purchase-detail__toolbar-note">Every stock-in and stock-out for {{ movement.crop_code }} — same ledger as item finance. The row for this intake is highlighted.</p>
       </div>
-      <a class="button button-ghost button-back-soft" style="text-decoration:none" href="{{ url_for('main.finance_product_purchases', role=session.get('employee_role')) }}">{{ i("chevron_left") }} Back to item finance</a>
+      <a class="button button-ghost button-back-soft" style="text-decoration:none" href="{{ item_finance_url }}">{{ i("wallet") }} Full item finance</a>
     </div>
 
     <div class="table-wrap finance-purchase-detail__table-wrap">
-      <table class="data-table finance-purchase-detail__tx-table">
+      <table class="data-table finance-purchase-detail__tx-table finance-end-product-detail-page__tx-table">
         <thead>
           <tr>
             <th>Date</th>
@@ -89,13 +85,16 @@
           {% if transactions and transactions|length %}
             {% for t in transactions %}
             {% set mt = (t.movement_type or "")|lower %}
-            <tr class="finance-purchase-detail__tx-row finance-purchase-detail__tx-row--{{ mt }}">
+            <tr class="finance-purchase-detail__tx-row finance-purchase-detail__tx-row--{{ mt }}{% if t.id == movement.id %} finance-purchase-detail__tx-row--context{% endif %}">
               <td>{{ t.created_at or "—" }}</td>
               <td>
                 {% if (t.movement_type or "") == "IN" %}
                   <span class="finance-purchase-detail__movement-pill finance-purchase-detail__movement-pill--in">IN</span>
                 {% else %}
                   <span class="finance-purchase-detail__movement-pill finance-purchase-detail__movement-pill--out">OUT</span>
+                {% endif %}
+                {% if t.id == movement.id %}
+                  <span class="finance-end-product-detail-page__tx-pin" title="The intake you opened from end product stock">This intake</span>
                 {% endif %}
               </td>
               <td>

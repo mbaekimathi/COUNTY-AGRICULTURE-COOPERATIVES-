@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Employee registration — Meru Cooperatives{% endblock %}
+{% block body_class %}page-auth-register{% endblock %}
 {% block content %}
 {% from "macros/icons.html" import i %}
 {% from "macros/forms.html" import password_field %}
@@ -8,14 +9,14 @@
   <section class="panel">
     <h2>{{ i("user") }} Create your employee account</h2>
     <p class="lede">
-      Submit your details for verification. New accounts start as <strong>Employee</strong> with status
-      <strong>Pending approval</strong>.
+      Submit your details for verification. Self-registration always assigns role <strong>Employee</strong> and status
+      <strong>Pending approval</strong>. An administrator must activate your account before you can sign in.
     </p>
 
-    <form method="post" action="{{ url_for('auth.register') }}" enctype="multipart/form-data" novalidate>
+    <form id="auth-register-form" method="post" action="{{ url_for('auth.register') }}" enctype="multipart/form-data">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
 
-      <div class="form-grid stagger-fields">
+      <div class="form-grid stagger-fields auth-register-form">
         <div class="field">
           <label class="label-row" for="full_name">{{ i("user") }} <span>Full name</span></label>
           <div class="input-wrap">
@@ -25,6 +26,7 @@
               name="full_name"
               type="text"
               autocomplete="name"
+              autocapitalize="characters"
               required
               value="{{ form.full_name if form else '' }}"
             />
@@ -40,10 +42,31 @@
               name="email"
               type="email"
               autocomplete="email"
+              autocapitalize="none"
+              spellcheck="false"
               required
               value="{{ form.email if form else '' }}"
             />
           </div>
+        </div>
+
+        <div class="field">
+          <label class="label-row" for="phone_number">{{ i("phone") }} <span>Mobile phone</span></label>
+          <div class="input-wrap">
+            {{ i("phone") }}
+            <input
+              id="phone_number"
+              name="phone_number"
+              type="tel"
+              inputmode="tel"
+              autocomplete="tel"
+              autocapitalize="none"
+              spellcheck="false"
+              required
+              value="{{ form.phone_number if form else '' }}"
+            />
+          </div>
+          <p class="hint">Kenya format: 07XXXXXXXX or 2547XXXXXXXX.</p>
         </div>
 
         <div class="field">
@@ -55,6 +78,7 @@
               name="national_id"
               type="text"
               autocomplete="off"
+              autocapitalize="characters"
               required
               value="{{ form.national_id if form else '' }}"
             />
@@ -70,7 +94,7 @@
               name="login_code"
               type="text"
               inputmode="numeric"
-              pattern="\d{6}"
+              pattern="[0-9]{6}"
               maxlength="6"
               autocomplete="off"
               required
@@ -78,17 +102,27 @@
             />
           </div>
           <p class="hint">Choose a unique 6-digit code you will use together with your password to sign in.</p>
+          <p class="hint login-code-check-msg" id="login_code_live_status" aria-live="polite"></p>
         </div>
 
+        <p class="hint auth-register-pw-intro">
+          At least <strong>6 characters</strong>. Letters, numbers, and symbols are allowed.
+        </p>
         <div class="field">
           <label class="label-row" for="password">{{ i("lock") }} <span>Password</span></label>
           {{ password_field("password", "password", "new-password", 6) }}
-          <p class="hint">At least 6 characters — numbers only (e.g. 6-digit PIN) or letters/words are allowed.</p>
+          <div class="hr-pw-strength" aria-live="polite">
+            <div class="hr-pw-strength__meter" data-auth-pw-meter data-level="0">
+              <span></span><span></span><span></span><span></span>
+            </div>
+            <p class="hr-pw-strength__text hint" data-auth-pw-strength-text></p>
+          </div>
         </div>
 
         <div class="field">
           <label class="label-row" for="confirm_password">{{ i("lock") }} <span>Confirm password</span></label>
           {{ password_field("confirm_password", "confirm_password", "new-password", 6) }}
+          <p class="hint hr-pw-match" data-auth-pw-match aria-live="polite"></p>
         </div>
 
         <div class="field">
@@ -103,20 +137,150 @@
       </div>
     </form>
   </section>
-
-  <aside class="side-note">
-    <div class="note-head">
-      {{ i("shield") }}
-      <p><strong>Roles &amp; access</strong></p>
-    </div>
-    <p>
-      <strong>Roles in the system</strong> include Administrator, Manager, Health officer, Sales, IT support, Storage,
-      and Employee. Self-registration assigns <strong>Employee</strong>; other roles are granted after approval.
-    </p>
-    <p>
-      You may sign in only when your status is <strong>Active</strong>. Pending and suspended accounts are blocked at
-      login.
-    </p>
-  </aside>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/login-code-live.js') }}"></script>
+<script>
+  (function () {
+    var CHECK_LOGIN_URL = {{ url_for('auth.check_login_code') | tojson }};
+    var form = document.getElementById("auth-register-form");
+    var lcInput = document.getElementById("login_code");
+    var lcStatus = document.getElementById("login_code_live_status");
+    var pw = document.getElementById("password");
+    var cf = document.getElementById("confirm_password");
+    var meter = document.querySelector("[data-auth-pw-meter]");
+    var strengthText = document.querySelector("[data-auth-pw-strength-text]");
+    var matchEl = document.querySelector("[data-auth-pw-match]");
+    if (!form || !pw || !cf || !meter || !strengthText || !matchEl) return;
+
+    if (lcInput && lcStatus && typeof wireLoginCodeAvailability === "function") {
+      wireLoginCodeAvailability({
+        checkUrl: CHECK_LOGIN_URL,
+        form: form,
+        input: lcInput,
+        statusEl: lcStatus,
+        beforeSubmit: function (e) {
+          cf.setCustomValidity("");
+          pw.setCustomValidity("");
+          if (pw.value !== cf.value) {
+            e.preventDefault();
+            cf.setCustomValidity("Passwords must match.");
+            cf.reportValidity();
+            return false;
+          }
+          return true;
+        },
+      });
+    } else {
+      form.addEventListener("submit", function (e) {
+        cf.setCustomValidity("");
+        pw.setCustomValidity("");
+        if (pw.value !== cf.value) {
+          e.preventDefault();
+          cf.setCustomValidity("Passwords must match.");
+          cf.reportValidity();
+        }
+      });
+    }
+
+    function passwordStrength(value) {
+      if (!value.length) {
+        return { level: 0, label: "Minimum 6 characters. Letters, numbers, and symbols allowed." };
+      }
+      if (value.length < 6) {
+        return { level: 0, label: "Too short — need at least 6 characters." };
+      }
+      var kinds = 0;
+      if (/[a-z]/.test(value)) kinds++;
+      if (/[A-Z]/.test(value)) kinds++;
+      if (/[0-9]/.test(value)) kinds++;
+      if (/[^A-Za-z0-9]/.test(value)) kinds++;
+      var bars = 1;
+      if (value.length >= 8) bars++;
+      if (value.length >= 10) bars++;
+      if (value.length >= 12) bars++;
+      if (kinds >= 2) bars++;
+      if (kinds >= 3) bars++;
+      if (kinds >= 4) bars++;
+      bars = Math.min(4, Math.max(1, bars));
+      var labels = { 1: "Weak password", 2: "Fair password", 3: "Good password", 4: "Strong password" };
+      return { level: bars, label: labels[bars] };
+    }
+
+    function updateStrength() {
+      var s = passwordStrength(pw.value);
+      meter.setAttribute("data-level", String(s.level));
+      meter.setAttribute("aria-valuenow", String(s.level));
+      meter.setAttribute("aria-valuetext", s.label);
+      strengthText.textContent = s.label;
+      strengthText.classList.remove(
+        "hr-pw-strength__text--warn",
+        "hr-pw-strength__text--ok",
+        "hr-pw-strength__text--muted",
+        "hr-pw-strength__text--fair"
+      );
+      if (!pw.value.length) strengthText.classList.add("hr-pw-strength__text--muted");
+      else if (s.level === 0) strengthText.classList.add("hr-pw-strength__text--warn");
+      else if (s.level <= 2) strengthText.classList.add("hr-pw-strength__text--fair");
+      else strengthText.classList.add("hr-pw-strength__text--ok");
+    }
+
+    function updateMatch() {
+      cf.setCustomValidity("");
+      var c = cf.value;
+      if (!c.length) {
+        matchEl.textContent = "";
+        matchEl.className = "hint hr-pw-match";
+        return;
+      }
+      if (pw.value === c) {
+        matchEl.textContent = "Passwords match.";
+        matchEl.className = "hint hr-pw-match hr-pw-match--ok";
+      } else {
+        matchEl.textContent = "Passwords do not match.";
+        matchEl.className = "hint hr-pw-match hr-pw-match--bad";
+      }
+    }
+
+    meter.setAttribute("role", "progressbar");
+    meter.setAttribute("aria-valuemin", "0");
+    meter.setAttribute("aria-valuemax", "4");
+
+    pw.addEventListener("input", function () {
+      pw.setCustomValidity("");
+      updateStrength();
+      updateMatch();
+    });
+    cf.addEventListener("input", function () {
+      cf.setCustomValidity("");
+      updateMatch();
+    });
+
+    updateStrength();
+    updateMatch();
+  })();
+
+  (function () {
+    function bindLowercaseEmail(el) {
+      if (!el) return;
+      function coerce() {
+        var low = el.value.toLowerCase();
+        if (low === el.value) return;
+        var start = el.selectionStart;
+        var end = el.selectionEnd;
+        el.value = low;
+        if (start != null && end != null && typeof start === "number") {
+          try {
+            el.setSelectionRange(start, end);
+          } catch (err) { /* no-op */ }
+        }
+      }
+      el.addEventListener("input", coerce);
+      el.addEventListener("blur", coerce);
+    }
+    bindLowercaseEmail(document.getElementById("email"));
+  })();
+</script>
 {% endblock %}

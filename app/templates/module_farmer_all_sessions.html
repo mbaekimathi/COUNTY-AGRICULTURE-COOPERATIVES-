@@ -3,6 +3,7 @@
 {% block content %}
 {% from "macros/icons.html" import i %}
 
+<div class="farmer-all-sessions-page">
 <div class="dashboard-header farmer-crop-detail-header farmer-all-sessions-topbar">
   <div class="farmer-farm-summary-anchor">
     <details class="farmer-crop-profile">
@@ -142,10 +143,19 @@
   </div>
 </div>
 
-<section class="panel">
+{% set _crop_links = namespace(ok=false) %}
+{% for row in session_rows %}
+  {% if row.product_id %}{% set _crop_links.ok = true %}{% endif %}
+{% endfor %}
+
+<section class="panel farmer-all-sessions-page__panel">
   <h3>{{ i("leaf") }} Sessions by crop</h3>
-  <p class="hint" style="margin-bottom: 1rem">Each row is one session (active or ended).</p>
-  <div class="table-wrap">
+  {% if _crop_links.ok %}
+  <p class="farmer-all-sessions-page__sessions-hint" role="note">
+    <strong>Click the row</strong> or <strong>Open</strong> (keyboard: Enter when focused) to view that crop’s sessions.
+  </p>
+  {% endif %}
+  <div class="table-wrap farmer-all-sessions-page__table-wrap">
     <table class="data-table farmer-all-sessions-table">
       <thead>
         <tr>
@@ -157,6 +167,7 @@
           <th scope="col">Status</th>
           <th scope="col">Land / area notes</th>
           <th scope="col">Registered by</th>
+          <th scope="col"><span class="farmer-all-sessions-page__th-open">Open</span></th>
         </tr>
       </thead>
       <tbody>
@@ -167,29 +178,36 @@
             tabindex="0"
             role="link"
             data-href="{{ url_for('main.farmer_crop_session_detail', role=session.get('employee_role'), farmer_id=farmer_id, product_id=row.product_id) }}"
-            aria-label="Open crop sessions for {{ farmer.full_name or 'farmer' }}"
+            aria-label="Open sessions for crop {{ row.product_crop_code or row.product_crop_name or row.crop_or_activity or 'product' }}"
           {% endif %}
         >
-          <td>
+          <td data-label="Crop / product">
             {% if row.product_crop_code or row.product_crop_name %}
               <strong>{{ row.product_crop_code or "" }}</strong>{% if row.product_crop_code and row.product_crop_name %} — {% endif %}{{ row.product_crop_name or "" }}
             {% else %}
               {{ row.crop_or_activity or "—" }}
             {% endif %}
           </td>
-          <td>{{ row.season_name or "—" }}</td>
-          <td>{{ row.session_started_on or "—" }}</td>
-          <td>{{ row.session_ended_on or "—" }}</td>
-          <td class="numeric-col">{{ "%.4f"|format(row.acreage_used_acres or 0) }}</td>
-          <td>{{ row.session_status or "—" }}</td>
-          <td>
+          <td data-label="Season">{{ row.season_name or "—" }}</td>
+          <td data-label="Started">{{ row.session_started_on or "—" }}</td>
+          <td data-label="Ended">{{ row.session_ended_on or "—" }}</td>
+          <td class="numeric-col" data-label="Acres">{{ "%.4f"|format(row.acreage_used_acres or 0) }}</td>
+          <td data-label="Status">{{ row.session_status or "—" }}</td>
+          <td data-label="Land / area notes">
             {% if row.land_area_notes %}{{ row.land_area_notes }}{% elif row.crop_or_activity %}{{ row.crop_or_activity }}{% else %}—{% endif %}
           </td>
-          <td>{{ row.registered_by_name or "—" }}</td>
+          <td data-label="Registered by">{{ row.registered_by_name or "—" }}</td>
+          <td class="farmer-all-sessions-table__go" data-label="Open">
+            {% if row.product_id %}
+            <span class="farmer-all-sessions-table__go-inner">{{ i("chevron_right", "icon-svg farmer-all-sessions-table__go-icon") }} Open</span>
+            {% else %}
+            <span class="hint">—</span>
+            {% endif %}
+          </td>
         </tr>
         {% else %}
-        <tr>
-          <td colspan="8" class="table-empty">No sessions for this farmer. <a href="{{ url_for('main.farmer_farming_session', role=session.get('employee_role')) }}?farmer_id={{ farmer_id }}">Register a farming session</a>.</td>
+        <tr class="farmer-all-sessions-table__row--empty">
+          <td colspan="9" class="table-empty">No sessions for this farmer. <a href="{{ url_for('main.farmer_farming_session', role=session.get('employee_role')) }}?farmer_id={{ farmer_id }}">Register a farming session</a>.</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -217,4 +235,5 @@
     });
   })();
 </script>
+</div>
 {% endblock %}

@@ -6,25 +6,24 @@
 <div class="dashboard-header">
   <div>
     <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
-    <p class="dash-meta">{{ module_desc }}</p>
-    <p class="hint" style="margin-top: 0.65rem">
-      <a href="{{ url_for('main.module_page', role=session.get('employee_role'), module_key='farmers') }}">{{ i("chevron_left") }} Farmers in session</a>
-    </p>
   </div>
 </div>
 
-<section class="panel">
+<section class="panel farmer-register-panel">
   <h3>{{ i("users") }} Register farmer</h3>
-  <details class="form-disclosure">
+  <p class="farmer-register-panel__lede hint">Open the form below to add a new farmer. Registration stays pending until approved.</p>
+  <details class="form-disclosure farmer-register-disclosure">
     <summary class="form-disclosure__summary">
       <span class="form-disclosure__summary-inner">{{ i("spark") }} Register farmer</span>
     </summary>
-    <div class="form-disclosure__body">
-      <form method="post" action="{{ url_for('main.farmers_action', role=session.get('employee_role')) }}" enctype="multipart/form-data" novalidate>
+    <div class="form-disclosure__body farmer-register-disclosure__body">
+      <form class="farmer-register-form" method="post" action="{{ url_for('main.farmers_action', role=session.get('employee_role')) }}" enctype="multipart/form-data" novalidate>
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
         <input type="hidden" name="action" value="create" />
 
-        <div class="form-grid" style="margin-top: 0.85rem">
+        <div class="farmer-register-form__scroll">
+        <div class="form-grid farmer-register-form__grid">
+          <section class="farmer-register-section">
           <h3 class="settings-card-title">1. Personal Identification</h3>
       <div class="field">
         <label class="label-row" for="f_full_name">{{ i("user") }} <span>Full name</span></label>
@@ -61,8 +60,28 @@
         <label class="label-row" for="f_photo">{{ i("camera") }} <span>Profile Photo</span></label>
         <input id="f_photo" name="profile_photo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
       </div>
+          </section>
 
+          <section class="farmer-register-section">
       <h3 class="settings-card-title">2. Location (Standardized for Analytics)</h3>
+      <div class="field farmer-register-gps-field">
+        <label class="label-row" for="f_gps">{{ i("shield") }} <span>GPS Location (optional)</span></label>
+        <div class="farmer-gps-autocomplete" data-gps-autocomplete data-gps-scope="register">
+          <div class="input-wrap">{{ i("shield") }}<input id="f_gps" name="gps_coordinates" type="text" placeholder="Search place name or paste lat, lng" autocomplete="off" data-gps-coords-input /></div>
+          <div class="farmer-gps-autocomplete__dropdown" data-gps-suggest-dropdown hidden role="listbox" aria-label="Place suggestions"></div>
+          <p class="hint farmer-gps-autocomplete__picked" data-gps-picked-label hidden></p>
+        </div>
+        <div class="row-buttons farmer-register-gps-actions">
+          <button type="button" class="button button-ghost" data-gps-detect aria-busy="false">Auto-detect</button>
+        </div>
+        <p class="farmer-register-gps-status hint" data-gps-status hidden aria-live="polite">
+          <span class="farmer-register-gps-status__inner">
+            <span class="farmer-register-gps-spinner" aria-hidden="true"></span>
+            <span data-gps-status-label></span>
+          </span>
+        </p>
+        <p class="hint">Type a place name for suggestions (Kenya-first), pick one to set coordinates, or paste lat/lng. Auto-detect uses your device GPS and fills structured location when possible.</p>
+      </div>
       <div class="field">
         <label class="label-row" for="f_county">{{ i("shield") }} <span>County</span></label>
         <div class="input-wrap">{{ i("shield") }}
@@ -145,40 +164,23 @@
         <label class="label-row" for="f_village">{{ i("shield") }} <span>Village (optional)</span></label>
         <div class="input-wrap">{{ i("shield") }}<input id="f_village" name="village" type="text" /></div>
       </div>
-      <div class="field">
-        <label class="label-row" for="f_gps">{{ i("shield") }} <span>GPS Location (optional)</span></label>
-        <div class="input-wrap">{{ i("shield") }}<input id="f_gps" name="gps_coordinates" type="text" placeholder="-0.123, 37.123" /></div>
-        <div class="row-buttons" style="margin-top: 0.45rem">
-          <button type="button" class="button button-ghost" data-gps-detect>Auto-detect</button>
-        </div>
-      </div>
+          </section>
 
+          <section class="farmer-register-section">
       <h3 class="settings-card-title">3. Farm Details</h3>
       <div class="field">
         <label class="label-row" for="f_farm_name">{{ i("boxes") }} <span>Farm Name (optional)</span></label>
         <div class="input-wrap">{{ i("boxes") }}<input id="f_farm_name" name="farm_name" type="text" /></div>
         <p class="hint">Auto-fills from last name (editable).</p>
       </div>
+      <input type="hidden" id="f_farm_loc" name="farm_location" value="" />
+      <p class="hint farmer-register-farm-loc-hint">Farm location text is filled automatically from GPS (coordinates + mapped address). Structured fields in Location above are what you should verify.</p>
+      <input type="hidden" name="land_size_unit" value="acres" />
       <div class="field">
-        <label class="label-row" for="f_farm_loc">{{ i("boxes") }} <span>Farm Location</span></label>
-        <div class="input-wrap">{{ i("boxes") }}<input id="f_farm_loc" name="farm_location" type="text" /></div>
-        <p class="hint">Tip: GPS auto-detect can fill this automatically.</p>
-      </div>
-      <div class="field">
-        <label class="label-row" for="f_land_unit">{{ i("boxes") }} <span>Unit</span></label>
+        <label class="label-row" for="f_land_size">{{ i("boxes") }} <span>Total land size (acres)</span></label>
         <div class="input-wrap">{{ i("boxes") }}
-          <select id="f_land_unit" name="land_size_unit">
-            <option value="">Select…</option>
-            <option value="acres">Acres</option>
-            <option value="hectares">Hectares</option>
-          </select>
-        </div>
-      </div>
-      <div class="field">
-        <label class="label-row" for="f_land_size">{{ i("boxes") }} <span>Total Land Size (value)</span></label>
-        <div class="input-wrap">{{ i("boxes") }}
-          <input id="f_land_size" name="land_size" type="text" inputmode="decimal" placeholder="Select unit first" data-land-size />
-          <span class="input-suffix" data-land-suffix>—</span>
+          <input id="f_land_size" name="land_size" type="text" inputmode="decimal" placeholder="Enter acres" data-land-size />
+          <span class="input-suffix" data-land-suffix>acres</span>
         </div>
       </div>
       <div class="field">
@@ -195,7 +197,7 @@
       </div>
       <div class="field" id="lease_period_field" hidden>
         <label class="label-row">{{ i("shield") }} <span>Lease period</span></label>
-        <div class="row-form" style="grid-template-columns: 1fr 1fr; gap: 0.65rem">
+        <div class="row-form farmer-register-lease-row">
           <input name="lease_period_value" type="number" min="1" step="1" placeholder="Period value" />
           <select name="lease_period_unit">
             <option value="">Select unit…</option>
@@ -205,7 +207,9 @@
         </div>
         <p class="hint">Required only if ownership type is leased.</p>
       </div>
+          </section>
 
+          <section class="farmer-register-section">
       <h3 class="settings-card-title">4. Cooperative Membership</h3>
       <div class="field">
         <label class="label-row" for="f_coop">{{ i("users") }} <span>Cooperative Name / Group</span></label>
@@ -224,28 +228,71 @@
         <div class="input-wrap">{{ i("shield") }}<input id="f_officer" type="text" value="{{ session.get('employee_name') or '' }}" readonly /></div>
         <p class="hint">Auto-filled from the logged-in user.</p>
       </div>
+          </section>
 
+          <section class="farmer-register-section farmer-register-payment-section">
       <h3 class="settings-card-title">5. Payment Information</h3>
       <div class="field">
-        <label class="label-row" for="f_mpesa">{{ i("wallet") }} <span>M-Pesa Number (required)</span></label>
-        <div class="input-wrap">{{ i("wallet") }}<input id="f_mpesa" name="mpesa_number" type="text" required /></div>
-      </div>
-      <div class="field">
-        <label class="label-row" for="f_bank">{{ i("wallet") }} <span>Bank Account (optional)</span></label>
-        <div class="input-wrap">{{ i("wallet") }}<input id="f_bank" name="bank_account" type="text" /></div>
-      </div>
-      <div class="field">
-        <label class="label-row" for="f_pay_method">{{ i("wallet") }} <span>Preferred Payment Method</span></label>
+        <label class="label-row" for="f_pay_channel">{{ i("wallet") }} <span>Preferred payment method</span></label>
         <div class="input-wrap">{{ i("wallet") }}
-          <select id="f_pay_method" name="preferred_payment_method">
+          <select id="f_pay_channel" name="payment_channel" required data-pay-channel>
             <option value="">Select…</option>
-            <option value="mpesa">M-Pesa</option>
+            <option value="mobile_money">Mobile money</option>
             <option value="bank">Bank</option>
-            <option value="sacco">SACCO</option>
           </select>
         </div>
       </div>
 
+      <div id="farmer-reg-pay-mobile" class="farmer-register-pay-panel" hidden data-pay-panel="mobile_money">
+        <div class="field">
+          <label class="label-row" for="f_mobile_carrier">{{ i("wallet") }} <span>Mobile network</span></label>
+          <div class="input-wrap">{{ i("wallet") }}
+            <select id="f_mobile_carrier" name="mobile_carrier">
+              <option value="mpesa">M-Pesa</option>
+              <option value="airtel_money">Airtel Money</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label-row" for="f_mpesa">{{ i("wallet") }} <span>Mobile money number</span></label>
+          <div class="input-wrap">{{ i("wallet") }}<input id="f_mpesa" name="mpesa_number" type="text" inputmode="tel" autocomplete="tel" placeholder="Matches phone number by default" data-mpesa-from-phone /></div>
+          <p class="hint">Filled from <strong>Phone number</strong> above; change here if the payout line differs.</p>
+        </div>
+      </div>
+
+      <div id="farmer-reg-pay-bank" class="farmer-register-pay-panel" hidden data-pay-panel="bank">
+        <div class="field">
+          <label class="label-row" for="f_payment_bank">{{ i("wallet") }} <span>Bank</span></label>
+          <div class="input-wrap">{{ i("wallet") }}
+            <select id="f_payment_bank" name="payment_bank">
+              <option value="">Select bank…</option>
+              <option value="KCB">KCB Bank</option>
+              <option value="EQUITY">Equity Bank</option>
+              <option value="COOP">Co-operative Bank</option>
+              <option value="ABSA">Absa Bank</option>
+              <option value="STANBIC">Stanbic Bank</option>
+              <option value="NCBA">NCBA Bank</option>
+              <option value="DTB">Diamond Trust Bank</option>
+              <option value="IM_BANK">I&amp;M Bank</option>
+              <option value="HF">HF Group / HFC</option>
+              <option value="SBM">SBM Bank Kenya</option>
+              <option value="FAMILY">Family Bank</option>
+              <option value="PRIME">Prime Bank</option>
+              <option value="CREDIT">Credit Bank</option>
+              <option value="BANK_OF_BARODA">Bank of Baroda</option>
+              <option value="BOA">Bank of Africa</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label-row" for="f_payment_bank_account">{{ i("wallet") }} <span>Bank account number</span></label>
+          <div class="input-wrap">{{ i("wallet") }}<input id="f_payment_bank_account" name="payment_bank_account" type="text" inputmode="numeric" autocomplete="off" /></div>
+        </div>
+      </div>
+          </section>
+
+          <section class="farmer-register-section">
       <h3 class="settings-card-title">6. Emergency Contact</h3>
       <div class="field">
         <label class="label-row" for="f_kin_name">{{ i("user") }} <span>Next of Kin Name</span></label>
@@ -270,7 +317,9 @@
           </select>
         </div>
       </div>
+          </section>
 
+          <section class="farmer-register-section">
       <h3 class="settings-card-title">7. Verification Section</h3>
       <div class="field">
         <label class="label-row" for="f_id_upload">{{ i("id") }} <span>National ID Upload</span></label>
@@ -279,15 +328,19 @@
       </div>
       <div class="field">
         <label class="label-row" for="f_consent">{{ i("shield") }} <span>Registration consent</span></label>
-        <label style="display:flex;gap:0.6rem;align-items:flex-start">
-          <input id="f_consent" name="registration_consent" type="checkbox" required style="margin-top:0.25rem" />
+        <label class="farmer-register-consent">
+          <input id="f_consent" name="registration_consent" type="checkbox" required />
           <span>I confirm the farmer has consented to registration and data processing.</span>
         </label>
       </div>
+          </section>
 
-      <div class="actions">
-        <button type="submit">{{ i("spark") }} Save registration</button>
-      </div>
+        </div>
+        </div>
+        <div class="farmer-register-form__footer">
+          <div class="actions farmer-register-form__actions">
+            <button type="submit">{{ i("spark") }} Save registration</button>
+          </div>
         </div>
       </form>
     </div>
@@ -301,7 +354,7 @@
       {{ i("search") }}
       <input
         type="text"
-        placeholder="Search by membership, name, or phone…"
+        placeholder="Search by membership, name, phone, status, land, or location…"
         data-farmer-search
         aria-label="Search farmers"
       />
@@ -309,15 +362,12 @@
     <span class="hint" data-farmer-search-count></span>
   </div>
   <div class="table-wrap">
-    <table class="data-table">
+    <table class="data-table farmer-mgmt-directory-table">
       <thead>
         <tr>
-          <th>Membership</th>
-          <th>Name</th>
-          <th>Phone</th>
-          <th>Land size</th>
-          <th>Status</th>
-          <th style="min-width: 290px">Actions</th>
+          <th scope="col">Farmer</th>
+          <th scope="col">Total land size</th>
+          <th scope="col" style="min-width: 290px">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -328,26 +378,54 @@
           data-membership="{{ (f.membership_number or '') }}"
           data-name="{{ (f.full_name or '') }}"
           data-phone="{{ (f.phone_number or '') }}"
-          data-land="{% if f.land_size is not none %}{{ f.land_size }} {{ f.land_size_unit or '' }}{% endif %}"
+          data-status="{{ (f.status or '') | replace('_', ' ') }}"
+          data-land="{% if f.land_size is not none %}{{ f.land_size }} {{ f.land_size_unit or '' }} {% endif %}{% if f.available_acres is not none %}{{ f.available_acres }} {% endif %}{{ f.county or '' }} {{ f.ward or '' }} {{ f.location or '' }} {{ f.village or '' }}"
         >
-          <td><code class="profile-code">{{ f.membership_number or "—" }}</code></td>
-          <td>{{ f.full_name }}</td>
-          <td>{{ f.phone_number }}</td>
-          <td>
-            {% if f.land_size is not none %}
-              {{ f.land_size }}{% if f.land_size_unit %} {{ (f.land_size_unit|string)|upper }}{% endif %}
-            {% else %}
-              —
-            {% endif %}
+          <td class="farmer-mgmt-directory-table__farmer-cell">
+            <div class="farmer-mgmt-directory-table__farmer-stack">
+              <strong class="farmer-mgmt-directory-table__farmer-name">{{ f.full_name or "—" }}</strong>
+              <div class="farmer-mgmt-directory-table__farmer-meta hint">
+                <code class="profile-code">{{ f.membership_number or "—" }}</code>
+                <span class="farmer-mgmt-directory-table__meta-sep" aria-hidden="true">·</span>
+                <span>{{ f.phone_number or "—" }}</span>
+              </div>
+              <div class="farmer-mgmt-directory-table__farmer-status">
+                <span class="farmer-mgmt-directory-table__status-text">{{ f.status | replace("_", " ") }}</span>
+                {% set land_sess = f.farming_session_land | default("none") %}
+                {% if land_sess == "partial" %}
+                  <span class="farming-session-land-badge farming-session-land-badge--partial">Partially in farming session</span>
+                {% elif land_sess == "full" %}
+                  <span class="farming-session-land-badge farming-session-land-badge--full">Fully in farming session</span>
+                {% endif %}
+              </div>
+            </div>
           </td>
-          <td>
-            {{ f.status | replace("_", " ") }}
-            {% set land_sess = f.farming_session_land | default("none") %}
-            {% if land_sess == "partial" %}
-              <span class="farming-session-land-badge farming-session-land-badge--partial">Partially in farming session</span>
-            {% elif land_sess == "full" %}
-              <span class="farming-session-land-badge farming-session-land-badge--full">Fully in farming session</span>
-            {% endif %}
+          <td class="farmer-mgmt-directory-table__land-cell">
+            <div class="farmer-mgmt-directory-table__land-total">
+              {% if f.land_size is not none %}
+                {{ f.land_size }}{% if f.land_size_unit %} {{ (f.land_size_unit|string)|upper }}{% endif %}
+              {% else %}
+                —
+              {% endif %}
+            </div>
+            <div class="farmer-mgmt-directory-table__land-available hint">
+              {% if f.available_acres is not none %}
+                Available land: <strong>{{ "%.2f"|format(f.available_acres) }}</strong> ac
+              {% else %}
+                Available land: —
+              {% endif %}
+            </div>
+            <div class="farmer-mgmt-directory-table__land-loc hint">
+              {% if f.county or f.ward %}
+                <div>{{ f.county or "" }}{% if f.county and f.ward %}, {% endif %}{{ f.ward or "" }}</div>
+              {% endif %}
+              {% if f.location or f.village %}
+                <div>{% if f.location %}{{ f.location }}{% endif %}{% if f.location and f.village %}, {% endif %}{% if f.village %}{{ f.village }}{% endif %}</div>
+              {% endif %}
+              {% if not (f.county or f.ward or f.location or f.village) %}
+                <div>—</div>
+              {% endif %}
+            </div>
           </td>
           <td>
             <div class="row-buttons" style="gap: 0.4rem; flex-wrap: wrap">
@@ -527,17 +605,21 @@
 </div>
 
 <div class="modal-backdrop" data-farmer-edit-modal hidden>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="farmer_edit_title" tabindex="-1">
-    <div class="modal__head">
-      <h3 id="farmer_edit_title" class="modal__title">{{ i("pencil") }} Edit farmer</h3>
+  <div class="modal farmer-edit-modal" role="dialog" aria-modal="true" aria-labelledby="farmer_edit_title" tabindex="-1">
+    <div class="modal__head farmer-edit-modal__head">
+      <div class="farmer-edit-modal__head-text">
+        <h3 id="farmer_edit_title" class="modal__title">{{ i("pencil") }} Edit farmer</h3>
+        <p class="farmer-edit-modal__lede">Update identification, location, farm, and payment details.</p>
+      </div>
       <button type="button" class="button button-ghost modal__close" data-farmer-edit-close aria-label="Close" title="Close">×</button>
     </div>
-    <div class="modal__body">
-      <form method="post" action="{{ url_for('main.farmers_action', role=session.get('employee_role')) }}" enctype="multipart/form-data" data-farmer-edit-form>
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-        <input type="hidden" name="action" value="update" />
-        <input type="hidden" name="farmer_id" value="" />
-        <div class="form-grid" style="margin-top: 0.25rem">
+    <form class="farmer-edit-modal__form" method="post" action="{{ url_for('main.farmers_action', role=session.get('employee_role')) }}" enctype="multipart/form-data" data-farmer-edit-form>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <input type="hidden" name="action" value="update" />
+      <input type="hidden" name="farmer_id" value="" />
+      <div class="modal__body farmer-edit-modal__body">
+        <div class="form-grid farmer-edit-modal__grid">
+          <section class="farmer-edit-modal__section">
           <h3 class="settings-card-title">1. Personal Identification</h3>
           <div class="row-form">
             <div class="modal-field">
@@ -582,7 +664,9 @@
               <input name="profile_photo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
             </div>
           </div>
+          </section>
 
+          <section class="farmer-edit-modal__section">
           <h3 class="settings-card-title">2. Location</h3>
           <div class="row-form">
             <div class="modal-field">
@@ -605,16 +689,22 @@
               <label class="modal-label">Village</label>
               <input name="village" value="" placeholder="Village" />
             </div>
-            <div class="modal-field modal-field--span2">
+            <div class="modal-field modal-field--span2 farmer-gps-autocomplete" data-gps-autocomplete data-gps-scope="modal">
               <label class="modal-label">GPS coordinates (Latitude, Longitude)</label>
-              <div class="modal-row">
-                <input name="gps_coordinates" value="" placeholder="-0.123456, 37.123456" data-modal-gps />
+              <div class="modal-row farmer-gps-autocomplete__row">
+                <div class="farmer-gps-autocomplete__input-wrap">
+                  <input name="gps_coordinates" value="" placeholder="Search place or paste lat, lng" autocomplete="off" data-modal-gps data-gps-coords-input />
+                  <div class="farmer-gps-autocomplete__dropdown" data-gps-suggest-dropdown hidden role="listbox" aria-label="Place suggestions"></div>
+                  <p class="hint farmer-gps-autocomplete__picked" data-gps-picked-label hidden></p>
+                </div>
                 <button type="button" class="button button-ghost" data-modal-gps-detect>Auto-detect</button>
               </div>
-              <p class="hint">Use auto-detect to update latitude/longitude, or type manually.</p>
+              <p class="hint">Search for a place or paste coordinates. Auto-detect uses device GPS.</p>
             </div>
           </div>
+          </section>
 
+          <section class="farmer-edit-modal__section">
           <h3 class="settings-card-title">3. Farm Details</h3>
           <div class="row-form">
             <div class="modal-field">
@@ -660,7 +750,9 @@
               </select>
             </div>
           </div>
+          </section>
 
+          <section class="farmer-edit-modal__section">
           <h3 class="settings-card-title">4. Cooperative Membership</h3>
           <div class="row-form">
             <div class="modal-field modal-field--span2">
@@ -677,7 +769,9 @@
             </div>
             <p class="hint">Cooperative membership details are locked and cannot be edited.</p>
           </div>
+          </section>
 
+          <section class="farmer-edit-modal__section">
           <h3 class="settings-card-title">5. Payment Information</h3>
           <div class="row-form">
             <div class="modal-field">
@@ -693,12 +787,15 @@
               <select name="preferred_payment_method">
                 <option value="">Select…</option>
                 <option value="mpesa">M-Pesa</option>
+                <option value="airtel_money">Airtel Money</option>
                 <option value="bank">Bank</option>
                 <option value="sacco">SACCO</option>
               </select>
             </div>
           </div>
+          </section>
 
+          <section class="farmer-edit-modal__section">
           <h3 class="settings-card-title">6. Emergency Contact</h3>
           <div class="row-form">
             <div class="modal-field">
@@ -723,7 +820,9 @@
               </select>
             </div>
           </div>
+          </section>
 
+          <section class="farmer-edit-modal__section">
           <h3 class="settings-card-title">7. Verification</h3>
           <div class="row-form">
             <div class="modal-field modal-field--span2">
@@ -738,15 +837,16 @@
               <input name="national_id_upload" type="file" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf" />
             </div>
           </div>
+          </section>
         </div>
-        <div class="modal__footer">
-          <div class="row-buttons" style="justify-content: flex-end">
-            <button type="button" class="button button-ghost" data-farmer-edit-close>Cancel</button>
-            <button type="submit" class="button">{{ i("spark") }} Save changes</button>
-          </div>
+      </div>
+      <div class="modal__footer farmer-edit-modal__footer">
+        <div class="row-buttons farmer-edit-modal__footer-actions">
+          <button type="button" class="button button-ghost" data-farmer-edit-close>Cancel</button>
+          <button type="submit" class="button">{{ i("spark") }} Save changes</button>
         </div>
-      </form>
-    </div>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -762,6 +862,8 @@
     var locationEl = document.querySelector("[data-location]");
     var locationList = document.getElementById("location_list");
     var locationHint = document.querySelector("[data-location-hint]");
+    var villageEl = document.getElementById("f_village");
+    var farmLocEl = document.getElementById("f_farm_loc");
     if (!countyEl || !subEl || !wardEl) return;
 
     // Full Kenya dataset (counties -> constituencies/sub-counties -> wards)
@@ -769,6 +871,438 @@
     var DATA_URL = "https://raw.githubusercontent.com/mbithuka/Counties/master/restructured_data.json";
     var cacheKey = "kenya_admin_v1";
     var kenyaData = null;
+
+    function norm(s) {
+      return String(s || "")
+        .toLowerCase()
+        .trim();
+    }
+
+    function normalizeLabel(s) {
+      return String(s || "").trim();
+    }
+
+    function foldCountyName(s) {
+      return norm(s).replace(/-/g, " ").replace(/\s+county\s*$/, "").trim();
+    }
+
+    function tokenSig(s) {
+      return norm(s)
+        .replace(/-/g, " ")
+        .split(/\s+/)
+        .filter(Boolean)
+        .sort()
+        .join(" ");
+    }
+
+    function scrubPlaceToken(x) {
+      return norm(x)
+        .replace(/\s+ward\s*$/i, "")
+        .replace(/\s+location\s*$/i, "")
+        .replace(/\s+division\s*$/i, "")
+        .trim();
+    }
+
+    function foldMatchKey(s) {
+      return norm(s)
+        .replace(/\u2019/g, "'")
+        .replace(/[\s\/]+/g, " ")
+        .trim();
+    }
+
+    function tokensFromDisplayName(displayName, wardVal) {
+      if (!displayName) return [];
+      var wn = wardVal ? foldMatchKey(scrubPlaceToken(wardVal)) : "";
+      var parts = displayName.split(",").map(function (p) {
+        return p.trim();
+      }).filter(Boolean);
+      var junk = /^(kenya|ke)$/i;
+      var postal = /^\d{4,}$/;
+      var out = [];
+      var pi;
+      for (pi = 0; pi < Math.min(parts.length, 7); pi++) {
+        var seg = parts[pi];
+        if (!seg || junk.test(seg) || postal.test(seg)) continue;
+        if (/\bcounty\b/i.test(seg)) continue;
+        var t = scrubPlaceToken(seg);
+        if (!t || t.length < 2) continue;
+        if (wn && (t === wn || foldMatchKey(t) === wn || t.indexOf(wn) >= 0 || wn.indexOf(t) >= 0))
+          continue;
+        if (out.indexOf(t) < 0) out.push(t);
+      }
+      return out;
+    }
+
+    function gatherVillageCandidates(addr, wardVal, displayName) {
+      var wn = wardVal ? foldMatchKey(scrubPlaceToken(wardVal)) : "";
+      function skipAsWard(t) {
+        if (!wn || !t) return false;
+        var f = foldMatchKey(t);
+        return f === wn || f.indexOf(wn) >= 0 || wn.indexOf(f) >= 0;
+      }
+      function pushUnique(arr, x) {
+        if (!x) return;
+        var t = scrubPlaceToken(x);
+        if (!t || t.length < 2 || skipAsWard(t)) return;
+        if (arr.indexOf(t) < 0) arr.push(t);
+      }
+      var raw = [];
+      pushUnique(raw, addr.hamlet);
+      pushUnique(raw, addr.isolated_dwelling);
+      pushUnique(raw, addr.village);
+      pushUnique(raw, addr.locality);
+      tokensFromDisplayName(displayName, wardVal).forEach(function (t) {
+        pushUnique(raw, t);
+      });
+      pushUnique(raw, addr.neighbourhood);
+      return raw;
+    }
+
+    function matchesAdminBoundaryPlace(t, countyVal, subVal, wardVal) {
+      var f = foldMatchKey(scrubPlaceToken(t));
+      if (!f || f.length < 2) return false;
+      var admins = [countyVal, subVal, wardVal];
+      var ai;
+      for (ai = 0; ai < admins.length; ai++) {
+        var a = admins[ai];
+        if (!a || !String(a).trim()) continue;
+        var af = foldMatchKey(scrubPlaceToken(a));
+        if (!af) continue;
+        if (f === af) return true;
+        if (tokenSig(t) === tokenSig(a)) return true;
+      }
+      return false;
+    }
+
+    function gatherLocationCandidates(addr, countyVal, subVal, wardVal, villageNormFold, displayName) {
+      var wn = wardVal ? foldMatchKey(scrubPlaceToken(wardVal)) : "";
+      var vn = villageNormFold || "";
+
+      function rejectDup(t) {
+        if (!t || t.length < 2) return true;
+        var f = foldMatchKey(t);
+        if (matchesAdminBoundaryPlace(t, countyVal, subVal, wardVal)) return true;
+        if (wn && (f === wn || f.indexOf(wn) >= 0 || wn.indexOf(f) >= 0)) return true;
+        if (vn && (f === vn || f.indexOf(vn) >= 0 || vn.indexOf(f) >= 0)) return true;
+        return false;
+      }
+      function pushUnique(arr, x) {
+        if (!x) return;
+        var t = scrubPlaceToken(x);
+        if (rejectDup(t)) return;
+        if (arr.indexOf(t) < 0) arr.push(t);
+      }
+
+      var raw = [];
+      pushUnique(raw, addr.city_block);
+      pushUnique(raw, addr.quarter);
+      pushUnique(raw, addr.neighbourhood);
+      pushUnique(raw, addr.suburb);
+      pushUnique(raw, addr.hamlet);
+      pushUnique(raw, addr.village);
+      pushUnique(raw, addr.town);
+      if (addr.city && foldCountyName(addr.city) !== foldCountyName(addr.state || "")) {
+        pushUnique(raw, addr.city);
+      }
+      tokensFromDisplayName(displayName, wardVal).forEach(function (t) {
+        pushUnique(raw, t);
+      });
+      return raw;
+    }
+
+    function wordOverlapHits(a, b) {
+      var wa = foldMatchKey(a)
+        .split(/\s+/)
+        .filter(function (w) {
+          return w.length > 1;
+        });
+      var wb = foldMatchKey(b)
+        .split(/\s+/)
+        .filter(function (w) {
+          return w.length > 1;
+        });
+      var hits = 0;
+      wa.forEach(function (x) {
+        wb.forEach(function (y) {
+          if (x === y || x.indexOf(y) >= 0 || y.indexOf(x) >= 0) hits++;
+        });
+      });
+      return hits;
+    }
+
+    function pickBestDatalistMatch(tokens, listEl, countyVal, subVal, wardVal) {
+      if (!listEl || !tokens.length) return "";
+      var opts = listEl.querySelectorAll("option");
+      if (!opts.length) return "";
+      var bestVal = "";
+      var bestScore = 0;
+      var ti;
+      var oi;
+      for (ti = 0; ti < tokens.length; ti++) {
+        var tok = tokens[ti];
+        var gn = foldMatchKey(tok);
+        if (!gn) continue;
+        if (matchesAdminBoundaryPlace(tok, countyVal, subVal, wardVal)) continue;
+        for (oi = 0; oi < opts.length; oi++) {
+          var ov = opts[oi].value;
+          if (!ov) continue;
+          if (matchesAdminBoundaryPlace(ov, countyVal, subVal, wardVal)) continue;
+          var nv = foldMatchKey(ov);
+          var score = 0;
+          if (nv === gn) score = 100;
+          else if (gn.indexOf(nv) >= 0 || nv.indexOf(gn) >= 0) score = 82;
+          else {
+            var ovHits = wordOverlapHits(tok, ov);
+            if (ovHits) score = Math.min(78, 28 + ovHits * 18);
+          }
+          if (score > bestScore) {
+            bestScore = score;
+            bestVal = ov;
+          }
+        }
+      }
+      return bestScore >= 38 ? bestVal : "";
+    }
+
+    function firstLocCandidateNotAdmin(candidates, countyVal, subVal, wardVal) {
+      var i;
+      for (i = 0; i < candidates.length; i++) {
+        if (!matchesAdminBoundaryPlace(candidates[i], countyVal, subVal, wardVal)) return candidates[i];
+      }
+      return "";
+    }
+
+    function gatherWardGuesses(addr) {
+      var raw = [
+        addr.city,
+        addr.town,
+        addr.village,
+        addr.suburb,
+        addr.neighbourhood,
+        addr.city_block,
+        addr.hamlet,
+        addr.city_district,
+        addr.quarter,
+        addr.residential,
+      ];
+      var guesses = [];
+      raw.forEach(function (x) {
+        if (!x) return;
+        var t = scrubPlaceToken(x);
+        if (t && guesses.indexOf(t) < 0) guesses.push(t);
+      });
+      return guesses;
+    }
+
+    function scoreWardAgainstGuesses(ward, guesses) {
+      var nw = norm(ward);
+      var best = 0;
+      guesses.forEach(function (g) {
+        if (!g) return;
+        if (nw === g) best = Math.max(best, 100);
+        else if (nw.indexOf(g) >= 0 || g.indexOf(nw) >= 0) best = Math.max(best, 75);
+        else {
+          var wt = nw.split(/\s+/).filter(function (t) {
+            return t.length > 2;
+          });
+          var gt = g.split(/\s+/).filter(function (t) {
+            return t.length > 2;
+          });
+          wt.forEach(function (a) {
+            gt.forEach(function (b) {
+              if (a.indexOf(b) >= 0 || b.indexOf(a) >= 0) best = Math.max(best, 45);
+            });
+          });
+        }
+      });
+      return best;
+    }
+
+    function bestWardPick(wards, addr) {
+      var guesses = gatherWardGuesses(addr);
+      var best = "";
+      var bestScore = 0;
+      (wards || []).forEach(function (w) {
+        var sc = scoreWardAgainstGuesses(w, guesses);
+        if (sc > bestScore) {
+          bestScore = sc;
+          best = w;
+        }
+      });
+      return bestScore >= 45 ? best : "";
+    }
+
+    function findConstituencyAndWard(countyVal, addr) {
+      var map = getSubCountyMap(countyVal);
+      if (!map) return { subKey: "", ward: "" };
+
+      var stateCounty = foldCountyName(addr.state || "");
+      var addrCountyField = addr.county ? norm(addr.county) : "";
+
+      if (
+        addrCountyField &&
+        addrCountyField !== stateCounty &&
+        addrCountyField.indexOf("county") < 0
+      ) {
+        for (var sk in map) {
+          if (!Object.prototype.hasOwnProperty.call(map, sk)) continue;
+          if (tokenSig(sk) === tokenSig(addr.county)) {
+            var wardsA = map[sk].Ward || [];
+            var wPick = bestWardPick(wardsA, addr);
+            return { subKey: sk, ward: wPick };
+          }
+        }
+      }
+
+      var best = { subKey: "", ward: "", score: 0 };
+      var guesses = gatherWardGuesses(addr);
+      Object.keys(map).forEach(function (sk) {
+        var wards = map[sk].Ward || [];
+        wards.forEach(function (w) {
+          var sc = scoreWardAgainstGuesses(w, guesses);
+          if (sc > best.score) {
+            best = { subKey: sk, ward: w, score: sc };
+          }
+        });
+      });
+
+      if (best.score >= 45) return { subKey: best.subKey, ward: best.ward };
+
+      var subHints = [addr.city_district, addr.county, addr.suburb].filter(function (h) {
+        return h && norm(h) !== stateCounty && foldCountyName(h) !== stateCounty;
+      });
+      for (var hi = 0; hi < subHints.length; hi++) {
+        var hint = subHints[hi];
+        for (var sk2 in map) {
+          if (!Object.prototype.hasOwnProperty.call(map, sk2)) continue;
+          if (
+            tokenSig(sk2) === tokenSig(hint) ||
+            norm(sk2).indexOf(norm(hint)) >= 0 ||
+            norm(hint).indexOf(norm(sk2)) >= 0
+          ) {
+            var wardsB = map[sk2].Ward || [];
+            var w2 = bestWardPick(wardsB, addr);
+            return { subKey: sk2, ward: w2 };
+          }
+        }
+      }
+
+      return { subKey: best.subKey, ward: best.ward };
+    }
+
+    function findCountyOptionValue(addr) {
+      var state = addr.state || "";
+      var fs = foldCountyName(state);
+      if (!fs && addr["ISO3166-2-lvl4"]) {
+        /* Kenya counties usually still have state set */
+      }
+      if (!fs) return "";
+      var i;
+      for (i = 0; i < countyEl.options.length; i++) {
+        var v = countyEl.options[i].value;
+        if (!v) continue;
+        if (foldCountyName(v) === fs) return v;
+        if (tokenSig(v) === tokenSig(state)) return v;
+      }
+      return "";
+    }
+
+    function setHiddenFarmSummary(lat, lng, displayName) {
+      if (!farmLocEl) return;
+      var structured = [
+        countyEl.value,
+        subEl.value,
+        wardEl.value,
+        locationEl ? locationEl.value : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      var coord = lat + ", " + lng;
+      farmLocEl.value = (structured || displayName || coord).slice(0, 900);
+    }
+
+    function applyNominatimAddress(addr, lat, lng, displayName) {
+      if (!addr || norm(addr.country_code || "") !== "ke") {
+        if (farmLocEl) farmLocEl.value = (displayName || lat + ", " + lng).slice(0, 900);
+        return Promise.resolve();
+      }
+
+      var countyVal = findCountyOptionValue(addr);
+      if (!countyVal) {
+        if (farmLocEl) farmLocEl.value = (displayName || lat + ", " + lng).slice(0, 900);
+        return Promise.resolve();
+      }
+
+      countyEl.value = countyVal;
+      populateSubCounties();
+
+      var picked = findConstituencyAndWard(countyVal, addr);
+
+      if (picked.subKey) {
+        subEl.value = normalizeLabel(picked.subKey);
+        populateWards();
+        if (picked.ward) {
+          var wv = normalizeLabel(picked.ward);
+          var foundWard = false;
+          var wi;
+          for (wi = 0; wi < wardEl.options.length; wi++) {
+            if (wardEl.options[wi].value === wv) {
+              foundWard = true;
+              break;
+            }
+          }
+          wardEl.value = foundWard ? wv : "";
+        }
+      }
+
+      var wardLabel = wardEl.value || "";
+
+      if (!picked.subKey || !wardEl.value) {
+        var earlyV = gatherVillageCandidates(addr, wardLabel, displayName);
+        if (villageEl && earlyV.length) villageEl.value = normalizeLabel(earlyV[0]);
+        setHiddenFarmSummary(lat, lng, displayName);
+        return Promise.resolve();
+      }
+
+      var villageCandidates = gatherVillageCandidates(addr, wardLabel, displayName);
+      var villagePick = villageCandidates.length ? villageCandidates[0] : "";
+      if (villageEl && villagePick) {
+        villageEl.value = normalizeLabel(villagePick);
+      }
+      var villageNormFold = villagePick ? foldMatchKey(villagePick) : "";
+      var subLabel = subEl.value || "";
+
+      return populateLocationsForWard().then(function () {
+        if (!locationEl) {
+          setHiddenFarmSummary(lat, lng, displayName);
+          return;
+        }
+        var locCandidates = gatherLocationCandidates(
+          addr,
+          countyVal,
+          subLabel,
+          wardLabel,
+          villageNormFold,
+          displayName
+        );
+        var matchedList = pickBestDatalistMatch(
+          locCandidates,
+          locationList,
+          countyVal,
+          subLabel,
+          wardLabel
+        );
+        if (matchedList && matchesAdminBoundaryPlace(matchedList, countyVal, subLabel, wardLabel)) {
+          matchedList = "";
+        }
+        var fallbackGuess = firstLocCandidateNotAdmin(locCandidates, countyVal, subLabel, wardLabel);
+        var finalLoc = matchedList || fallbackGuess || "";
+        if (finalLoc && !matchesAdminBoundaryPlace(finalLoc, countyVal, subLabel, wardLabel)) {
+          locationEl.value = finalLoc;
+        }
+        setHiddenFarmSummary(lat, lng, displayName);
+      });
+    }
 
     function setOptions(select, options) {
       select.innerHTML =
@@ -797,11 +1331,6 @@
 
     function countyKeyFromValue(v) {
       return String(v || "").trim().toUpperCase();
-    }
-
-    function normalizeLabel(s) {
-      // We display uppercase anyway via CSS, but keep readable spacing here
-      return String(s || "").trim();
     }
 
     function getCountyObject(countyValue) {
@@ -837,7 +1366,7 @@
     }
 
     function populateLocationsForWard() {
-      if (!locationEl) return;
+      if (!locationEl) return Promise.resolve();
       locationEl.disabled = true;
       if (locationHint) locationHint.textContent = "Loading locations…";
       if (locationList) locationList.innerHTML = "";
@@ -846,13 +1375,15 @@
       if (!ward) {
         if (locationHint) locationHint.textContent = "Choose a ward first to load locations.";
         locationEl.disabled = true;
-        return;
+        return Promise.resolve();
       }
 
-      fetch("/api/locations?ward=" + encodeURIComponent(ward), { credentials: "same-origin" })
-        .then(function (r) { return r.ok ? r.json() : null; })
+      return fetch("/api/locations?ward=" + encodeURIComponent(ward), { credentials: "same-origin" })
+        .then(function (r) {
+          return r.ok ? r.json() : null;
+        })
         .then(function (j) {
-          var locations = (j && j.locations) ? j.locations : [];
+          var locations = j && j.locations ? j.locations : [];
           if (locationList) {
             locationList.innerHTML = locations.map(function (loc) {
               return '<option value="' + String(loc).replace(/"/g, "&quot;") + '"></option>';
@@ -860,7 +1391,9 @@
           }
           if (locationHint) {
             locationHint.textContent = locations.length
-              ? ("Locations found: " + locations.length + ". You can select or type a new one.")
+              ? "Locations found: " +
+                locations.length +
+                ". You can select or type a new one."
               : "No saved locations for this ward yet — type a new location.";
           }
           locationEl.disabled = false;
@@ -893,21 +1426,31 @@
         }
       } catch (e) {}
       return fetch(DATA_URL)
-        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (r) {
+          return r.ok ? r.json() : null;
+        })
         .then(function (j) {
           if (!j) return;
           kenyaData = j;
-          try { localStorage.setItem(cacheKey, JSON.stringify(j)); } catch (e) {}
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(j));
+          } catch (e) {}
           populateSubCounties();
         })
         .catch(function () {
-          // If fetch fails, keep dropdowns disabled rather than showing wrong data.
           reset();
         });
     }
 
     reset();
-    loadData();
+    var kenyaLoadPromise = loadData();
+
+    window.FarmerKenyaAdmin = {
+      whenReady: function () {
+        return kenyaLoadPromise || Promise.resolve();
+      },
+      applyNominatimAddress: applyNominatimAddress,
+    };
   })();
 </script>
 <script>
@@ -915,64 +1458,317 @@
     var btn = document.querySelector("[data-gps-detect]");
     var input = document.getElementById("f_gps");
     var farmLoc = document.getElementById("f_farm_loc");
-    if (!btn || !input) return;
-    btn.addEventListener("click", function () {
-      if (!navigator.geolocation) return alert("Geolocation not supported on this device/browser.");
-      btn.disabled = true;
-      navigator.geolocation.getCurrentPosition(
-        function (pos) {
-          var lat = pos.coords.latitude.toFixed(6);
-          var lng = pos.coords.longitude.toFixed(6);
-          input.value = lat + ", " + lng;
-          if (farmLoc) {
-            // Lightweight reverse geocode (no key required)
-            fetch(
-              "https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=" +
-                encodeURIComponent(lat) +
-                "&longitude=" +
-                encodeURIComponent(lng) +
-                "&localityLanguage=en"
-            )
-              .then(function (r) { return r.ok ? r.json() : null; })
-              .then(function (j) {
-                if (!j) return;
-                var parts = [];
-                if (j.locality) parts.push(j.locality);
-                if (j.city) parts.push(j.city);
-                if (j.principalSubdivision) parts.push(j.principalSubdivision);
-                if (j.countryName) parts.push(j.countryName);
-                var name = parts.filter(Boolean).join(", ");
-                farmLoc.value = name || farmLoc.value || (lat + ", " + lng);
-              })
-              .catch(function () {
-                // If reverse geocode fails, at least copy coordinates to farm location if empty.
-                if (!farmLoc.value) farmLoc.value = lat + ", " + lng;
-              });
-          }
-          btn.disabled = false;
-        },
-        function () {
-          btn.disabled = false;
-          alert("Unable to auto-detect location. You can enter coordinates manually.");
-        },
-        { enableHighAccuracy: true, timeout: 8000 }
+    var statusWrap = document.querySelector("[data-gps-status]");
+    var statusLabel = document.querySelector("[data-gps-status-label]");
+    var adm = window.FarmerKenyaAdmin;
+
+    function setBusy(busy, message) {
+      if (btn) {
+        btn.disabled = !!busy;
+        btn.setAttribute("aria-busy", busy ? "true" : "false");
+      }
+      if (statusWrap && statusLabel) {
+        if (busy && message) {
+          statusLabel.textContent = message;
+          statusWrap.hidden = false;
+        } else {
+          statusWrap.hidden = true;
+          statusLabel.textContent = "";
+        }
+      }
+    }
+
+    function nominatimReverseUrl(lat, lng) {
+      return (
+        "https://nominatim.openstreetmap.org/reverse?lat=" +
+        encodeURIComponent(lat) +
+        "&lon=" +
+        encodeURIComponent(lng) +
+        "&zoom=15&format=jsonv2&addressdetails=1&accept-language=en"
       );
+    }
+
+    function fallbackFarmLocText(lat, lng) {
+      if (!farmLoc) return Promise.resolve();
+      return fetch(
+        "https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=" +
+          encodeURIComponent(lat) +
+          "&longitude=" +
+          encodeURIComponent(lng) +
+          "&localityLanguage=en"
+      )
+        .then(function (r) {
+          return r.ok ? r.json() : null;
+        })
+        .then(function (j) {
+          if (!j) {
+            farmLoc.value = (lat + ", " + lng).slice(0, 900);
+            return;
+          }
+          var parts = [];
+          if (j.locality) parts.push(j.locality);
+          if (j.city) parts.push(j.city);
+          if (j.principalSubdivision) parts.push(j.principalSubdivision);
+          if (j.countryName) parts.push(j.countryName);
+          farmLoc.value = (parts.filter(Boolean).join(", ") || lat + ", " + lng).slice(0, 900);
+        })
+        .catch(function () {
+          farmLoc.value = (lat + ", " + lng).slice(0, 900);
+        });
+    }
+
+    function applyRegisterCoordsFromLatLng(latStr, lngStr) {
+      if (!input) return Promise.resolve();
+      input.value = latStr + ", " + lngStr;
+      setBusy(true, "Looking up address…");
+      var nFetch = fetch(nominatimReverseUrl(latStr, lngStr), {
+        headers: { Accept: "application/json" },
+      }).then(function (r) {
+        return r.ok ? r.json() : null;
+      });
+      var ready = adm && adm.whenReady ? adm.whenReady() : Promise.resolve();
+      return Promise.all([ready, nFetch])
+        .then(function (pair) {
+          var j = pair[1];
+          var addr = j && j.address;
+          var displayName = (j && j.display_name) || "";
+          if (adm && adm.applyNominatimAddress && addr && String(addr.country_code || "").toLowerCase() === "ke") {
+            setBusy(true, "Filling county, ward, and location…");
+            return adm.applyNominatimAddress(addr, latStr, lngStr, displayName);
+          }
+          if (farmLoc && displayName) farmLoc.value = displayName.slice(0, 900);
+          else return fallbackFarmLocText(latStr, lngStr);
+        })
+        .catch(function () {
+          return fallbackFarmLocText(latStr, lngStr);
+        })
+        .then(
+          function () {
+            setBusy(false, "");
+          },
+          function () {
+            setBusy(false, "");
+          }
+        );
+    }
+
+    window.FarmerGpsRegister = {
+      applyFromLatLng: applyRegisterCoordsFromLatLng,
+    };
+
+    if (btn && input) {
+      btn.addEventListener("click", function () {
+        if (!navigator.geolocation) return alert("Geolocation not supported on this device/browser.");
+        setBusy(true, "Getting GPS coordinates…");
+        navigator.geolocation.getCurrentPosition(
+          function (pos) {
+            var lat = pos.coords.latitude.toFixed(6);
+            var lng = pos.coords.longitude.toFixed(6);
+            applyRegisterCoordsFromLatLng(lat, lng);
+          },
+          function () {
+            setBusy(false, "");
+            alert("Unable to auto-detect location. You can enter coordinates manually.");
+          },
+          { enableHighAccuracy: true, timeout: 12000 }
+        );
+      });
+    }
+  })();
+</script>
+<script>
+  (function () {
+    function nominatimSearchUrl(q) {
+      return (
+        "https://nominatim.openstreetmap.org/search?q=" +
+        encodeURIComponent(q) +
+        "&format=jsonv2&limit=8&addressdetails=0&countrycodes=ke"
+      );
+    }
+
+    function looksLikeCoordinatePair(s) {
+      return /^\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*$/.test(String(s || ""));
+    }
+
+    document.querySelectorAll("[data-gps-autocomplete]").forEach(function (root) {
+      var scope = root.getAttribute("data-gps-scope") || "register";
+      var coordInput = root.querySelector("[data-gps-coords-input]");
+      var dd = root.querySelector("[data-gps-suggest-dropdown]");
+      var picked = root.querySelector("[data-gps-picked-label]");
+      if (!coordInput || !dd) return;
+
+      var debounceTimer = null;
+      var seq = 0;
+
+      function hideDd() {
+        dd.hidden = true;
+        dd.innerHTML = "";
+      }
+
+      function showLoading() {
+        dd.hidden = false;
+        dd.innerHTML =
+          '<div class="farmer-gps-autocomplete__status hint" role="status">Searching places…</div>';
+      }
+
+      function renderResults(items) {
+        dd.innerHTML = "";
+        if (!items.length) {
+          dd.innerHTML =
+            '<div class="farmer-gps-autocomplete__status hint">No matches — try another spelling or paste coordinates.</div>';
+          dd.hidden = false;
+          return;
+        }
+        items.forEach(function (it) {
+          var lat = parseFloat(it.lat);
+          var lng = parseFloat(it.lon);
+          if (isNaN(lat) || isNaN(lng)) return;
+          var latS = lat.toFixed(6);
+          var lngS = lng.toFixed(6);
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "farmer-gps-autocomplete__option";
+          btn.setAttribute("role", "option");
+          var primary = (it.display_name || "").split(",").slice(0, 2).join(",").trim() || latS + ", " + lngS;
+          var title = document.createElement("span");
+          title.className = "farmer-gps-autocomplete__option-title";
+          title.textContent = primary;
+          var meta = document.createElement("span");
+          meta.className = "farmer-gps-autocomplete__option-meta";
+          meta.textContent = latS + ", " + lngS;
+          btn.appendChild(title);
+          btn.appendChild(meta);
+          btn.addEventListener("mousedown", function (ev) {
+            ev.preventDefault();
+          });
+          btn.addEventListener("click", function () {
+            pickPlace(latS, lngS, it.display_name || "");
+          });
+          dd.appendChild(btn);
+        });
+        dd.hidden = false;
+      }
+
+      function pickPlace(lat, lng, displayName) {
+        hideDd();
+        coordInput.value = lat + ", " + lng;
+        if (picked) {
+          picked.textContent =
+            "Selected: " +
+            (displayName.split(",").slice(0, 3).join(",").trim() || lat + ", " + lng);
+          picked.hidden = false;
+        }
+        if (scope === "register" && window.FarmerGpsRegister && window.FarmerGpsRegister.applyFromLatLng) {
+          window.FarmerGpsRegister.applyFromLatLng(lat, lng);
+        }
+      }
+
+      coordInput.addEventListener("input", function () {
+        if (picked) {
+          picked.hidden = true;
+          picked.textContent = "";
+        }
+        var q = coordInput.value.trim();
+        if (looksLikeCoordinatePair(q)) {
+          hideDd();
+          return;
+        }
+        if (q.length < 3) {
+          hideDd();
+          return;
+        }
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(function () {
+          runSearch(q);
+        }, 450);
+      });
+
+      function runSearch(q) {
+        var mySeq = ++seq;
+        showLoading();
+        fetch(nominatimSearchUrl(q), { headers: { Accept: "application/json" } })
+          .then(function (r) {
+            return r.ok ? r.json() : [];
+          })
+          .then(function (data) {
+            if (mySeq !== seq) return;
+            var rows = Array.isArray(data) ? data : [];
+            if (!rows.length) {
+              return fetch(
+                "https://nominatim.openstreetmap.org/search?q=" +
+                  encodeURIComponent(q) +
+                  "&format=jsonv2&limit=8&addressdetails=0",
+                { headers: { Accept: "application/json" } }
+              )
+                .then(function (r2) {
+                  return r2.ok ? r2.json() : [];
+                })
+                .then(function (data2) {
+                  if (mySeq !== seq) return;
+                  renderResults(Array.isArray(data2) ? data2 : []);
+                });
+            }
+            renderResults(rows);
+          })
+          .catch(function () {
+            if (mySeq !== seq) return;
+            dd.innerHTML =
+              '<div class="farmer-gps-autocomplete__status hint">Search failed — try again.</div>';
+            dd.hidden = false;
+          });
+      }
+
+      document.addEventListener("click", function (ev) {
+        if (!root.contains(ev.target)) hideDd();
+      });
+
+      coordInput.addEventListener("keydown", function (ev) {
+        if (ev.key === "Escape") hideDd();
+      });
     });
   })();
 </script>
 <script>
   (function () {
-    var unit = document.getElementById("f_land_unit");
-    var size = document.querySelector("[data-land-size]");
-    var suffix = document.querySelector("[data-land-suffix]");
-    if (!unit || !size || !suffix) return;
-    function sync() {
-      var v = unit.value;
-      suffix.textContent = v ? v : "—";
-      size.placeholder = v ? ("Enter land size in " + v) : "Select unit first";
+    var channel = document.querySelector("[data-pay-channel]");
+    var mobilePanel = document.getElementById("farmer-reg-pay-mobile");
+    var bankPanel = document.getElementById("farmer-reg-pay-bank");
+    var phone = document.getElementById("f_phone");
+    var mpesa = document.querySelector("[data-mpesa-from-phone]");
+    var mobileCarrier = document.getElementById("f_mobile_carrier");
+    var paymentBank = document.getElementById("f_payment_bank");
+    var paymentBankAcct = document.getElementById("f_payment_bank_account");
+    if (!channel || !mobilePanel || !bankPanel) return;
+
+    function syncMpesaFromPhone() {
+      if (channel.value !== "mobile_money" || !phone || !mpesa) return;
+      mpesa.value = phone.value;
     }
-    unit.addEventListener("change", sync);
-    sync();
+
+    function setPanelDisabled(panel, dis) {
+      if (!panel) return;
+      Array.prototype.forEach.call(panel.querySelectorAll("input, select"), function (el) {
+        el.disabled = !!dis;
+      });
+    }
+
+    function applyPayChannel() {
+      var v = channel.value;
+      mobilePanel.hidden = v !== "mobile_money";
+      bankPanel.hidden = v !== "bank";
+      setPanelDisabled(mobilePanel, v !== "mobile_money");
+      setPanelDisabled(bankPanel, v !== "bank");
+      if (mpesa) mpesa.required = v === "mobile_money";
+      if (mobileCarrier) mobileCarrier.required = v === "mobile_money";
+      if (paymentBank) paymentBank.required = v === "bank";
+      if (paymentBankAcct) paymentBankAcct.required = v === "bank";
+      if (v === "mobile_money") syncMpesaFromPhone();
+    }
+
+    channel.addEventListener("change", applyPayChannel);
+    if (phone) phone.addEventListener("input", syncMpesaFromPhone);
+    if (phone) phone.addEventListener("change", syncMpesaFromPhone);
+    applyPayChannel();
   })();
 </script>
 <script>
@@ -1203,7 +1999,7 @@
   (function () {
     var input = document.querySelector("[data-farmer-search]");
     var count = document.querySelector("[data-farmer-search-count]");
-    var rows = Array.prototype.slice.call(document.querySelectorAll(".data-table tbody tr"));
+    var rows = Array.prototype.slice.call(document.querySelectorAll(".farmer-mgmt-directory-table tbody tr"));
     if (!input || !rows.length) return;
 
     function norm(s) {
@@ -1214,7 +2010,16 @@
       var q = norm(input.value);
       var shown = 0;
       rows.forEach(function (tr) {
-        var hay = norm(tr.getAttribute("data-membership")) + " " + norm(tr.getAttribute("data-name")) + " " + norm(tr.getAttribute("data-phone")) + " " + norm(tr.getAttribute("data-land"));
+        var hay =
+          norm(tr.getAttribute("data-membership")) +
+          " " +
+          norm(tr.getAttribute("data-name")) +
+          " " +
+          norm(tr.getAttribute("data-phone")) +
+          " " +
+          norm(tr.getAttribute("data-status")) +
+          " " +
+          norm(tr.getAttribute("data-land"));
         var ok = !q || hay.indexOf(q) !== -1;
         tr.style.display = ok ? "" : "none";
         if (ok) shown += 1;

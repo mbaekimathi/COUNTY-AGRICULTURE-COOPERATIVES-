@@ -1,0 +1,214 @@
+<script type="application/json" id="module-hr-chart-data">{{ hr_chart_series|tojson }}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+<script>
+(function () {
+  var dataEl = document.getElementById("module-hr-chart-data");
+  if (!dataEl || typeof Chart === "undefined") return;
+
+  var rows;
+  try {
+    rows = JSON.parse(dataEl.textContent || "[]");
+  } catch (e) {
+    return;
+  }
+  if (!rows.length) return;
+
+  function theme() {
+    var dark = document.documentElement.getAttribute("data-theme") === "dark";
+    var border = dark ? "#071713" : "#ffffff";
+    return {
+      dark: dark,
+      border: border,
+      accent: dark ? "#34d399" : "#047857",
+      accent2: dark ? "#2dd4bf" : "#059669",
+      accent3: dark ? "#a7f3d0" : "#065f46",
+      pending: dark ? "#fbbf24" : "#d97706",
+      suspended: dark ? "#f87171" : "#b91c1c",
+      muted: dark ? "rgba(230,255,246,0.55)" : "#4f6f61",
+      grid: dark ? "rgba(110,231,183,0.18)" : "rgba(16,100,70,0.12)",
+      text: dark ? "#e6fff6" : "#0f1f17",
+      surface: dark ? "rgba(52,211,153,0.14)" : "rgba(4,120,87,0.08)",
+    };
+  }
+
+  var th = theme();
+
+  function shortLabel(s, maxLen) {
+    s = String(s || "");
+    maxLen = maxLen || 28;
+    return s.length <= maxLen ? s : s.slice(0, maxLen - 1) + "\u2026";
+  }
+
+  function setHBarWrapHeight(el, rowCount) {
+    if (!el) return;
+    var h = Math.min(Math.max(200, rowCount * 22 + 48), 560);
+    el.style.height = h + "px";
+  }
+
+  function fmtTenureDays(d) {
+    var n = Number(d) || 0;
+    if (n < 14) return n + " days";
+    if (n < 365) return Math.round(n / 30.44) + " mo (~" + n + " d)";
+    var y = Math.floor(n / 365);
+    var rem = Math.round(n - y * 365);
+    return y + " yr" + (rem > 30 ? ", +" + rem + " d" : "");
+  }
+
+  Chart.defaults.font.family = '"Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif';
+  Chart.defaults.color = th.text;
+
+  var labels = rows.map(function (r) {
+    return shortLabel(r.name, 32);
+  });
+  var hoursData = rows.map(function (r) {
+    return Number(r.hours) || 0;
+  });
+  var tenureData = rows.map(function (r) {
+    return Number(r.tenureDays) || 0;
+  });
+
+  var act = 0;
+  var pend = 0;
+  var susp = 0;
+  rows.forEach(function (r) {
+    if (r.status === "active") act++;
+    else if (r.status === "pending_approval") pend++;
+    else if (r.status === "suspended") susp++;
+  });
+
+  setHBarWrapHeight(document.getElementById("chartHrSessionHoursWrap"), rows.length);
+  setHBarWrapHeight(document.getElementById("chartHrTenureDaysWrap"), rows.length);
+
+  var barColors = rows.map(function (_, i) {
+    var palette = [th.accent, th.accent2, th.accent3, th.surface];
+    return palette[i % palette.length];
+  });
+
+  new Chart(document.getElementById("chartHrSessionHours"), {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: "Session hours",
+          data: hoursData,
+          backgroundColor: barColors,
+          borderRadius: 8,
+          borderSkipped: false,
+        },
+      ],
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: function (items) {
+              var i = items[0].dataIndex;
+              return rows[i] && rows[i].name ? rows[i].name : "";
+            },
+            label: function (ctx) {
+              var v = Number(ctx.raw) || 0;
+              return "Hours: " + (Math.round(v * 100) / 100);
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: { color: th.muted },
+          grid: { color: th.grid },
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color: th.muted, font: { size: 10 } },
+        },
+      },
+    },
+  });
+
+  new Chart(document.getElementById("chartHrTenureDays"), {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: "Days",
+          data: tenureData,
+          backgroundColor: barColors,
+          borderRadius: 8,
+          borderSkipped: false,
+        },
+      ],
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: function (items) {
+              var i = items[0].dataIndex;
+              return rows[i] && rows[i].name ? rows[i].name : "";
+            },
+            label: function (ctx) {
+              var d = Number(ctx.raw) || 0;
+              return fmtTenureDays(d);
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: { color: th.muted },
+          grid: { color: th.grid },
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color: th.muted, font: { size: 10 } },
+        },
+      },
+    },
+  });
+
+  new Chart(document.getElementById("chartHrStatus"), {
+    type: "doughnut",
+    data: {
+      labels: ["Active", "Pending approval", "Suspended"],
+      datasets: [
+        {
+          data: [act, pend, susp],
+          backgroundColor: [th.accent, th.pending, th.suspended],
+          borderWidth: 2,
+          borderColor: th.border,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "bottom", labels: { boxWidth: 11, padding: 10, font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: function (ctx) {
+              var v = Number(ctx.raw) || 0;
+              var sum = act + pend + susp;
+              var pct = sum > 0 ? ((v / sum) * 100).toFixed(1) : "0";
+              return ctx.label + ": " + v + " (" + pct + "%)";
+            },
+          },
+        },
+      },
+      cutout: "54%",
+    },
+  });
+})();
+</script>

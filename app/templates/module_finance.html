@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+{% set r = session.get("employee_role") %}
+
+<div class="module-finance-overview">
+  <header class="dashboard-header module-finance-overview__hero">
+    <div>
+      <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
+      <p class="dash-meta">{{ module_desc }}</p>
+    </div>
+  </header>
+
+  <section class="panel module-finance-overview__panel">
+    <div class="module-finance-overview__panel-head">
+      <div>
+        <h3>{{ i("package") }} End product stock</h3>
+        <p class="module-finance-overview__panel-desc">
+          Visual split between cooperative <strong>member</strong> session intakes and <strong>walk-in</strong> suppliers (same rules as the detailed list). Revenue uses recorded prices only; quantity totals mix units across items.
+        </p>
+      </div>
+      <a class="button button-ghost button-back-soft" style="text-decoration:none" href="{{ url_for('main.finance_farmer_session_stock_purchases', role=r) }}">{{ i("spark") }} End product stock</a>
+    </div>
+
+    <p class="module-finance-overview__kpi-line" aria-label="End product summary">
+      <strong>{{ end_product_overview.total_intakes }}</strong> intakes
+      · <strong>{{ end_product_overview.product_count }}</strong> items
+      · <strong>{{ "%.2f"|format(end_product_overview.total_qty|float) }}</strong> qty (numeric)
+      · <strong>KES {{ "%.2f"|format(end_product_overview.total_revenue|float) }}</strong> revenue
+    </p>
+
+    <div class="module-finance-overview__charts module-finance-overview__charts--ep" id="module-finance-ep-root">
+      <figure class="module-finance-overview__chart-card">
+        <figcaption>Revenue by source (KES)</figcaption>
+        <div class="module-finance-overview__canvas-wrap">
+          <canvas id="chartFinanceEpRevenue" role="img" aria-label="Donut chart of member versus walk-in revenue"></canvas>
+        </div>
+      </figure>
+      <figure class="module-finance-overview__chart-card">
+        <figcaption>Intakes by source</figcaption>
+        <div class="module-finance-overview__canvas-wrap">
+          <canvas id="chartFinanceEpIntakes" role="img" aria-label="Bar chart of intake counts"></canvas>
+        </div>
+      </figure>
+      <figure class="module-finance-overview__chart-card">
+        <figcaption>Quantity by source (numeric)</figcaption>
+        <div class="module-finance-overview__canvas-wrap">
+          <canvas id="chartFinanceEpQty" role="img" aria-label="Bar chart of quantities"></canvas>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <section class="panel module-finance-overview__panel" style="margin-top:1rem">
+    <div class="module-finance-overview__panel-head">
+      <div>
+        <h3>{{ i("leaf") }} Crops in session finance</h3>
+        <p class="module-finance-overview__panel-desc">
+          Estimated activity cost at committed acres versus recorded spend from completions — same basis as the crops finance table.
+        </p>
+      </div>
+      <a class="button button-ghost button-back-soft" style="text-decoration:none" href="{{ url_for('main.finance_crops_session', role=r) }}">{{ i("spark") }} Crops in session finance</a>
+    </div>
+
+    <p class="module-finance-overview__kpi-line" aria-label="Crops finance summary">
+      <strong>{{ crops_finance_overview.crops_in_session_count }}</strong> crops
+      · <strong>{{ crops_finance_overview.active_session_count }}</strong> active sessions
+      · <strong>{{ crops_finance_overview.farmers_with_active_session }}</strong> farmers
+      · <strong>{{ "%.2f"|format(crops_finance_overview.total_acres|float) }}</strong> acres
+    </p>
+
+    <div class="module-finance-overview__charts module-finance-overview__charts--cs">
+      <figure class="module-finance-overview__chart-card module-finance-overview__chart-card--wide">
+        <figcaption>Estimated vs used spend (KES)</figcaption>
+        <div class="module-finance-overview__canvas-wrap module-finance-overview__canvas-wrap--wide">
+          <canvas id="chartFinanceCsMoney" role="img" aria-label="Bar chart comparing estimated and used amounts"></canvas>
+        </div>
+      </figure>
+    </div>
+
+    <p class="hint module-finance-overview__hint">
+      <a href="{{ url_for('main.finance_product_purchases', role=r) }}">{{ i("shopping_cart") }} Item finance</a>
+      — stock movements and purchase analytics for all catalogue items.
+    </p>
+  </section>
+</div>
+
+<script type="application/json" id="module-finance-chart-data">{{ {"ep": end_product_overview, "cs": crops_finance_overview}|tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+<script>
+(function () {
+  var dataEl = document.getElementById("module-finance-chart-data");
+  if (!dataEl || typeof Chart === "undefined") return;
+
+  var raw;
+  try {
+    raw = JSON.parse(dataEl.textContent || "{}");
+  } catch (e) {
+    return;
+  }
+
+  var ep = raw.ep || {};
+  var cs = raw.cs || {};
+
+  function colors() {
+    var dark = document.documentElement.getAttribute("data-theme") === "dark";
+    return {
+      member: dark ? "#34d399" : "#047857",
+      walkIn: dark ? "#2dd4bf" : "#059669",
+      muted: dark ? "rgba(230,255,246,0.55)" : "#4f6f61",
+      grid: dark ? "rgba(110,231,183,0.18)" : "rgba(16,100,70,0.12)",
+      text: dark ? "#e6fff6" : "#0f1f17",
+      surface: dark ? "rgba(52,211,153,0.12)" : "rgba(4,120,87,0.08)",
+    };
+  }
+
+  var c = colors();
+
+  var fmtKes = function (n) {
+    var x = Number(n) || 0;
+    return "KES " + x.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  Chart.defaults.font.family = '"Plus Jakarta Sans", "Segoe UI", system-ui, sans-serif';
+  Chart.defaults.color = c.text;
+
+  var memberRev = Number(ep.member_revenue) || 0;
+  var walkRev = Number(ep.walk_in_revenue) || 0;
+  var memberIn = Number(ep.member_intakes) || 0;
+  var walkIn = Number(ep.walk_in_intakes) || 0;
+  var memberQty = Number(ep.member_qty) || 0;
+  var walkQty = Number(ep.walk_in_qty) || 0;
+
+  var est = Number(cs.estimated_total_kes) || 0;
+  var used = Number(cs.used_total_kes) || 0;
+
+  new Chart(document.getElementById("chartFinanceEpRevenue"), {
+    type: "doughnut",
+    data: {
+      labels: ["Cooperative member", "Walk-in supplier"],
+      datasets: [
+        {
+          data: [memberRev, walkRev],
+          backgroundColor: [c.member, c.walkIn],
+          borderWidth: 2,
+          borderColor: document.documentElement.getAttribute("data-theme") === "dark" ? "#071713" : "#ffffff",
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: "bottom", labels: { boxWidth: 12, padding: 12 } },
+        tooltip: {
+          callbacks: {
+            label: function (ctx) {
+              var v = Number(ctx.raw) || 0;
+              var sum = memberRev + walkRev;
+              var pct = sum > 0 ? ((v / sum) * 100).toFixed(1) : "0";
+              return ctx.label + ": " + fmtKes(v) + " (" + pct + "%)";
+            },
+          },
+        },
+      },
+      cutout: "58%",
+    },
+  });
+
+  new Chart(document.getElementById("chartFinanceEpIntakes"), {
+    type: "bar",
+    data: {
+      labels: ["Member", "Walk-in"],
+      datasets: [
+        {
+          label: "Intakes",
+          data: [memberIn, walkIn],
+          backgroundColor: [c.member, c.walkIn],
+          borderRadius: 8,
+          borderSkipped: false,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: c.muted } },
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1, precision: 0, color: c.muted },
+          grid: { color: c.grid },
+        },
+      },
+    },
+  });
+
+  new Chart(document.getElementById("chartFinanceEpQty"), {
+    type: "bar",
+    data: {
+      labels: ["Member", "Walk-in"],
+      datasets: [
+        {
+          label: "Qty",
+          data: [memberQty, walkQty],
+          backgroundColor: [c.member, c.walkIn],
+          borderRadius: 8,
+          borderSkipped: false,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: c.muted } },
+        y: { beginAtZero: true, ticks: { color: c.muted }, grid: { color: c.grid } },
+      },
+    },
+  });
+
+  new Chart(document.getElementById("chartFinanceCsMoney"), {
+    type: "bar",
+    data: {
+      labels: ["Estimated total", "Used (recorded)"],
+      datasets: [
+        {
+          label: "KES",
+          data: [est, used],
+          backgroundColor: [c.surface, c.walkIn],
+          borderRadius: 10,
+          borderSkipped: false,
+        },
+      ],
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function (ctx) {
+              return fmtKes(ctx.raw);
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: {
+            color: c.muted,
+            callback: function (v) {
+              if (v >= 1e9) return (v / 1e9).toFixed(1) + "B";
+              if (v >= 1e6) return (v / 1e6).toFixed(1) + "M";
+              if (v >= 1e3) return (v / 1e3).toFixed(1) + "k";
+              return v;
+            },
+          },
+          grid: { color: c.grid },
+        },
+        y: { grid: { display: false }, ticks: { color: c.muted } },
+      },
+    },
+  });
+})();
+</script>
+{% endblock %}

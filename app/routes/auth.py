@@ -4,6 +4,7 @@ from pathlib import Path
 from flask import (
     Blueprint,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -17,8 +18,14 @@ from werkzeug.utils import secure_filename
 
 from app.csrf import validate_csrf
 from app.db import get_connection
+from app.login_session import LOGIN_SESSION_PK
+from app.phone_norm import employee_phone_error, normalize_ke_phone
 
 bp = Blueprint("auth", __name__)
+
+# Self-service /auth/register always creates this role and status (never taken from the form).
+SELF_REGISTER_ROLE = "employee"
+SELF_REGISTER_STATUS = "pending_approval"
 
 
 def _allowed_file(filename: str) -> bool:
@@ -27,6 +34,34 @@ def _allowed_file(filename: str) -> bool:
         and filename.rsplit(".", 1)[1].lower()
         in current_app.config["ALLOWED_EXTENSIONS"]
     )
+
+
+@bp.route("/check-login-code", methods=["GET"])
+def check_login_code():
+    """JSON: whether a 6-digit login_code is free. Optional except_id = employee keeping their current code."""
+    raw = (request.args.get("code") or request.args.get("login_code") or "").strip()
+    except_raw = (request.args.get("except_id") or "").strip()
+
+    if not re.fullmatch(r"\d{6}", raw):
+        return jsonify({"ok": True, "checked": False})
+
+    except_id = int(except_raw) if except_raw.isdigit() else None
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            if except_id is not None:
+                cur.execute(
+                    "SELECT id FROM employees WHERE login_code = %s AND id <> %s LIMIT 1",
+                    (raw, except_id),
+                )
+            else:
+                cur.execute("SELECT id FROM employees WHERE login_code = %s LIMIT 1", (raw,))
+            taken = cur.fetchone() is not None
+    finally:
+        conn.close()
+
+    return jsonify({"ok": True, "checked": True, "available": not taken})
 
 
 @bp.route("/register", methods=["GET", "POST"])
@@ -39,6 +74,7 @@ def register():
     full_name = (request.form.get("full_name") or "").strip().upper()
     email = (request.form.get("email") or "").strip().lower()
     national_id = (request.form.get("national_id") or "").strip().upper()
+    phone_norm = normalize_ke_phone(request.form.get("phone_number") or "")
     login_code = (request.form.get("login_code") or "").strip()
     password = request.form.get("password") or ""
     confirm = request.form.get("confirm_password") or ""
@@ -50,6 +86,9 @@ def register():
         errors.append("Enter a valid email address.")
     if len(national_id) < 5:
         errors.append("National ID must be at least 5 characters.")
+    pe = employee_phone_error(phone_norm)
+    if pe:
+        errors.append(pe)
     if not re.fullmatch(r"\d{6}", login_code):
         errors.append("Login code must be exactly 6 digits.")
     if len(password) < 6:
@@ -93,11 +132,21 @@ def register():
             cur.execute(
                 """
                 INSERT INTO employees (
-                    full_name, email, national_id, login_code,
+                    full_name, email, national_id, phone_number, login_code,
                     password_hash, profile_photo, role, status
-                ) VALUES (%s, %s, %s, %s, %s, %s, 'employee', 'pending_approval')
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
-                (full_name, email, national_id, login_code, pwd_hash, photo_rel),
+                (
+                    full_name,
+                    email,
+                    national_id,
+                    phone_norm,
+                    login_code,
+                    pwd_hash,
+                    photo_rel,
+                    SELF_REGISTER_ROLE,
+                    SELF_REGISTER_STATUS,
+                ),
             )
     except IntegrityError as exc:
         msg = str(exc).lower()
@@ -176,13 +225,71 @@ def login():
     session["employee_status"] = row["status"]
     session["employee_photo"] = row.get("profile_photo") or ""
     session.permanent = True
+
+    conn2 = get_connection()
+    try:
+        with conn2.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE employee_login_sessions
+                SET ended_at = NOW()
+                WHERE employee_id = %s AND ended_at IS NULL
+                """,
+                (row["id"],),
+            )
+            cur.execute(
+                """
+                INSERT INTO employee_login_sessions (employee_id, started_at, last_seen_at)
+                VALUES (%s, NOW(), NOW())
+                """,
+                (row["id"],),
+            )
+            session[LOGIN_SESSION_PK] = cur.lastrowid
+    finally:
+        conn2.close()
+
     flash("Welcome back.", "success")
     return redirect(url_for("main.dashboard", role=row["role"]))
+
+
+@bp.route("/session-ping", methods=["POST"])
+def session_ping():
+    """Lightweight heartbeat so session hours stay live without full navigation."""
+    validate_csrf()
+    if not session.get("employee_id"):
+        return jsonify({"ok": False}), 401
+    return jsonify({"ok": True})
 
 
 @bp.route("/logout", methods=["POST"])
 def logout():
     validate_csrf()
+    employee_id = session.get("employee_id")
+    login_pk = session.get(LOGIN_SESSION_PK)
+    if employee_id:
+        conn = get_connection()
+        try:
+            with conn.cursor() as cur:
+                if login_pk:
+                    cur.execute(
+                        """
+                        UPDATE employee_login_sessions
+                        SET ended_at = NOW()
+                        WHERE id = %s AND employee_id = %s AND ended_at IS NULL
+                        """,
+                        (login_pk, employee_id),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        UPDATE employee_login_sessions
+                        SET ended_at = NOW()
+                        WHERE employee_id = %s AND ended_at IS NULL
+                        """,
+                        (employee_id,),
+                    )
+        finally:
+            conn.close()
     session.clear()
     flash("You have been signed out.", "success")
     return redirect(url_for("auth.login"))

@@ -41,6 +41,12 @@ def create_app(config_class=Config):
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp, url_prefix="/auth")
 
+    @app.before_request
+    def _touch_employee_login_session():
+        from app.login_session import touch_login_session_for_current_request
+
+        touch_login_session_for_current_request(app)
+
     @app.context_processor
     def inject_csrf():
         from app.csrf import fresh_csrf_token

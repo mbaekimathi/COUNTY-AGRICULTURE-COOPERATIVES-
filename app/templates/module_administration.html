@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block body_class %}module-administration-page{% if hr_chart_series and hr_chart_series|length > 0 %} administration-hr-analytics-page{% endif %}{% endblock %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
+    {% if module_desc %}
+    <p class="dash-meta">{{ module_desc }}</p>
+    {% endif %}
+  </div>
+</div>
+
+{% if hr_chart_series and hr_chart_series|length > 0 %}
+  {% include "partials/hr_department_analytics_charts.html" %}
+{% endif %}
+
+<section class="panel module-administration-employees-panel">
+  <h3 style="margin-top: 0">{{ i("users") }} Employees</h3>
+  <p class="hint" style="margin-bottom: 0.85rem">
+    Directory of all cooperative employees (read-only). Open <strong>HR Management</strong> to create accounts, edit details, or change status.
+  </p>
+  {% if employees|length == 0 %}
+    <p class="lede dash-card-lede">No employees on file yet.</p>
+  {% else %}
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th class="col-photo">Photo</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Added</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in employees %}
+            <tr>
+              <td class="col-photo">
+                {% if e.profile_photo %}
+                  <img
+                    class="employee-table-photo"
+                    src="{{ url_for('static', filename=e.profile_photo) }}"
+                    alt="{{ e.full_name }}"
+                    width="40"
+                    height="40"
+                    loading="lazy"
+                  />
+                {% else %}
+                  <span class="employee-table-photo employee-table-photo--fallback" aria-hidden="true">{{ e.full_name | initials }}</span>
+                {% endif %}
+              </td>
+              <td>{{ e.full_name }}</td>
+              <td>{{ e.email }}</td>
+              <td>{{ e.phone_number or "—" }}</td>
+              <td>{{ e.role | replace("_", " ") }}</td>
+              <td>{{ e.status | replace("_", " ") }}</td>
+              <td><small class="hint">{{ e.created_at }}</small></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+{% if hr_chart_series and hr_chart_series|length > 0 %}
+  {% include "partials/hr_department_analytics_scripts.html" %}
+{% endif %}
+{% endblock %}

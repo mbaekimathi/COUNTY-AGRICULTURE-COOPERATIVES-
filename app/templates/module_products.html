@@ -21,10 +21,10 @@
 </div>
 
 <section class="panel">
-  <h3>{{ i("package") }} Register product</h3>
+  <h3>{{ i("package") }} Register item</h3>
   <details class="form-disclosure">
     <summary class="form-disclosure__summary">
-      <span class="form-disclosure__summary-inner">{{ i("spark") }} Register product</span>
+      <span class="form-disclosure__summary-inner">{{ i("spark") }} Register item</span>
     </summary>
     <div class="form-disclosure__body">
       <form method="post" action="{{ url_for('main.products_action', role=session.get('employee_role')) }}" enctype="multipart/form-data" novalidate data-product-per-acre-form>
@@ -33,7 +33,7 @@
 
         <div class="form-grid" style="margin-top: 0.85rem">
           <div class="field">
-            <label class="label-row" for="p_product_type">{{ i("layers") }} <span>Product Category</span></label>
+            <label class="label-row" for="p_product_type">{{ i("layers") }} <span>Item category</span></label>
             <div class="input-wrap">{{ i("layers") }}
               <select id="p_product_type" name="product_type" required style="text-transform: uppercase" data-product-type>
                 <option value="CROP">CROP</option>
@@ -45,7 +45,7 @@
           </div>
 
           <div class="field">
-            <label class="label-row" for="p_product_name">{{ i("tag") }} <span>Product Name</span></label>
+            <label class="label-row" for="p_product_name">{{ i("tag") }} <span>Item name</span></label>
             <div class="input-wrap">{{ i("tag") }}<input id="p_product_name" name="product_name" type="text" required data-uppercase style="text-transform: uppercase" /></div>
           </div>
 
@@ -98,7 +98,7 @@
           </div>
 
           <div class="field">
-            <label class="label-row" for="p_crop_image">{{ i("camera") }} <span>Product Image</span></label>
+            <label class="label-row" for="p_crop_image">{{ i("camera") }} <span>Item image</span></label>
             <input id="p_crop_image" name="crop_image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
           </div>
 
@@ -173,7 +173,7 @@
           <div class="field" data-section="agro">
             <label class="label-row" for="p_application_rate">{{ i("droplet") }} <span>Application rate (mixing / dose notes)</span></label>
             <div class="input-wrap">{{ i("droplet") }}<input id="p_application_rate" name="application_rate" type="text" required placeholder="E.G. 2 ML PER LITRE WATER (NOT MULTIPLIED BY ACRES)" data-uppercase style="text-transform: uppercase" autocomplete="off" /></div>
-            <p class="hint">Instructions for preparing or applying the product (concentration, water volume, etc.). <strong>Not</strong> used for automatic acre-based quantity—use Amount per acre for the number multiplied by farmer session acres.</p>
+            <p class="hint">Instructions for preparing or applying the item (concentration, water volume, etc.). <strong>Not</strong> used for automatic acre-based quantity—use Amount per acre for the number multiplied by farmer session acres.</p>
           </div>
           <div class="field" data-section="agro">
             <label class="label-row" for="p_target_use">{{ i("target") }} <span>Target Use</span></label>
@@ -203,13 +203,13 @@
           </div>
 
           <div class="field">
-            <label class="label-row" for="p_crop_code">{{ i("hash") }} <span>Product Code (auto generated)</span></label>
+            <label class="label-row" for="p_crop_code">{{ i("hash") }} <span>Item code (auto generated)</span></label>
             <div class="input-wrap">{{ i("hash") }}<input id="p_crop_code" type="text" value="AUTO-GENERATED" readonly style="text-transform: uppercase; opacity: 0.85" /></div>
           </div>
         </div>
 
         <div class="form-actions">
-          <button class="btn btn-primary" type="submit">{{ i("plus_circle") }} Register product</button>
+          <button class="btn btn-primary" type="submit">{{ i("plus_circle") }} Register item</button>
         </div>
       </form>
     </div>
@@ -217,7 +217,7 @@
 </section>
 
 <section class="panel">
-  <h3>{{ i("list") }} Registered products</h3>
+  <h3>{{ i("list") }} Registered items</h3>
   <div class="form-grid" style="margin-top: 0.75rem">
     <div class="field" style="margin-bottom: 0">
       <label class="label-row" for="products_search">{{ i("search") }} <span>Live search</span></label>
@@ -314,7 +314,7 @@
                   </form>
                 {% endif %}
 
-                <form method="post" action="{{ url_for('main.products_action', role=session.get('employee_role')) }}" onsubmit="return confirm('Delete this product?');">
+                <form method="post" action="{{ url_for('main.products_action', role=session.get('employee_role')) }}" onsubmit="return confirm('Delete this item?');">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                   <input type="hidden" name="product_id" value="{{ p.id }}" />
                   <input type="hidden" name="action" value="delete" />
@@ -328,7 +328,7 @@
           {% endfor %}
         {% else %}
           <tr>
-            <td colspan="11" class="table-empty">No products registered yet.</td>
+            <td colspan="11" class="table-empty">No items registered yet.</td>
           </tr>
         {% endif %}
       </tbody>
@@ -339,7 +339,7 @@
 <div class="modal-backdrop" data-product-edit-modal hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="product_edit_title" tabindex="-1">
     <div class="modal__head">
-      <h3 id="product_edit_title" class="modal__title">{{ i("pencil") }} Edit product</h3>
+      <h3 id="product_edit_title" class="modal__title">{{ i("pencil") }} Edit item</h3>
       <button type="button" class="button button-ghost modal__close" data-product-edit-close aria-label="Close" title="Close">×</button>
     </div>
     <div class="modal__body">
@@ -351,7 +351,7 @@
         <div class="form-grid" style="margin-top: 0.25rem">
           <div class="row-form">
             <div class="modal-field">
-              <label class="modal-label">Product Category</label>
+              <label class="modal-label">Item category</label>
               <select name="product_type" required style="text-transform: uppercase" data-product-type>
                 <option value="CROP">CROP</option>
                 <option value="HERBICIDE">HERBICIDE</option>
@@ -360,7 +360,7 @@
               </select>
             </div>
             <div class="modal-field">
-              <label class="modal-label">Product Name</label>
+              <label class="modal-label">Item name</label>
               <input name="product_name" value="" required data-uppercase style="text-transform: uppercase" />
             </div>
 
@@ -775,7 +775,7 @@
 
     function setMeta(visible, total) {
       if (!meta) return;
-      meta.textContent = visible === total ? ("Showing " + total + " products.") : ("Showing " + visible + " of " + total + " products.");
+      meta.textContent = visible === total ? ("Showing " + total + " items.") : ("Showing " + visible + " of " + total + " items.");
     }
 
     function apply() {

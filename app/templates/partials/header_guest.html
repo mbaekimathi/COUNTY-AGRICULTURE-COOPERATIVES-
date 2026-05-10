@@ -15,8 +15,9 @@
       </div>
       <button type="button" class="theme-toggle" data-theme-toggle aria-pressed="false" aria-label="Switch to dark mode">
         <span class="theme-toggle__icon theme-toggle__icon--sun" aria-hidden="true">{{ i("sun", "icon-svg") }}</span>
-        <span class="theme-toggle__icon theme-toggle__icon--moon" aria-hidden="true" hidden>{{ i("moon", "icon-svg") }}</span>
+        <span class="theme-toggle__icon theme-toggle__icon--moon" aria-hidden="true">{{ i("moon", "icon-svg") }}</span>
       </button>
+      {% if request.endpoint not in ("auth.login", "auth.register") %}
       <a
         href="{{ url_for('auth.login') }}"
         class="nav-link{% if request.endpoint == 'auth.login' %} is-active{% endif %}"
@@ -27,6 +28,7 @@
         class="nav-link nav-link--cta{% if request.endpoint == 'auth.register' %} is-active{% endif %}"
         >Register</a
       >
+      {% endif %}
     </nav>
   </div>
 </header>

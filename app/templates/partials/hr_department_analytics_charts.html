@@ -1,0 +1,28 @@
+{% from "macros/icons.html" import i %}
+
+<section class="panel module-analytics-hr-chartdeck-panel">
+  <h3 style="margin-top: 0">{{ i("bar_chart") }} HR visual analytics</h3>
+  <p class="hint module-analytics-hr-chartdeck-lede">
+    Interactive charts (same engine as the dashboard). Refresh for updated session totals.
+  </p>
+  <div class="module-analytics-hr-charts module-finance-overview__charts module-finance-overview__charts--ep">
+    <figure class="module-finance-overview__chart-card module-analytics-hr-chart-card--wide">
+      <figcaption>Session hours by employee</figcaption>
+      <div class="module-finance-overview__canvas-wrap module-finance-overview__canvas-wrap--wide" id="chartHrSessionHoursWrap">
+        <canvas id="chartHrSessionHours" role="img" aria-label="Horizontal bar chart of session hours per employee"></canvas>
+      </div>
+    </figure>
+    <figure class="module-finance-overview__chart-card module-analytics-hr-chart-card--wide">
+      <figcaption>Tenure in cooperative (days)</figcaption>
+      <div class="module-finance-overview__canvas-wrap module-finance-overview__canvas-wrap--wide" id="chartHrTenureDaysWrap">
+        <canvas id="chartHrTenureDays" role="img" aria-label="Horizontal bar chart of tenure in days per employee"></canvas>
+      </div>
+    </figure>
+    <figure class="module-finance-overview__chart-card">
+      <figcaption>Accounts by status</figcaption>
+      <div class="module-finance-overview__canvas-wrap" id="chartHrStatusWrap">
+        <canvas id="chartHrStatus" role="img" aria-label="Doughnut chart of employee account status"></canvas>
+      </div>
+    </figure>
+  </div>
+</section>

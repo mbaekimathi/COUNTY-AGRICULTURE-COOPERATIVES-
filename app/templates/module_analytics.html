@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
+    <p class="dash-meta">{{ module_desc }}</p>
+  </div>
+</div>
+
+<section class="panel">
+  <h3>{{ i("bar_chart") }} Operational analytics</h3>
+  <p class="lede dash-card-lede">
+    Charts and dashboards for cooperative operations will appear here. Farm GPS maps and boundary tools live under
+    <strong>Farmers</strong> → <strong>Farm locations</strong> in the sidebar when you open the farmers module.
+  </p>
+  {% set r = session.get("employee_role") %}
+  {% if r in ["administrator", "manager", "it_support"] %}
+    <p class="hint" style="margin-top: 0.75rem">
+      <a href="{{ url_for('main.farmers_farm_locations_page', role=r) }}">{{ i("map_pin") }} Open farm locations map</a>
+    </p>
+  {% endif %}
+</section>
+
+{% endblock %}

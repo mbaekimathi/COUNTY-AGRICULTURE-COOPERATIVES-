@@ -9,7 +9,7 @@
       <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
       <p class="dash-meta">{{ module_desc }}</p>
       <div class="finance-purchase-list-page__badge-row" aria-label="List summary">
-        <span class="finance-purchase-list-page__badge">{{ product_count }} product{% if product_count != 1 %}s{% endif %}</span>
+        <span class="finance-purchase-list-page__badge">{{ product_count }} item{% if product_count != 1 %}s{% endif %}</span>
         <span class="finance-purchase-list-page__badge is-muted">Sorted by type &amp; name</span>
       </div>
     </div>
@@ -18,7 +18,7 @@
   <section class="panel">
     <div class="finance-purchase-list-page__panel-head">
       <div>
-        <h3>{{ i("shopping_cart") }} Products &amp; purchase analytics</h3>
+        <h3>{{ i("shopping_cart") }} Items &amp; purchase analytics</h3>
         <p class="finance-purchase-list-page__panel-desc">
           Stock on hand and average buying price from stock-in movements. Row estimates use the same average price × quantity.
           Click a row or the eye icon to open transactions and allocation detail.
@@ -28,7 +28,7 @@
 
     <div class="finance-purchase-list-page__stats" role="list">
       <div class="finance-purchase-list-page__stat" role="listitem">
-        <span class="finance-purchase-list-page__stat-label">Products listed</span>
+        <span class="finance-purchase-list-page__stat-label">Items listed</span>
         <span class="finance-purchase-list-page__stat-value">{{ product_count }}</span>
       </div>
       <div class="finance-purchase-list-page__stat" role="listitem">
@@ -45,7 +45,7 @@
       <table class="data-table finance-purchase-list-page__table">
         <thead>
           <tr>
-            <th>Product</th>
+            <th>Item</th>
             <th>Category</th>
             <th>Type</th>
             <th class="numeric-col">Stock qty</th>
@@ -64,7 +64,7 @@
               data-href="{{ detail_url }}"
               tabindex="0"
               role="link"
-              aria-label="Open purchase detail for {{ r.crop_code }} {{ r.crop_name | e }}"
+              aria-label="Open item finance detail for {{ r.crop_code }} {{ r.crop_name | e }}"
             >
               <td>
                 <div class="finance-purchase-list-page__product-cell">
@@ -96,15 +96,15 @@
                 <a
                   class="finance-purchase-list-page__view-btn"
                   href="{{ detail_url }}"
-                  title="View purchase detail"
-                  aria-label="View purchase detail for {{ r.crop_code }} {{ r.crop_name | e }}"
+                  title="View item finance detail"
+                  aria-label="View item finance detail for {{ r.crop_code }} {{ r.crop_name | e }}"
                 >{{ i("eye") }}</a>
               </td>
             </tr>
             {% endfor %}
           {% else %}
             <tr>
-              <td colspan="7" class="table-empty">No products found.</td>
+              <td colspan="7" class="table-empty">No items found.</td>
             </tr>
           {% endif %}
         </tbody>

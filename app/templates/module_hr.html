@@ -1,55 +1,92 @@
 {% extends "base.html" %}
+{% block body_class %}hr-manage-page{% endblock %}
 {% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
 {% block content %}
 {% from "macros/icons.html" import i %}
 {% from "macros/forms.html" import password_field %}
 
-<div class="dashboard-header">
-  <div>
+<div class="dashboard-header hr-page-header">
+  <div class="hr-page-header__intro">
     <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
-    <p class="dash-meta">Register, edit, suspend, activate, or delete employees.</p>
   </div>
 </div>
 
-<section class="panel">
+<section class="panel hr-register-panel">
   <h3>{{ i("user") }} Register employee</h3>
-  <details class="form-disclosure">
+  <p class="hint hr-register-panel__lede">Add a new staff account—they are <strong>active immediately</strong> and can sign in. The form stays collapsed until you open it.</p>
+  <details class="form-disclosure hr-register-disclosure">
     <summary class="form-disclosure__summary">
-      <span class="form-disclosure__summary-inner">{{ i("spark") }} Register employee</span>
+      <span class="form-disclosure__summary-inner">{{ i("spark") }} Open registration form</span>
+      <span class="hr-register-disclosure__hint hint">Tap to expand</span>
     </summary>
-    <div class="form-disclosure__body">
-      <form method="post" action="{{ url_for('main.hr_employees_action', role=session.get('employee_role')) }}" novalidate>
+    <div class="form-disclosure__body hr-register-disclosure__body">
+      <form id="hr-register-form" method="post" action="{{ url_for('main.hr_employees_action', role=session.get('employee_role')) }}" enctype="multipart/form-data">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
         <input type="hidden" name="action" value="create" />
 
-        <div class="form-grid" style="margin-top: 0.85rem">
+        <div class="form-grid hr-register-form">
+          <p class="hr-form-section-title hr-form-full">Profile</p>
           <div class="field">
             <label class="label-row" for="e_full_name">{{ i("user") }} <span>Full name</span></label>
-            <div class="input-wrap">{{ i("user") }}<input id="e_full_name" name="full_name" type="text" required /></div>
+            <div class="input-wrap">{{ i("user") }}<input id="e_full_name" name="full_name" type="text" required autocomplete="name" autocapitalize="characters" /></div>
           </div>
           <div class="field">
             <label class="label-row" for="e_email">{{ i("mail") }} <span>Personal email</span></label>
-            <div class="input-wrap">{{ i("mail") }}<input id="e_email" name="email" type="email" required /></div>
+            <div class="input-wrap">{{ i("mail") }}<input id="e_email" name="email" type="email" required autocomplete="email" autocapitalize="none" spellcheck="false" /></div>
           </div>
           <div class="field">
+            <label class="label-row" for="e_phone_number">{{ i("phone") }} <span>Mobile phone</span></label>
+            <div class="input-wrap">{{ i("phone") }}<input id="e_phone_number" name="phone_number" type="tel" inputmode="tel" autocomplete="tel" required /></div>
+            <p class="hint">07XXXXXXXX or 2547XXXXXXXX</p>
+          </div>
+
+          <p class="hr-form-section-title hr-form-full">Sign-in &amp; role</p>
+          <div class="field">
             <label class="label-row" for="e_national_id">{{ i("id") }} <span>National ID</span></label>
-            <div class="input-wrap">{{ i("id") }}<input id="e_national_id" name="national_id" type="text" required /></div>
+            <div class="input-wrap">{{ i("id") }}<input id="e_national_id" name="national_id" type="text" required autocomplete="off" autocapitalize="characters" /></div>
           </div>
           <div class="field">
             <label class="label-row" for="e_login_code">{{ i("keypad") }} <span>6-digit login code</span></label>
-            <div class="input-wrap">{{ i("keypad") }}<input id="e_login_code" name="login_code" type="text" inputmode="numeric" pattern="\\d{6}" maxlength="6" required /></div>
+            <div class="input-wrap">{{ i("keypad") }}<input id="e_login_code" name="login_code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="off" /></div>
+            <p class="hint login-code-check-msg" id="e_login_code_live_status" aria-live="polite"></p>
           </div>
-          <div class="field">
+          <div class="field hr-form-full">
             <label class="label-row" for="e_role">{{ i("shield") }} <span>Role</span></label>
-            <div class="input-wrap">{{ i("shield") }}<input id="e_role" name="role" type="text" value="employee" /></div>
-            <p class="hint">Allowed: administrator, manager, health_officer, sales, it_support, storage, employee.</p>
+            <div class="input-wrap">{{ i("shield") }}
+              <select id="e_role" name="role" required autocomplete="off">
+                {% for value, label in employee_role_choices %}
+                <option value="{{ value }}" {% if value == 'employee' %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
           </div>
-          <div class="field">
+
+          <p class="hr-form-section-title hr-form-full">Password</p>
+          <p class="hint hr-form-full hr-pw-policy-hint">At least <strong>6 characters</strong>. Use letters, numbers, and symbols — all are allowed.</p>
+          <div class="field hr-form-full">
             <label class="label-row" for="e_password">{{ i("lock") }} <span>Password</span></label>
             {{ password_field("e_password", "password", "new-password", 6, true) }}
+            <div class="hr-pw-strength" aria-live="polite">
+              <div class="hr-pw-strength__meter" data-hr-pw-meter data-level="0">
+                <span></span><span></span><span></span><span></span>
+              </div>
+              <p class="hr-pw-strength__text hint" data-hr-pw-strength-text></p>
+            </div>
           </div>
-          <div class="actions">
-            <button type="submit">{{ i("spark") }} Save registration</button>
+          <div class="field hr-form-full">
+            <label class="label-row" for="e_confirm_password">{{ i("lock") }} <span>Confirm password</span></label>
+            {{ password_field("e_confirm_password", "confirm_password", "new-password", 6, true) }}
+            <p class="hint hr-pw-match" data-hr-pw-match aria-live="polite"></p>
+          </div>
+
+          <p class="hr-form-section-title hr-form-full">Photo</p>
+          <div class="field hr-form-full">
+            <label class="label-row" for="e_profile_photo">{{ i("camera") }} <span>Profile photo (optional)</span></label>
+            <input id="e_profile_photo" class="hr-file-input" name="profile_photo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+            <p class="hint">PNG, JPG, WebP, or GIF. Staff can update this later under My profile.</p>
+          </div>
+          <div class="actions hr-form-actions">
+            <button type="submit" class="button">{{ i("spark") }} Save registration</button>
           </div>
         </div>
       </form>
@@ -57,74 +94,112 @@
   </details>
 </section>
 
-<section class="panel" style="margin-top: 1.25rem">
+<section class="panel hr-employees-panel hr-employees-panel--spaced">
   <h3>{{ i("shield") }} Employees</h3>
-  <div class="table-wrap">
-    <table class="data-table">
+  <div class="table-wrap hr-employees-table-wrap">
+    <table class="data-table hr-employees-table">
       <thead>
         <tr>
-          <th>ID</th>
-          <th>Name</th>
-          <th>Email</th>
-          <th>National ID</th>
-          <th>Code</th>
-          <th>Role</th>
-          <th>Status</th>
-          <th style="min-width: 320px">Actions</th>
+          <th class="col-photo" scope="col">Photo</th>
+          <th scope="col">Name</th>
+          <th scope="col">Email</th>
+          <th scope="col">Phone</th>
+          <th scope="col">Role</th>
+          <th scope="col">Status</th>
+          <th class="hr-col-actions" scope="col">
+            <span class="sr-only">Row actions</span>
+            <span class="hr-col-actions__icon" aria-hidden="true">{{ i("sliders") }}</span>
+          </th>
         </tr>
       </thead>
       <tbody>
         {% for e in employees %}
-        <tr>
-          <td>{{ e.id }}</td>
-          <td>{{ e.full_name }}</td>
-          <td>{{ e.email }}</td>
-          <td>{{ e.national_id }}</td>
-          <td><code class="profile-code">{{ e.login_code }}</code></td>
-          <td>{{ e.role | replace("_", " ") }}</td>
-          <td>{{ e.status | replace("_", " ") }}</td>
-          <td>
-            <details class="row-actions">
-              <summary class="row-actions__summary">Edit / Actions</summary>
-              <div class="row-actions__body">
-                <form method="post" action="{{ url_for('main.hr_employees_action', role=session.get('employee_role')) }}">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                  <input type="hidden" name="action" value="update" />
-                  <input type="hidden" name="employee_id" value="{{ e.id }}" />
-                  <div class="row-form">
-                    <input name="full_name" value="{{ e.full_name }}" placeholder="Full name" required />
-                    <input name="email" value="{{ e.email }}" placeholder="Email" required />
-                    <input name="national_id" value="{{ e.national_id }}" placeholder="National ID" required />
-                    <input name="login_code" value="{{ e.login_code }}" placeholder="Login code" required />
-                    <input name="role" value="{{ e.role }}" placeholder="Role" />
-                  </div>
-                  <div class="row-buttons">
-                    <button type="submit" class="button">{{ i("spark") }} Save</button>
-                  </div>
-                </form>
-
-                <div class="row-buttons">
-                  <form method="post" action="{{ url_for('main.hr_employees_action', role=session.get('employee_role')) }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                    <input type="hidden" name="employee_id" value="{{ e.id }}" />
-                    <input type="hidden" name="action" value="activate" />
-                    <button type="submit" class="button button-ghost">{{ i("shield") }} Activate</button>
-                  </form>
-                  <form method="post" action="{{ url_for('main.hr_employees_action', role=session.get('employee_role')) }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                    <input type="hidden" name="employee_id" value="{{ e.id }}" />
-                    <input type="hidden" name="action" value="suspend" />
-                    <button type="submit" class="button button-ghost">{{ i("shield") }} Suspend</button>
-                  </form>
-                  <form method="post" action="{{ url_for('main.hr_employees_action', role=session.get('employee_role')) }}" onsubmit="return confirm('Delete employee?');">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-                    <input type="hidden" name="employee_id" value="{{ e.id }}" />
-                    <input type="hidden" name="action" value="delete" />
-                    <button type="submit" class="button button-ghost">Delete</button>
-                  </form>
-                </div>
-              </div>
-            </details>
+        <tr class="{% if e.status == 'suspended' %}is-suspended{% endif %}">
+          <td class="col-photo" data-label="Photo">
+            <span class="hr-cell-value">
+              {% if e.profile_photo %}
+                <img
+                  class="employee-table-photo"
+                  src="{{ url_for('static', filename=e.profile_photo) }}"
+                  alt=""
+                  width="40"
+                  height="40"
+                  loading="lazy"
+                />
+              {% else %}
+                <span class="employee-table-photo employee-table-photo--fallback" aria-hidden="true">{{ e.full_name | initials }}</span>
+              {% endif %}
+            </span>
+          </td>
+          <td data-label="Name"><span class="hr-cell-value">{{ e.full_name }}</span></td>
+          <td data-label="Email"><span class="hr-cell-value">{{ e.email }}</span></td>
+          <td data-label="Phone"><span class="hr-cell-value">{{ e.phone_number or "—" }}</span></td>
+          <td data-label="Role"><span class="hr-cell-value">{{ e.role | replace("_", " ") }}</span></td>
+          <td data-label="Status"><span class="hr-cell-value">{{ e.status | replace("_", " ") }}</span></td>
+          <td class="hr-col-actions-cell" data-label="Actions">
+            <div class="hr-row-actions hr-cell-value">
+              <button
+                type="button"
+                class="button hr-action-btn hr-edit-open"
+                data-employee-id="{{ e.id }}"
+                aria-label="Edit {{ e.full_name | e }}"
+                title="Edit employee"
+              >
+                {{ i("pencil") }}
+              </button>
+              {% set is_pending = (e.status == 'pending_approval') %}
+              {% set is_active_account = (e.status == 'active') %}
+              {% set is_own_account = (session.get('employee_id') is not none and session.get('employee_id')|string == e.id|string) %}
+              {% if is_own_account and is_active_account %}
+              <span class="hr-inline-form hr-status-toggle-readonly" title="You cannot suspend your own account while signed in">
+                <span
+                  class="hr-status-toggle hr-status-toggle--on hr-status-toggle--readonly"
+                  role="status"
+                  aria-label="Your account is active; you cannot suspend yourself"
+                >
+                  <span class="hr-status-toggle__track" aria-hidden="true"><span class="hr-status-toggle__thumb"></span></span>
+                  <span class="sr-only">Active — your account</span>
+                </span>
+              </span>
+              {% elif is_pending %}
+              <form method="post" action="{{ url_for('main.hr_employees_action', role=session.get('employee_role')) }}" class="hr-inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                <input type="hidden" name="employee_id" value="{{ e.id }}" />
+                <input type="hidden" name="action" value="activate" />
+                <button
+                  type="submit"
+                  class="button hr-action-btn hr-approve-btn"
+                  aria-label="Approve {{ e.full_name | e }}"
+                  title="Approve pending employee"
+                >
+                  {{ i("check") }}
+                </button>
+              </form>
+              {% else %}
+              <form method="post" action="{{ url_for('main.hr_employees_action', role=session.get('employee_role')) }}" class="hr-inline-form hr-status-toggle-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                <input type="hidden" name="employee_id" value="{{ e.id }}" />
+                <input type="hidden" name="action" value="{{ 'suspend' if is_active_account else 'activate' }}" />
+                <button
+                  type="submit"
+                  class="hr-status-toggle{% if is_active_account %} hr-status-toggle--on{% endif %}"
+                  role="switch"
+                  aria-checked="{{ 'true' if is_active_account else 'false' }}"
+                  aria-label="{% if is_active_account %}Suspend account for {{ e.full_name | e }}{% else %}Activate account for {{ e.full_name | e }}{% endif %}"
+                  title="{% if is_active_account %}Active — click to suspend{% else %}Suspended — click to activate{% endif %}"
+                >
+                  <span class="hr-status-toggle__track" aria-hidden="true"><span class="hr-status-toggle__thumb"></span></span>
+                  <span class="sr-only">{% if is_active_account %}Suspend{% else %}Activate{% endif %}</span>
+                </button>
+              </form>
+              {% endif %}
+              <form method="post" action="{{ url_for('main.hr_employees_action', role=session.get('employee_role')) }}" class="hr-inline-form" onsubmit="return confirm('Delete this employee?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+                <input type="hidden" name="employee_id" value="{{ e.id }}" />
+                <input type="hidden" name="action" value="delete" />
+                <button type="submit" class="button button-ghost hr-action-btn hr-action-btn--danger" aria-label="Delete {{ e.full_name | e }}" title="Delete employee">{{ i("trash") }}</button>
+              </form>
+            </div>
           </td>
         </tr>
         {% endfor %}
@@ -133,5 +208,325 @@
   </div>
 </section>
 
+<div class="modal-backdrop hr-edit-backdrop" data-hr-edit-modal hidden>
+  <div class="modal hr-edit-modal" role="dialog" aria-modal="true" aria-labelledby="hr_edit_title" tabindex="-1">
+    <div class="modal__head hr-edit-modal__head">
+      <div class="hr-edit-modal__head-text">
+        <h3 id="hr_edit_title" class="modal__title">{{ i("pencil") }} Edit employee</h3>
+        <p class="hr-edit-modal__subtitle hint">Update profile and access fields. Password changes are done by the employee under My profile.</p>
+      </div>
+      <button type="button" class="button button-ghost modal__close" data-hr-edit-close aria-label="Close" title="Close">×</button>
+    </div>
+    <form
+      class="hr-edit-modal__form"
+      method="post"
+      action="{{ url_for('main.hr_employees_action', role=session.get('employee_role')) }}"
+      id="hr-edit-form"
+      novalidate
+    >
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <input type="hidden" name="action" value="update" />
+      <input type="hidden" name="employee_id" id="hr_edit_employee_id" value="" />
+      <div class="modal__body hr-edit-modal__body">
+        <div class="hr-edit-modal__status" role="status">
+          <span class="hr-edit-modal__status-label">Account status</span>
+          <span class="hr-edit-modal__status-pill" id="hr_edit_subtitle">—</span>
+        </div>
+        <div class="hr-edit-modal__grid">
+          <p class="hr-form-section-title hr-form-full">Profile</p>
+          <div class="field">
+            <label class="label-row" for="hr_edit_full_name">{{ i("user") }} <span>Full name</span></label>
+            <div class="input-wrap">{{ i("user") }}<input id="hr_edit_full_name" name="full_name" type="text" required autocomplete="name" /></div>
+          </div>
+          <div class="field">
+            <label class="label-row" for="hr_edit_email">{{ i("mail") }} <span>Email</span></label>
+            <div class="input-wrap">{{ i("mail") }}<input id="hr_edit_email" name="email" type="email" required autocomplete="email" autocapitalize="none" spellcheck="false" /></div>
+          </div>
+          <div class="field">
+            <label class="label-row" for="hr_edit_phone_number">{{ i("phone") }} <span>Mobile phone</span></label>
+            <div class="input-wrap">{{ i("phone") }}<input id="hr_edit_phone_number" name="phone_number" type="tel" inputmode="tel" autocomplete="tel" required /></div>
+          </div>
+          <p class="hr-form-section-title hr-form-full">Sign-in &amp; role</p>
+          <div class="field">
+            <label class="label-row" for="hr_edit_national_id">{{ i("id") }} <span>National ID</span></label>
+            <div class="input-wrap">{{ i("id") }}<input id="hr_edit_national_id" name="national_id" type="text" required autocomplete="off" /></div>
+          </div>
+          <div class="field">
+            <label class="label-row" for="hr_edit_login_code">{{ i("keypad") }} <span>6-digit login code</span></label>
+            <div class="input-wrap">{{ i("keypad") }}<input id="hr_edit_login_code" name="login_code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="off" /></div>
+            <p class="hint login-code-check-msg" id="hr_edit_login_code_live_status" aria-live="polite"></p>
+          </div>
+          <div class="field hr-form-full">
+            <label class="label-row" for="hr_edit_role">{{ i("shield") }} <span>Role</span></label>
+            <div class="input-wrap">{{ i("shield") }}
+              <select id="hr_edit_role" name="role" required autocomplete="off">
+                {% for value, label in employee_role_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal__footer hr-edit-modal__footer">
+        <button type="button" class="button button-ghost hr-edit-modal__btn-cancel" data-hr-edit-close>Cancel</button>
+        <button type="submit" class="button hr-edit-modal__btn-save">{{ i("spark") }} Save changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/login-code-live.js') }}"></script>
+<script>
+  (function () {
+    var backdrop = document.querySelector("[data-hr-edit-modal]");
+    var form = document.getElementById("hr-edit-form");
+    if (!backdrop || !form) return;
+
+    var modal = backdrop.querySelector(".modal");
+    var closeEls = backdrop.querySelectorAll("[data-hr-edit-close]");
+    var employees = {{ employees | tojson }};
+    var byId = {};
+    (employees || []).forEach(function (r) {
+      if (r && r.id != null) byId[String(r.id)] = r;
+    });
+
+    var elId = document.getElementById("hr_edit_employee_id");
+    var elName = document.getElementById("hr_edit_full_name");
+    var elEmail = document.getElementById("hr_edit_email");
+    var elNat = document.getElementById("hr_edit_national_id");
+    var elPhone = document.getElementById("hr_edit_phone_number");
+    var elCode = document.getElementById("hr_edit_login_code");
+    var elRole = document.getElementById("hr_edit_role");
+    var elSubtitle = document.getElementById("hr_edit_subtitle");
+
+    function setVal(el, v) {
+      if (!el) return;
+      el.value = v != null && v !== undefined ? String(v) : "";
+    }
+
+    function openModal(emp) {
+      if (!emp) return;
+      setVal(elId, emp.id);
+      setVal(elName, emp.full_name);
+      setVal(elEmail, emp.email);
+      setVal(elNat, emp.national_id);
+      setVal(elPhone, emp.phone_number);
+      setVal(elCode, emp.login_code);
+      setVal(elRole, emp.role);
+      if (elSubtitle) {
+        var st = (emp.status || "").replace(/_/g, " ");
+        elSubtitle.textContent = st ? st : "—";
+      }
+      backdrop.hidden = false;
+      document.body.classList.add("modal-open");
+      if (modal) {
+        try {
+          modal.focus();
+        } catch (e) { /* no-op */ }
+      }
+      if (elName) {
+        try {
+          elName.focus();
+        } catch (e2) { /* no-op */ }
+      }
+      setTimeout(function () {
+        if (typeof window.HR_EDIT_LC_RECHECK === "function") window.HR_EDIT_LC_RECHECK();
+      }, 0);
+    }
+
+    function closeModal() {
+      backdrop.hidden = true;
+      document.body.classList.remove("modal-open");
+    }
+
+    document.querySelectorAll(".hr-edit-open").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var id = btn.getAttribute("data-employee-id");
+        var emp = id != null ? byId[String(id)] : null;
+        openModal(emp);
+      });
+    });
+
+    closeEls.forEach(function (el) {
+      el.addEventListener("click", closeModal);
+    });
+
+    backdrop.addEventListener("click", function (e) {
+      if (e.target === backdrop) closeModal();
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !backdrop.hidden) closeModal();
+    });
+  })();
+
+  (function () {
+    var CHECK_LOGIN_URL = {{ url_for('auth.check_login_code') | tojson }};
+    var form = document.getElementById("hr-register-form");
+    var lcInput = document.getElementById("e_login_code");
+    var lcStatus = document.getElementById("e_login_code_live_status");
+    var pw = document.getElementById("e_password");
+    var cf = document.getElementById("e_confirm_password");
+    var meter = document.querySelector("[data-hr-pw-meter]");
+    var strengthText = document.querySelector("[data-hr-pw-strength-text]");
+    var matchEl = document.querySelector("[data-hr-pw-match]");
+    if (!form || !pw || !cf || !meter || !strengthText || !matchEl) return;
+
+    if (lcInput && lcStatus && typeof wireLoginCodeAvailability === "function") {
+      wireLoginCodeAvailability({
+        checkUrl: CHECK_LOGIN_URL,
+        form: form,
+        input: lcInput,
+        statusEl: lcStatus,
+        beforeSubmit: function (e) {
+          cf.setCustomValidity("");
+          pw.setCustomValidity("");
+          if (pw.value !== cf.value) {
+            e.preventDefault();
+            cf.setCustomValidity("Passwords must match.");
+            cf.reportValidity();
+            return false;
+          }
+          return true;
+        },
+      });
+    } else {
+      form.addEventListener("submit", function (e) {
+        cf.setCustomValidity("");
+        pw.setCustomValidity("");
+        if (pw.value !== cf.value) {
+          e.preventDefault();
+          cf.setCustomValidity("Passwords must match.");
+          cf.reportValidity();
+        }
+      });
+    }
+
+    function passwordStrength(value) {
+      if (!value.length) {
+        return { level: 0, label: "Minimum 6 characters. Letters, numbers, and symbols allowed." };
+      }
+      if (value.length < 6) {
+        return { level: 0, label: "Too short — need at least 6 characters." };
+      }
+      var kinds = 0;
+      if (/[a-z]/.test(value)) kinds++;
+      if (/[A-Z]/.test(value)) kinds++;
+      if (/[0-9]/.test(value)) kinds++;
+      if (/[^A-Za-z0-9]/.test(value)) kinds++;
+      var bars = 1;
+      if (value.length >= 8) bars++;
+      if (value.length >= 10) bars++;
+      if (value.length >= 12) bars++;
+      if (kinds >= 2) bars++;
+      if (kinds >= 3) bars++;
+      if (kinds >= 4) bars++;
+      bars = Math.min(4, Math.max(1, bars));
+      var labels = { 1: "Weak password", 2: "Fair password", 3: "Good password", 4: "Strong password" };
+      return { level: bars, label: labels[bars] };
+    }
+
+    function updateStrength() {
+      var s = passwordStrength(pw.value);
+      meter.setAttribute("data-level", String(s.level));
+      meter.setAttribute("aria-valuenow", String(s.level));
+      meter.setAttribute("aria-valuetext", s.label);
+      strengthText.textContent = s.label;
+      strengthText.classList.remove(
+        "hr-pw-strength__text--warn",
+        "hr-pw-strength__text--ok",
+        "hr-pw-strength__text--muted",
+        "hr-pw-strength__text--fair"
+      );
+      if (!pw.value.length) strengthText.classList.add("hr-pw-strength__text--muted");
+      else if (s.level === 0) strengthText.classList.add("hr-pw-strength__text--warn");
+      else if (s.level <= 2) strengthText.classList.add("hr-pw-strength__text--fair");
+      else strengthText.classList.add("hr-pw-strength__text--ok");
+    }
+
+    function updateMatch() {
+      cf.setCustomValidity("");
+      var c = cf.value;
+      if (!c.length) {
+        matchEl.textContent = "";
+        matchEl.className = "hint hr-pw-match";
+        return;
+      }
+      if (pw.value === c) {
+        matchEl.textContent = "Passwords match.";
+        matchEl.className = "hint hr-pw-match hr-pw-match--ok";
+      } else {
+        matchEl.textContent = "Passwords do not match.";
+        matchEl.className = "hint hr-pw-match hr-pw-match--bad";
+      }
+    }
+
+    meter.setAttribute("role", "progressbar");
+    meter.setAttribute("aria-valuemin", "0");
+    meter.setAttribute("aria-valuemax", "4");
+
+    pw.addEventListener("input", function () {
+      pw.setCustomValidity("");
+      updateStrength();
+      updateMatch();
+    });
+    cf.addEventListener("input", function () {
+      cf.setCustomValidity("");
+      updateMatch();
+    });
+
+    updateStrength();
+    updateMatch();
+  })();
+
+  (function () {
+    var CHECK_LOGIN_URL = {{ url_for('auth.check_login_code') | tojson }};
+    var editForm = document.getElementById("hr-edit-form");
+    var editInput = document.getElementById("hr_edit_login_code");
+    var editStatus = document.getElementById("hr_edit_login_code_live_status");
+    var elEmpId = document.getElementById("hr_edit_employee_id");
+    if (!editForm || !editInput || !editStatus || typeof wireLoginCodeAvailability !== "function") return;
+    var api = wireLoginCodeAvailability({
+      checkUrl: CHECK_LOGIN_URL,
+      form: editForm,
+      input: editInput,
+      statusEl: editStatus,
+      getExceptId: function () {
+        var v = elEmpId && elEmpId.value && String(elEmpId.value).trim();
+        return v && /^\d+$/.test(v) ? v : null;
+      },
+      beforeSubmit: function () {
+        return true;
+      },
+    });
+    window.HR_EDIT_LC_RECHECK = typeof api.recheck === "function" ? api.recheck : null;
+  })();
+
+  (function () {
+    function bindLowercaseEmail(el) {
+      if (!el) return;
+      function coerce() {
+        var low = el.value.toLowerCase();
+        if (low === el.value) return;
+        var start = el.selectionStart;
+        var end = el.selectionEnd;
+        el.value = low;
+        if (start != null && end != null && typeof start === "number") {
+          try {
+            el.setSelectionRange(start, end);
+          } catch (err) { /* no-op */ }
+        }
+      }
+      el.addEventListener("input", coerce);
+      el.addEventListener("blur", coerce);
+    }
+    bindLowercaseEmail(document.getElementById("e_email"));
+    bindLowercaseEmail(document.getElementById("hr_edit_email"));
+  })();
+</script>
 {% endblock %}
 

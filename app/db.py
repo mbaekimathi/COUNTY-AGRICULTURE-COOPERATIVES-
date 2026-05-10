@@ -36,6 +36,8 @@ def ensure_database_and_schema(app):
         try:
             _ensure_employees_table(conn)
             _migrate_employees_columns(conn)
+            _ensure_employee_login_sessions_table(conn)
+            _migrate_employee_login_sessions_columns(conn)
             _ensure_farmers_table(conn)
             _migrate_farmers_columns(conn)
             _ensure_products_table(conn)
@@ -60,6 +62,7 @@ CREATE TABLE IF NOT EXISTS employees (
     full_name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
     national_id VARCHAR(64) NOT NULL,
+    phone_number VARCHAR(32) NULL,
     login_code CHAR(6) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     profile_photo VARCHAR(512) NULL,
@@ -117,6 +120,52 @@ def _migrate_employees_columns(conn):
             _add_column(
                 conn,
                 "ALTER TABLE employees ADD COLUMN profile_photo VARCHAR(512) NULL AFTER password_hash",
+            )
+        except pymysql.err.OperationalError as e:
+            if e.args[0] != 1060:
+                raise
+    if "phone_number" not in cols:
+        try:
+            _add_column(
+                conn,
+                "ALTER TABLE employees ADD COLUMN phone_number VARCHAR(32) NULL AFTER national_id",
+            )
+        except pymysql.err.OperationalError as e:
+            if e.args[0] != 1060:
+                raise
+
+
+EMPLOYEE_LOGIN_SESSIONS_DDL = """
+CREATE TABLE IF NOT EXISTS employee_login_sessions (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    employee_id INT UNSIGNED NOT NULL,
+    started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ended_at TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (id),
+    KEY ix_employee_login_sessions_employee (employee_id),
+    KEY ix_employee_login_sessions_open (employee_id, ended_at),
+    CONSTRAINT fk_employee_login_sessions_employee
+      FOREIGN KEY (employee_id) REFERENCES employees(id)
+      ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+"""
+
+
+def _ensure_employee_login_sessions_table(conn):
+    with conn.cursor() as cur:
+        cur.execute(EMPLOYEE_LOGIN_SESSIONS_DDL.strip())
+
+
+def _migrate_employee_login_sessions_columns(conn):
+    cols = _existing_columns(conn, "employee_login_sessions")
+    if not cols:
+        return
+    if "last_seen_at" not in cols:
+        try:
+            _add_column(
+                conn,
+                "ALTER TABLE employee_login_sessions ADD COLUMN last_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER started_at",
             )
         except pymysql.err.OperationalError as e:
             if e.args[0] != 1060:
@@ -370,6 +419,30 @@ CREATE TABLE IF NOT EXISTS product_stock_movements (
 """
 
 
+def _migrate_stock_movements_farmer_intake(conn):
+    cols = _existing_columns(conn, "product_stock_movements")
+    if "farmer_intake_quality" not in cols:
+        try:
+            _add_column(
+                conn,
+                "ALTER TABLE product_stock_movements ADD COLUMN farmer_intake_quality "
+                "ENUM('high','moderate','below_average','poor') NULL AFTER note",
+            )
+        except pymysql.err.OperationalError as e:
+            if e.args[0] != 1060:
+                raise
+    if "farmer_payment_status" not in cols:
+        try:
+            _add_column(
+                conn,
+                "ALTER TABLE product_stock_movements ADD COLUMN farmer_payment_status "
+                "ENUM('paid','partially_paid','not_paid') NULL AFTER farmer_intake_quality",
+            )
+        except pymysql.err.OperationalError as e:
+            if e.args[0] != 1060:
+                raise
+
+
 def _ensure_inventory_tables(conn):
     with conn.cursor() as cur:
         cur.execute(INVENTORY_DDL.strip())
@@ -377,6 +450,7 @@ def _ensure_inventory_tables(conn):
         cur.execute(DISTRIBUTIONS_DDL.strip())
         cur.execute(DISTRIBUTION_RECIPIENTS_DDL.strip())
     _migrate_distribution_tables(conn)
+    _migrate_stock_movements_farmer_intake(conn)
 
 
 SUPPLIERS_DDL = """

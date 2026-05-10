@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}{{ section_title }} — Warehouse — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i(section_icon) }} {{ section_title }}</h2>
+    <p class="dash-meta">{{ section_desc }}</p>
+    <p class="hint" style="margin-top: 0.75rem">
+      <strong>{{ farmer.full_name or "—" }}</strong>
+      {% if farmer.farmer_code %}<span class="hint"> · {{ farmer.farmer_code }}</span>{% endif %}
+      <span aria-hidden="true"> · </span>
+      <strong>{{ product.crop_code }}</strong> — {{ product.crop_name }}
+      {% if product.crop_category %}<span class="hint">({{ product.crop_category }})</span>{% endif %}
+      {% if product.unit_of_measure %}<span class="hint"> · {{ product.unit_of_measure }}</span>{% endif %}
+    </p>
+  </div>
+  <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center">
+    <a
+      href="{{ url_for('main.warehouse_farmer_session_stock', role=session.get('employee_role')) }}"
+      class="button button-ghost"
+    >
+      {{ i("chevron_left") }} End product stock
+    </a>
+    <a
+      href="{{ url_for('main.farmer_crop_session_detail', role=session.get('employee_role'), farmer_id=farmer_id, product_id=product_id) }}"
+      class="button button-ghost"
+    >
+      {{ i("leaf") }} Crop session
+    </a>
+  </div>
+</div>
+
+<section class="panel">
+  <h3>{{ i("file_text") }} Stock movements</h3>
+  <p class="lede">
+    <strong>IN</strong> rows are stock received from this farmer for this product (record intake linked to a farming session).
+    <strong>OUT</strong> rows are warehouse issues tied to a distribution that included this farmer for this product.
+    <strong>Expected yield</strong> uses the product’s yield per acre and unit of measure; for <strong>IN</strong> rows it uses the linked session’s acreage (same rule as record intake).
+  </p>
+  <div class="table-wrap" style="margin-top: 1rem">
+    <table class="data-table warehouse-stock-tx-table">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Type</th>
+          <th class="numeric-col">Quantity</th>
+          <th>UOM</th>
+          <th class="numeric-col">Expected yield</th>
+          <th>Quality</th>
+          <th>Payment to farmer</th>
+          <th class="numeric-col">Buy price</th>
+          <th class="numeric-col">Line total</th>
+          <th>Detail</th>
+          <th>Recorded by</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if session_stock_movements and session_stock_movements|length %}
+          {% for m in session_stock_movements %}
+            {% set qty_v = (m.quantity | default(0) | float) %}
+            {% set price_v = m.buying_price if m.buying_price is not none else none %}
+            {% set line_in = (qty_v * (price_v | float)) if price_v is not none and m.movement_type == 'IN' else none %}
+            <tr class="warehouse-stock-tx-row warehouse-stock-tx-row--{{ (m.movement_type or 'x')|lower }}">
+              <td>{% if m.created_at %}{{ m.created_at.strftime("%Y-%m-%d %H:%M") }}{% else %}—{% endif %}</td>
+              <td>
+                {% if m.movement_type == "IN" %}
+                  <span class="pill">IN</span>
+                {% elif m.movement_type == "OUT" %}
+                  <span class="pill pill-warn">OUT</span>
+                {% else %}
+                  {{ m.movement_type or "—" }}
+                {% endif %}
+              </td>
+              <td class="numeric-col"><code class="profile-code">{{ "%.2f"|format(qty_v) }}</code></td>
+              <td>{{ m.unit_of_measure or "—" }}</td>
+              <td class="numeric-col">
+                <span class="hint" style="font-variant-numeric: tabular-nums">{{ m.expected_yield_display or "—" }}</span>
+              </td>
+              <td>{{ m.intake_quality_label }}</td>
+              <td>{{ m.payment_status_label }}</td>
+              <td class="numeric-col">
+                {% if m.movement_type == "IN" and price_v is not none %}
+                  {{ "%.2f"|format(price_v | float) }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td class="numeric-col">
+                {% if line_in is not none %}
+                  <strong>KES {{ "%.2f"|format(line_in) }}</strong>
+                {% elif m.movement_type == "OUT" %}
+                  <span class="hint">—</span>
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td>
+                {% if m.movement_type == "IN" %}
+                  {% if m.supplier_name or m.supplier_contact %}
+                    <strong>{{ m.supplier_name or "—" }}</strong>
+                    {% if m.supplier_contact %}<br /><span class="hint">{{ m.supplier_contact }}</span>{% endif %}
+                  {% endif %}
+                  {% if m.note %}<br /><span class="hint">{{ m.note }}</span>{% endif %}
+                {% else %}
+                  {% if m.stock_out_reason %}<span class="pill pill-warn" style="margin-right: 0.35rem">{{ m.stock_out_reason }}</span>{% endif %}
+                  {% if m.note %}<span class="hint">{{ m.note }}</span>{% elif not m.stock_out_reason %}—{% endif %}
+                {% endif %}
+              </td>
+              <td>{{ m.created_by_name or "—" }}</td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="11" class="table-empty">No stock movements found for this farmer and product yet.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% endblock %}

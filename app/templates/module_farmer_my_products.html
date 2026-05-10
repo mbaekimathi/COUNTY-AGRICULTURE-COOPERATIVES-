@@ -3,24 +3,101 @@
 {% block content %}
 {% from "macros/icons.html" import i %}
 
-<div class="dashboard-header">
-  <div>
-    <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
-    <p class="dash-meta">{{ module_desc }}</p>
-    <p class="hint" style="margin-top: 0.85rem">
-      <a href="{{ url_for('main.farmer_all_active_sessions', role=session.get('employee_role'), farmer_id=farmer_id) }}">{{ i("leaf") }} Sessions &amp; farm summary</a>
-      <span aria-hidden="true"> · </span>
-      <a href="{{ url_for('main.module_page', role=session.get('employee_role'), module_key='farmers') }}">{{ i("users") }} Farmers in session</a>
-    </p>
+<div class="farmer-my-products-page">
+<div class="dashboard-header farmer-my-products-page__hero">
+  <div class="farmer-my-products-page__profile-anchor">
+    <details class="farmer-crop-profile farmer-my-products-page__profile-card">
+      <summary class="farmer-crop-profile__summary farmer-my-products-page__profile-summary">
+        <span class="sr-only">Show or hide full farmer profile</span>
+        <div class="farmer-my-products-page__lead">
+          <div class="farmer-my-products-page__avatar">
+            {% if farmer.profile_photo %}
+              <img
+                class="farmer-my-products-page__avatar-img"
+                src="{{ url_for('static', filename=farmer.profile_photo) }}"
+                alt="{{ (farmer.full_name or 'Farmer') ~ ' profile photo' }}"
+                width="112"
+                height="112"
+                loading="lazy"
+              />
+            {% else %}
+              <span class="farmer-my-products-page__avatar-fallback" aria-hidden="true">{{ farmer.full_name | initials }}</span>
+            {% endif %}
+          </div>
+          <div class="farmer-my-products-page__lead-text">
+            <p class="farmer-my-products-page__kicker">
+              <span class="farmer-my-products-page__kicker-icon">{{ i(module_icon) }}</span>
+              My products
+            </p>
+            <h2 class="farmer-my-products-page__name">{{ farmer.full_name or "Farmer" }}</h2>
+            <p class="farmer-my-products-page__meta hint">
+              {% if farmer.farmer_code or farmer.membership_number %}
+                {{ farmer.farmer_code or "—" }} · {{ farmer.membership_number or "—" }}
+              {% else %}
+                Farmer profile
+              {% endif %}
+            </p>
+          </div>
+        </div>
+        <span class="farmer-crop-profile__chev farmer-my-products-page__profile-chev" aria-hidden="true">{{ i("chevron_down") }}</span>
+      </summary>
+      <div class="farmer-crop-profile__panel">
+        <ul class="farmer-crop-profile__details">
+          <li class="farmer-crop-profile__detail">
+            <span class="farmer-crop-profile__detail-label">{{ i("id") }} <span>Farmer code / Membership</span></span>
+            <span class="farmer-crop-profile__detail-value">{{ farmer.farmer_code or "—" }} / {{ farmer.membership_number or "—" }}</span>
+          </li>
+          <li class="farmer-crop-profile__detail">
+            <span class="farmer-crop-profile__detail-label">{{ i("keypad") }} <span>Phone</span></span>
+            <span class="farmer-crop-profile__detail-value">{{ farmer.phone_number or "—" }}</span>
+          </li>
+          <li class="farmer-crop-profile__detail">
+            <span class="farmer-crop-profile__detail-label">{{ i("shield") }} <span>Location</span></span>
+            <span class="farmer-crop-profile__detail-value">
+              {% if farmer.county or farmer.ward %}
+                {{ farmer.county or "" }}{% if farmer.county and farmer.ward %}, {% endif %}{{ farmer.ward or "" }}
+              {% else %}
+                —
+              {% endif %}
+            </span>
+          </li>
+          {% if farmer.location or farmer.village %}
+          <li class="farmer-crop-profile__detail">
+            <span class="farmer-crop-profile__detail-label">{{ i("shield") }} <span>Location detail</span></span>
+            <span class="farmer-crop-profile__detail-value">
+              {% if farmer.location %}{{ farmer.location }}{% endif %}
+              {% if farmer.location and farmer.village %}, {% endif %}
+              {% if farmer.village %}{{ farmer.village }}{% endif %}
+            </span>
+          </li>
+          {% endif %}
+          <li class="farmer-crop-profile__detail">
+            <span class="farmer-crop-profile__detail-label">{{ i("boxes") }} <span>Land on file</span></span>
+            <span class="farmer-crop-profile__detail-value">
+              {% if farmer.land_size is not none %}
+                {{ farmer.land_size }}{% if farmer.land_size_unit %} {{ (farmer.land_size_unit|string)|upper }}{% endif %}
+              {% else %}
+                —
+              {% endif %}
+            </span>
+          </li>
+          <li class="farmer-crop-profile__detail">
+            <span class="farmer-crop-profile__detail-label">{{ i("shield") }} <span>Farmer status</span></span>
+            <span class="farmer-crop-profile__detail-value">{{ (farmer.status or "—") | replace("_", " ") }}</span>
+          </li>
+          <li class="farmer-crop-profile__detail">
+            <span class="farmer-crop-profile__detail-label">{{ i("id") }} <span>National ID</span></span>
+            <span class="farmer-crop-profile__detail-value">{{ farmer.national_id or "—" }}</span>
+          </li>
+        </ul>
+      </div>
+    </details>
   </div>
 </div>
 
-<section class="panel">
-  <h3>{{ i("package") }} Allocated products</h3>
-  <p class="hint" style="margin-bottom: 1rem">
-    Totals from <strong>warehouse distributions</strong> to <strong>{{ farmer.full_name or "this farmer" }}</strong>.
-  </p>
-  <div class="table-wrap">
+<section class="panel farmer-my-products-page__panel">
+  <h3 class="farmer-my-products-page__panel-title">{{ i("package") }} Allocated products</h3>
+  <div class="table-wrap farmer-my-products-page__table-wrap">
     <table class="data-table farmer-allocated-products-table">
       <thead>
         <tr>
@@ -33,16 +110,16 @@
       <tbody>
         {% for row in allocated_product_rows %}
         <tr>
-          <td>
+          <td data-label="Product">
             {% if row.crop_code or row.crop_name %}
               <strong>{{ row.crop_code or "" }}</strong>{% if row.crop_code and row.crop_name %} — {% endif %}{{ row.crop_name or "" }}
             {% else %}
               Product #{{ row.product_id }}
             {% endif %}
           </td>
-          <td>{{ (row.product_type or "—") | replace("_", " ") }}</td>
-          <td>{{ row.unit_of_measure or "—" }}</td>
-          <td class="numeric-col">{{ "%.2f"|format(row.allocated_quantity or 0) }}</td>
+          <td data-label="Type">{{ (row.product_type or "—") | replace("_", " ") }}</td>
+          <td data-label="Unit">{{ row.unit_of_measure or "—" }}</td>
+          <td class="numeric-col" data-label="Qty allocated">{{ "%.2f"|format(row.allocated_quantity or 0) }}</td>
         </tr>
         {% else %}
         <tr>
@@ -53,4 +130,5 @@
     </table>
   </div>
 </section>
+</div>
 {% endblock %}

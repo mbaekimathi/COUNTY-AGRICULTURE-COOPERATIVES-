@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
+    <p class="dash-meta">{{ module_desc }}</p>
+    <div class="finance-purchase-list-page__badge-row" style="margin-top: 0.65rem" aria-label="Roster summary">
+      <span class="finance-purchase-list-page__badge">{{ governance_member_count }} active member{% if governance_member_count != 1 %}s{% endif %}</span>
+      <span class="finance-purchase-list-page__badge is-muted">Σ est. intake value KES {{ "%.2f"|format(total_estimated_intake_value|float) }}</span>
+    </div>
+  </div>
+</div>
+
+<section class="panel">
+  <div class="finance-purchase-list-page__panel-head">
+    <div>
+      <h3>{{ i("users") }} Active members</h3>
+      <p class="finance-purchase-list-page__panel-desc">
+        <strong>Age</strong> is completed years from date of birth (blank if not recorded).
+        <strong>In cooperative</strong> uses registration date when present, otherwise the account created timestamp.
+        <strong>Est. value from end product</strong> sums quantity × recorded buying price on warehouse
+        <em>end product stock</em> intakes linked to farming sessions (same movements as finance end product stock).
+      </p>
+    </div>
+  </div>
+
+  <div class="table-wrap finance-purchase-list-page__table-wrap">
+    <table class="data-table finance-purchase-list-page__table">
+      <thead>
+        <tr>
+          <th>Member</th>
+          <th>Code</th>
+          <th>Membership #</th>
+          <th class="numeric-col">Age</th>
+          <th>In cooperative</th>
+          <th class="numeric-col">Est. value (intake)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if governance_members and governance_members|length %}
+          {% for m in governance_members %}
+          <tr>
+            <td><strong>{{ m.full_name or "—" }}</strong></td>
+            <td><span class="finance-purchase-list-page__code">{{ m.farmer_code or "—" }}</span></td>
+            <td><span class="finance-purchase-list-page__muted">{{ m.membership_number or "—" }}</span></td>
+            <td class="numeric-col">
+              {% if m.age_years is not none %}
+                {{ m.age_years }} yr{% if m.age_years != 1 %}s{% endif %}
+              {% else %}
+                <span class="finance-purchase-list-page__muted">—</span>
+              {% endif %}
+            </td>
+            <td>{{ m.cooperative_tenure }}</td>
+            <td class="numeric-col">
+              {% if m.estimated_end_product_value is not none and (m.estimated_end_product_value|float) > 0 %}
+                KES {{ "%.2f"|format(m.estimated_end_product_value|float) }}
+              {% else %}
+                <span class="finance-purchase-list-page__muted">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" class="table-empty">No active members yet. Approve farmer registrations under Farmers.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% endblock %}

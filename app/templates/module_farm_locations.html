@@ -1,0 +1,1917 @@
+{% extends "base.html" %}
+{% block title %}{{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i(module_icon) }} {{ module_title }}</h2>
+    <p class="dash-meta">{{ module_desc }}</p>
+  </div>
+</div>
+
+<style>
+  .analytics-panel[hidden] { display: none; }
+
+  .farmers-toolbar {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+  }
+  .farmers-toolbar input[type="search"] {
+    flex: 1 1 260px;
+    min-width: 220px;
+  }
+
+  .farmer-row { cursor: pointer; }
+  .farmer-row:hover td { background: var(--accent-soft); }
+  .farmer-row.is-active td {
+    background: var(--accent-soft);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  .focus-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    margin-top: 1rem;
+    align-items: stretch;
+  }
+  @media (min-width: 960px) {
+    .focus-grid { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+  }
+
+  /* Full-viewport-aware map shells (Google Maps needs explicit height on parent) */
+  .farm-locations-map-shell {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface-muted, var(--bg-2));
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .farm-locations-map-shell--overview {
+    margin-top: 1rem;
+    height: max(280px, min(86dvh, calc(100dvh - 12.5rem)));
+    max-height: min(960px, 92dvh);
+  }
+  .farm-locations-map-shell--focus {
+    margin-top: 0;
+    height: max(260px, min(52dvh, calc(100dvh - 22rem)));
+    max-height: min(720px, 78dvh);
+  }
+  @media (min-width: 640px) {
+    .farm-locations-map-shell--overview {
+      height: max(380px, min(88dvh, calc(100dvh - 11rem)));
+      max-height: min(980px, 93dvh);
+    }
+    .farm-locations-map-shell--focus {
+      height: max(300px, min(56dvh, calc(100dvh - 18rem)));
+      max-height: min(780px, 82dvh);
+    }
+  }
+  @media (min-width: 960px) {
+    .farm-locations-map-shell--focus {
+      height: max(360px, min(calc(100dvh - 11rem), 82dvh));
+      max-height: min(900px, 88dvh);
+    }
+  }
+  .farm-locations-map-canvas {
+    width: 100%;
+    height: 100%;
+    min-height: 240px;
+    border: none;
+    border-radius: 0;
+    background: var(--surface-muted, var(--bg-2));
+  }
+
+  .focus-map {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    border-radius: 0;
+    border: none;
+    background: var(--surface-muted, var(--bg-2));
+  }
+  .focus-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    background: var(--surface-solid);
+  }
+  .focus-card h4 { margin: 0 0 0.5rem; }
+  .focus-meta {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.35rem 0.75rem;
+    font-size: 0.92rem;
+  }
+  .focus-meta dt { color: var(--muted); }
+  .focus-meta dd { margin: 0; font-variant-numeric: tabular-nums; word-break: break-word; }
+  .focus-corners {
+    margin-top: 0.85rem;
+    border-top: 1px dashed var(--border);
+    padding-top: 0.75rem;
+    font-size: 0.9rem;
+  }
+  .focus-corners table { width: 100%; border-collapse: collapse; }
+  .focus-corners th, .focus-corners td {
+    text-align: left;
+    padding: 0.25rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+  }
+  .focus-empty {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--muted);
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    margin-top: 1rem;
+  }
+
+  .farm-locations-list-guide {
+    margin: 0 0 1.15rem;
+    padding: 0.85rem 1rem;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface-muted, var(--bg-2));
+    font-size: 0.92rem;
+    line-height: 1.45;
+  }
+  .farm-locations-list-guide__lead {
+    margin: 0 0 0.5rem;
+    font-size: 0.95rem;
+    color: var(--text);
+  }
+  .farm-locations-list-guide__steps {
+    margin: 0;
+    padding-left: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .farm-locations-list-guide__steps li { padding-left: 0.15rem; }
+  .farm-locations-list-guide__footer {
+    margin: 0.65rem 0 0;
+    padding-top: 0.55rem;
+    border-top: 1px dashed var(--border);
+    font-size: 0.86rem;
+  }
+  @media (max-width: 767px) {
+    .farm-locations-list-guide {
+      display: none;
+    }
+  }
+
+  .farm-locations-list-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem 1rem;
+    margin-top: 1rem;
+  }
+  .farm-locations-search-toolbar {
+    margin-top: 0 !important;
+    flex: 1 1 280px;
+    align-items: center;
+  }
+  .farm-locations-search-toolbar .input-wrap { flex: 1 1 240px; }
+
+  .fl-area-filters {
+    margin-top: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0 0.75rem 0.75rem;
+    background: var(--surface-solid);
+  }
+  .fl-area-filters > summary {
+    cursor: pointer;
+    font-weight: 600;
+    padding: 0.65rem 0 0.45rem;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem 0.75rem;
+    color: var(--text);
+  }
+  .fl-area-filters > summary::-webkit-details-marker { display: none; }
+  .fl-area-filters > summary::before {
+    content: "";
+    display: inline-block;
+    width: 0.45rem;
+    height: 0.45rem;
+    margin-right: 0.35rem;
+    border-right: 2px solid var(--muted);
+    border-bottom: 2px solid var(--muted);
+    transform: rotate(-45deg) translateY(-1px);
+    transition: transform 0.15s ease;
+    opacity: 0.75;
+  }
+  .fl-area-filters[open] > summary::before {
+    transform: rotate(45deg) translateY(-2px);
+  }
+  .fl-area-filters__hint {
+    font-weight: 400;
+    font-size: 0.82rem;
+  }
+  .fl-area-filters .farmer-geo-filters { margin-top: 0.35rem; }
+  .fl-area-filters .farmer-geo-clear-row { margin-top: 0.65rem; }
+
+  .data-table th.col-num,
+  .data-table td.col-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .data-table td.col-wrap {
+    max-width: 11rem;
+    word-break: break-word;
+  }
+
+  .fl-contact-cell {
+    line-height: 1.38;
+    font-size: 0.93rem;
+    max-width: 16rem;
+  }
+  .fl-contact-name { font-weight: 600; color: var(--text); }
+  .fl-contact-meta {
+    margin-top: 0.28rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.65rem;
+    align-items: baseline;
+    font-size: 0.84rem;
+    color: var(--muted);
+  }
+  .fl-contact-meta .profile-code { font-size: 0.82rem; }
+
+  .fl-loc-cell {
+    line-height: 1.42;
+    font-size: 0.88rem;
+    max-width: 15rem;
+  }
+  .fl-loc-area {
+    display: block;
+    margin-bottom: 0.35rem;
+    word-break: break-word;
+  }
+  .fl-map-link {
+    color: var(--accent-hover);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .fl-map-link:hover { color: var(--accent); }
+  .fl-map-coords {
+    display: inline-block;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+
+  .fl-land-cell {
+    font-size: 0.86rem;
+    line-height: 1.42;
+    max-width: 11.5rem;
+  }
+  .fl-land-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.45rem;
+    align-items: baseline;
+  }
+  .fl-land-row + .fl-land-row { margin-top: 0.2rem; }
+  .fl-land-k { color: var(--muted); font-weight: 600; font-size: 0.8rem; flex: 0 0 auto; }
+  .fl-land-v {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    word-break: normal;
+  }
+
+  .farmer-geo-filters {
+    margin-top: 1.25rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+  .farmer-geo-filters fieldset {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem 0.75rem;
+    margin: 0;
+    min-width: 0;
+    background: var(--surface-solid);
+  }
+  .farmer-geo-filters legend {
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0 0.35rem;
+  }
+  .farmer-geo-filter-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.45rem;
+  }
+  .farmer-geo-filter-actions .button {
+    font-size: 0.78rem;
+    padding: 0.22rem 0.55rem;
+  }
+  .farmer-geo-checkboxes {
+    max-height: 168px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.28rem;
+    font-size: 0.86rem;
+  }
+  .farmer-geo-checkboxes label {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45rem;
+    cursor: pointer;
+    line-height: 1.35;
+    word-break: break-word;
+  }
+  .farmer-geo-clear-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .farmer-select-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 0.75rem 0;
+    padding: 0.55rem 0.8rem;
+    border-radius: 10px;
+    background: var(--accent-soft);
+    border: 1px solid var(--border);
+  }
+  .farmer-select-toolbar strong { font-variant-numeric: tabular-nums; }
+
+  .farmer-select-col { width: 2.6rem; text-align: center; }
+  .farmer-select-cb { transform: translateY(1px); }
+
+  .farmer-row.is-selected td {
+    background: var(--accent-soft);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  .focus-multi-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .focus-multi-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.4rem 0.55rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-solid);
+    font-size: 0.88rem;
+  }
+  .focus-multi-swatch {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid rgba(0,0,0,0.1);
+  }
+  .focus-multi-name { font-weight: 600; }
+  .focus-multi-meta { color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .focus-multi-remove {
+    appearance: none;
+    background: transparent;
+    border: none;
+    color: var(--danger);
+    font-size: 1.05rem;
+    line-height: 1;
+    padding: 0 0.25rem;
+    cursor: pointer;
+  }
+  .focus-multi-remove:hover { color: #7f1d1d; }
+  .focus-multi-totals {
+    margin-top: 0.6rem;
+    padding-top: 0.55rem;
+    border-top: 1px dashed var(--border);
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+  .focus-multi-totals strong { color: var(--text); }
+</style>
+
+<section class="panel analytics-map-panel">
+  {% set _fl_initial = farm_locations_initial_view | default('map') %}
+
+  <div id="panel-map" class="analytics-panel" role="region" aria-label="Map of farms" {% if _fl_initial != 'map' %}hidden{% endif %}>
+    <h3 style="margin-top:0">{{ i("users") }} Farm locations (latitude &amp; longitude)</h3>
+    <p class="hint" style="margin-bottom: 0.75rem">
+      Pins use <strong>GPS coordinates</strong> from each farmer profile, or numeric lat/lng typed into <strong>Farm location</strong> when no GPS field is set.
+      <span id="farmer-map-count-line">
+        <strong id="farmer-map-visible-count">{{ farmer_map_pins|length }}</strong>
+        location<span id="farmer-map-visible-count-plural">{% if farmer_map_pins|length != 1 %}s{% endif %}</span>
+        on the map.
+      </span>
+    </p>
+    <p
+      id="farmer-map-filter-status"
+      class="hint"
+      style="display:none;margin: -0.25rem 0 0.75rem; padding: 0.4rem 0.6rem; border-radius: 8px; background: var(--accent-soft); color: var(--accent-hover);"
+      role="status"
+      aria-live="polite"
+    >
+      <span id="farmer-map-filter-status-text">Filtered by location</span>
+      <button type="button" class="button button-ghost" id="farmer-map-clear-filters" style="margin-left: 0.5rem; font-size: 0.78rem; padding: 0.2rem 0.55rem">
+        Clear filters
+      </button>
+    </p>
+    {% if not google_maps_api_key %}
+      <p class="lede dash-card-lede">
+        Add <code>GOOGLE_MAPS_API_KEY</code> to your environment (see <code>.env.example</code>), restart the app, and reload this page to load the map.
+        Restrict the key to your domain in Google Cloud Console.
+      </p>
+    {% elif farmer_map_pins|length == 0 and google_maps_api_key %}
+      <p class="lede dash-card-lede">
+        No farm coordinates found yet (GPS field or lat/lng in farm location)—the map shows Meru by default. Add coordinates under
+        <a href="{{ url_for('main.farmers_manage_page', role=session.get('employee_role')) }}">Farmer management</a>.
+      </p>
+    {% endif %}
+    {% if google_maps_api_key %}
+    <div class="farm-locations-map-shell farm-locations-map-shell--overview">
+      <div
+        id="farmer-locations-map"
+        class="farm-locations-map-canvas"
+        role="region"
+        aria-label="Map of farmer GPS locations"
+      ></div>
+    </div>
+    <p id="farmer-map-api-error" class="hint flash-error" style="display:none;margin-top:0.75rem" role="alert"></p>
+    {% endif %}
+  </div>
+
+  <div id="panel-list" class="analytics-panel" role="region" aria-label="Farmers list and boundaries" {% if _fl_initial != 'list' %}hidden{% endif %}>
+    <h3 style="margin-top:0">{{ i("users") }} Farmers &amp; farm locations</h3>
+
+    <div class="farm-locations-list-guide" role="note">
+      <p class="farm-locations-list-guide__lead">{{ i("spark") }} How to use this list</p>
+      <ol class="farm-locations-list-guide__steps">
+        <li><strong>Find someone quickly</strong> — Use the search box (name, membership or farmer code, phone, ward, county).</li>
+        <li><strong>Optional area filters</strong> — Expand <strong>Filter by admin area</strong> to narrow by county, sub-county, or ward. Leave every box unchecked to include all farmers.</li>
+        <li><strong>See map detail</strong> — Click a row for one farm’s GPS, estimated boundary corners, and preview map. Use the row checkboxes to compare several farms at once.</li>
+      </ol>
+      <p class="hint farm-locations-list-guide__footer">
+        Estimated boundaries are <strong>square plots</strong> derived from recorded land size in acres, centred on each farmer’s GPS — useful for planning, not a legal survey.
+        {% if session.get('employee_role') %}
+          <a href="{{ url_for('main.farmers_manage_page', role=session.get('employee_role')) }}">Open farmer management</a> to fix coordinates or land size.
+        {% endif %}
+      </p>
+    </div>
+
+    {% if farmer_map_pins|length == 0 %}
+      <p class="lede dash-card-lede">
+        No farmers with farm coordinates yet. Add a GPS coordinate or numeric lat/lng under
+        <a href="{{ url_for('main.farmers_manage_page', role=session.get('employee_role')) }}">Farmer management</a>.
+      </p>
+    {% else %}
+      <div id="focus-empty" class="focus-empty">
+        <strong>Loading map…</strong> All farms with GPS appear as markers here. Filters and row clicks narrow or zoom to detail.
+      </div>
+
+      <div class="focus-grid" id="focus-grid" hidden>
+        <div class="farm-locations-map-shell farm-locations-map-shell--focus">
+          {% if google_maps_api_key %}
+          <div
+            id="farmer-focus-map"
+            role="region"
+            aria-label="Estimated farm boundary"
+            class="focus-map farm-locations-map-canvas"
+          ></div>
+          {% endif %}
+          {% if not google_maps_api_key %}
+            <p class="hint" style="margin-top:0.5rem;padding:0.75rem">
+              Add <code>GOOGLE_MAPS_API_KEY</code> to render the boundary map. Coordinates and corner points below still work.
+            </p>
+          {% endif %}
+        </div>
+        <div class="focus-card" id="focus-card">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem; flex-wrap:wrap">
+            <h4 id="focus-name" style="margin:0">—</h4>
+            <button
+              type="button"
+              class="button button-ghost"
+              id="focus-back-to-all"
+              style="display:none; font-size:0.78rem; padding:0.2rem 0.55rem"
+            >
+              ← Show all matching farms
+            </button>
+          </div>
+          <p class="hint" id="focus-summary" style="margin:0.35rem 0 0.6rem">
+            Use the table below: click a row for one farm’s detail, or tick several boxes to compare on the map.
+          </p>
+          <div id="focus-single-pane">
+            <dl class="focus-meta">
+              <dt>Farmer code</dt><dd id="focus-code">—</dd>
+              <dt>Membership</dt><dd id="focus-membership">—</dd>
+              <dt>Phone</dt><dd id="focus-phone">—</dd>
+              <dt>Location</dt><dd id="focus-location">—</dd>
+              <dt>Farm name</dt><dd id="focus-farm">—</dd>
+              <dt>Farm location text</dt><dd id="focus-farm-loc">—</dd>
+              <dt>Centre (GPS)</dt><dd id="focus-gps">—</dd>
+              <dt>Land (acres)</dt><dd id="focus-land-acres-summary">—</dd>
+              <dt>Estimated side</dt><dd id="focus-side">—</dd>
+              <dt>Estimated area</dt><dd id="focus-area">—</dd>
+            </dl>
+            <div class="focus-corners">
+              <strong>Estimated boundary corners</strong>
+              <p class="hint" style="margin: 0.25rem 0 0.5rem">
+                Square plot centred on the GPS coordinate. Real plots are rarely square — treat as a rough indicator.
+              </p>
+              <table>
+                <thead>
+                  <tr><th>Corner</th><th>Latitude</th><th>Longitude</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">NW</th><td id="corner-nw-lat">—</td><td id="corner-nw-lng">—</td></tr>
+                  <tr><th scope="row">NE</th><td id="corner-ne-lat">—</td><td id="corner-ne-lng">—</td></tr>
+                  <tr><th scope="row">SE</th><td id="corner-se-lat">—</td><td id="corner-se-lng">—</td></tr>
+                  <tr><th scope="row">SW</th><td id="corner-sw-lat">—</td><td id="corner-sw-lng">—</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div id="focus-multi-pane" hidden>
+            <ul class="focus-multi-list" id="focus-multi-list"></ul>
+            <div class="focus-multi-totals" id="focus-multi-totals"></div>
+            <p class="hint" style="margin-top:0.55rem">
+              Each colour matches one farm's marker and boundary on the map. Click <strong>×</strong> to drop a farm from the comparison.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="farm-locations-list-actions">
+        <div class="farmers-toolbar farm-locations-search-toolbar">
+          <div class="input-wrap">
+            {{ i("search") }}
+            <input
+              type="search"
+              id="farmer-list-search"
+              placeholder="Search name, code, membership, phone, village…"
+              aria-label="Search farmers"
+              autocomplete="off"
+            />
+          </div>
+          <span class="hint" id="farmer-list-count">{{ farmer_map_pins|length }} farmer{% if farmer_map_pins|length != 1 %}s{% endif %} with coordinates</span>
+        </div>
+      </div>
+
+      <details class="fl-area-filters" aria-label="Filter farmers by administrative area">
+        <summary>
+          Filter by admin area
+          <span class="hint fl-area-filters__hint">County, sub-county, ward — tap to expand or collapse</span>
+        </summary>
+        <div class="farmer-geo-filters" aria-label="Filter farmers by location">
+          <fieldset>
+            <legend>County</legend>
+            <div class="farmer-geo-filter-actions">
+              <button type="button" class="button button-ghost" data-geo-all="county">Select all</button>
+              <button type="button" class="button button-ghost" data-geo-none="county">Clear</button>
+            </div>
+            <div class="farmer-geo-checkboxes">
+              {% for c in farmer_geo_counties %}
+                <label>
+                  <input type="checkbox" class="farmer-geo-cb" data-geo-dim="county" value="{{ c | e }}" />
+                  <span>{{ c }}</span>
+                </label>
+              {% endfor %}
+              {% if farmer_geo_blank_county %}
+                <label>
+                  <input type="checkbox" class="farmer-geo-cb" data-geo-dim="county" value="__empty__" />
+                  <span class="hint">(No county recorded)</span>
+                </label>
+              {% endif %}
+              {% if not farmer_geo_counties and not farmer_geo_blank_county %}
+                <span class="hint">No county data on this list.</span>
+              {% endif %}
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Sub-county</legend>
+            <div class="farmer-geo-filter-actions">
+              <button type="button" class="button button-ghost" data-geo-all="sub_county">Select all</button>
+              <button type="button" class="button button-ghost" data-geo-none="sub_county">Clear</button>
+            </div>
+            <div class="farmer-geo-checkboxes">
+              {% for s in farmer_geo_sub_counties %}
+                <label>
+                  <input type="checkbox" class="farmer-geo-cb" data-geo-dim="sub_county" value="{{ s | e }}" />
+                  <span>{{ s }}</span>
+                </label>
+              {% endfor %}
+              {% if farmer_geo_blank_sub_county %}
+                <label>
+                  <input type="checkbox" class="farmer-geo-cb" data-geo-dim="sub_county" value="__empty__" />
+                  <span class="hint">(No sub-county recorded)</span>
+                </label>
+              {% endif %}
+              {% if not farmer_geo_sub_counties and not farmer_geo_blank_sub_county %}
+                <span class="hint">No sub-county data on this list.</span>
+              {% endif %}
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Ward</legend>
+            <div class="farmer-geo-filter-actions">
+              <button type="button" class="button button-ghost" data-geo-all="ward">Select all</button>
+              <button type="button" class="button button-ghost" data-geo-none="ward">Clear</button>
+            </div>
+            <div class="farmer-geo-checkboxes">
+              {% for w in farmer_geo_wards %}
+                <label>
+                  <input type="checkbox" class="farmer-geo-cb" data-geo-dim="ward" value="{{ w | e }}" />
+                  <span>{{ w }}</span>
+                </label>
+              {% endfor %}
+              {% if farmer_geo_blank_ward %}
+                <label>
+                  <input type="checkbox" class="farmer-geo-cb" data-geo-dim="ward" value="__empty__" />
+                  <span class="hint">(No ward recorded)</span>
+                </label>
+              {% endif %}
+              {% if not farmer_geo_wards and not farmer_geo_blank_ward %}
+                <span class="hint">No ward data on this list.</span>
+              {% endif %}
+            </div>
+          </fieldset>
+        </div>
+        <div class="farmer-geo-clear-row">
+          <button type="button" class="button button-ghost" id="farmer-geo-clear-all">Clear all location filters</button>
+          <span class="hint">
+            Leave all boxes unchecked to show everyone. With any box checked, farmers matching <strong>any</strong>
+            selected county, sub-county, or ward stay visible — in both this table and the map preview above.
+          </span>
+        </div>
+      </details>
+
+      <div class="farmer-select-toolbar" id="farmer-select-toolbar" hidden>
+        <span><strong id="farmer-select-count">0</strong> selected — coloured boundaries on the map preview above.</span>
+        <span style="flex:1"></span>
+        <button type="button" class="button button-ghost" id="farmer-select-clear">Clear selection</button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="data-table" id="farmer-list-table">
+          <thead>
+            <tr>
+              <th class="farmer-select-col">
+                <input type="checkbox" id="farmer-select-all" aria-label="Select all visible farmers for map comparison" />
+              </th>
+              <th>Farmer · membership · phone</th>
+              <th class="col-wrap">Land <span class="hint" style="font-weight:400">(acres)</span></th>
+              <th class="col-wrap">Area &amp; GPS <span class="hint" style="font-weight:400">(opens in Maps)</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in farmer_map_pins %}
+              {% set _farm_nm = ((p.farm or '') | trim) %}
+              <tr class="farmer-row" data-farmer-id="{{ p.id }}"
+                  data-county="{{ (p.county or '') | e }}"
+                  data-sub-county="{{ (p.sub_county or '') | e }}"
+                  data-ward="{{ (p.ward or '') | e }}"
+                  title="{{ ((p.subtitle or p.title or 'Farmer') ~ ' · ' ~ (p.location or 'No area text')) | e }}"
+                  data-search="{{ ((p.membership or '') ~ ' ' ~ (p.code or '') ~ ' ' ~ (p.subtitle or '') ~ ' ' ~ (p.title or '') ~ ' ' ~ _farm_nm ~ ' ' ~ (p.location or '') ~ ' ' ~ (p.county or '') ~ ' ' ~ (p.sub_county or '') ~ ' ' ~ (p.ward or '') ~ ' ' ~ (p.village or '') ~ ' ' ~ (p.phone or '')) | lower }}">
+                <td class="farmer-select-col">
+                  <input
+                    type="checkbox"
+                    class="farmer-select-cb"
+                    aria-label="Select farmer for boundary comparison"
+                    data-farmer-id="{{ p.id }}"
+                  />
+                </td>
+                <td class="fl-contact-cell">
+                  <div class="fl-contact-name">{{ p.subtitle or '—' }}</div>
+                  <div class="fl-contact-meta">
+                    <code class="profile-code" title="Membership / farmer code">{{ p.membership or p.code or '—' }}</code>
+                    <span title="Phone">{{ p.phone or '—' }}</span>
+                  </div>
+                </td>
+                <td class="fl-land-cell">
+                  <div class="fl-land-row">
+                    <span class="fl-land-k">Total</span>
+                    <span class="fl-land-v">{% if p.land_acres is not none %}{{ "%.2f"|format(p.land_acres) }} ac{% else %}—{% endif %}</span>
+                  </div>
+                  <div class="fl-land-row">
+                    <span class="fl-land-k">Used</span>
+                    <span class="fl-land-v">{{ "%.2f"|format(p.used_acres|default(0)) }} ac</span>
+                  </div>
+                  <div class="fl-land-row">
+                    <span class="fl-land-k">Avail</span>
+                    <span class="fl-land-v">{% if p.available_acres is not none %}{{ "%.2f"|format(p.available_acres) }} ac{% else %}—{% endif %}</span>
+                  </div>
+                </td>
+                <td class="fl-loc-cell">
+                  {% set _loc_q = (p.location or '') | trim %}
+                  {% if _loc_q %}
+                    <a
+                      class="fl-map-link fl-loc-area"
+                      href="https://www.google.com/maps/search/?api=1&amp;query={{ _loc_q | urlencode }}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="Open admin area in Google Maps: {{ _loc_q | e }}"
+                    >{{ p.location or '—' }}</a>
+                  {% else %}
+                    <span class="hint fl-loc-area">No area text</span>
+                  {% endif %}
+                  <a
+                    class="fl-map-link fl-map-coords"
+                    href="https://www.google.com/maps?q={{ p.lat_display }},{{ p.lng_display }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Open GPS coordinates in Google Maps"
+                  >{{ "%.6f" | format(p.lat_display) }}, {{ "%.6f" | format(p.lng_display) }}</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.__FARMER_MAP_PINS__ = {{ farmer_map_pins | tojson }};
+  window.__FARM_LOCATIONS_INITIAL_VIEW__ = {{ farm_locations_initial_view | default('map') | tojson }};
+</script>
+<script>
+  (function () {
+    var EMPTY = "__empty__";
+    var search = document.getElementById("farmer-list-search");
+    var counter = document.getElementById("farmer-list-count");
+    var table = document.getElementById("farmer-list-table");
+    if (!table) return;
+
+    var rows = Array.prototype.slice.call(table.querySelectorAll("tbody tr.farmer-row"));
+    var total = rows.length;
+    var baseLabel =
+      total +
+      " farmer" +
+      (total === 1 ? "" : "s");
+
+    function selectedSet(dim) {
+      var set = {};
+      document.querySelectorAll('.farmer-geo-cb[data-geo-dim="' + dim + '"]:checked').forEach(function (cb) {
+        set[cb.value] = true;
+      });
+      return set;
+    }
+
+    function hasAnyGeoSelection() {
+      return document.querySelectorAll(".farmer-geo-cb:checked").length > 0;
+    }
+
+    function rowPassesGeo(row) {
+      return geoPasses(
+        (row.getAttribute("data-county") || "").trim(),
+        (row.getAttribute("data-sub-county") || "").trim(),
+        (row.getAttribute("data-ward") || "").trim()
+      );
+    }
+
+    function geoPasses(county, subCounty, ward) {
+      // Behaviour: "show me farmers in any area I check". A farmer matches
+      // if any of their county / sub-county / ward equals any selected
+      // checkbox in the corresponding dimension. With nothing checked,
+      // all farmers pass.
+      var selC = selectedSet("county");
+      var selS = selectedSet("sub_county");
+      var selW = selectedSet("ward");
+      function size(o) {
+        var n = 0;
+        for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) n++;
+        return n;
+      }
+      var anyChecked = size(selC) + size(selS) + size(selW) > 0;
+      if (!anyChecked) return true;
+
+      function key(raw) {
+        var s = (raw || "").trim();
+        return s === "" ? EMPTY : s;
+      }
+      if (size(selC) && selC[key(county)]) return true;
+      if (size(selS) && selS[key(subCounty)]) return true;
+      if (size(selW) && selW[key(ward)]) return true;
+      return false;
+    }
+
+    function selectedLabels(dim) {
+      var labels = [];
+      document.querySelectorAll('.farmer-geo-cb[data-geo-dim="' + dim + '"]:checked').forEach(function (cb) {
+        var span = cb.parentNode ? cb.parentNode.querySelector("span") : null;
+        var text = span ? span.textContent.trim() : cb.value;
+        if (cb.value === EMPTY) text = "(blank)";
+        labels.push(text);
+      });
+      return labels;
+    }
+
+    function geoSummaryLabel() {
+      var bits = [];
+      var c = selectedLabels("county");
+      var s = selectedLabels("sub_county");
+      var w = selectedLabels("ward");
+      if (c.length) bits.push("County: " + c.join(", "));
+      if (s.length) bits.push("Sub-county: " + s.join(", "));
+      if (w.length) bits.push("Ward: " + w.join(", "));
+      return bits.join(" · ");
+    }
+
+    function clearFocusIfSelectionHidden() {
+      var active = document.querySelector(".farmer-row.is-active");
+      if (!active || active.style.display !== "none") return;
+      active.classList.remove("is-active");
+      var grid = document.getElementById("focus-grid");
+      var empty = document.getElementById("focus-empty");
+      if (grid) grid.setAttribute("hidden", "");
+      if (empty) empty.style.display = "";
+    }
+
+    function applyFilters() {
+      var q = (search && search.value ? search.value : "").trim().toLowerCase();
+      var visible = 0;
+      rows.forEach(function (r) {
+        var hay = r.getAttribute("data-search") || "";
+        var okSearch = !q || hay.indexOf(q) !== -1;
+        var okGeo = rowPassesGeo(r);
+        var show = okSearch && okGeo;
+        r.style.display = show ? "" : "none";
+        if (show) visible++;
+      });
+      clearFocusIfSelectionHidden();
+      if (counter) {
+        if (!q && !hasAnyGeoSelection()) counter.textContent = baseLabel;
+        else counter.textContent = visible + " of " + total + " farmer" + (total === 1 ? "" : "s");
+      }
+
+      // Live-update both maps: only geo filters affect them (search box is for
+      // finding rows in the list, not narrowing the map view).
+      var active = hasAnyGeoSelection();
+      var predicate = active
+        ? function (pin) { return geoPasses(pin && pin.county, pin && pin.sub_county, pin && pin.ward); }
+        : null;
+
+      if (typeof window.__refreshOverviewMapForFilters === "function") {
+        window.__refreshOverviewMapForFilters(predicate, {
+          active: active,
+          label: active ? geoSummaryLabel() : "",
+        });
+      }
+
+      if (typeof window.__refreshFocusMapForFilters === "function") {
+        var allPins = window.__FARMER_MAP_PINS__ || [];
+        var visiblePins = predicate ? allPins.filter(predicate) : allPins.slice();
+        window.__refreshFocusMapForFilters(visiblePins, active);
+      }
+
+      // Notify other listeners (e.g. multi-select toolbar header checkbox).
+      window.dispatchEvent(new CustomEvent("analytics:filters-applied"));
+    }
+
+    window.__farmerHasFilterActive = hasAnyGeoSelection;
+
+    if (search) search.addEventListener("input", applyFilters);
+
+    document.querySelectorAll(".farmer-geo-cb").forEach(function (cb) {
+      cb.addEventListener("change", applyFilters);
+    });
+
+    document.querySelectorAll("[data-geo-all]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var dim = btn.getAttribute("data-geo-all");
+        document.querySelectorAll('.farmer-geo-cb[data-geo-dim="' + dim + '"]').forEach(function (cb) {
+          cb.checked = true;
+        });
+        applyFilters();
+      });
+    });
+    document.querySelectorAll("[data-geo-none]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var dim = btn.getAttribute("data-geo-none");
+        document.querySelectorAll('.farmer-geo-cb[data-geo-dim="' + dim + '"]').forEach(function (cb) {
+          cb.checked = false;
+        });
+        applyFilters();
+      });
+    });
+    function clearAllGeo() {
+      document.querySelectorAll(".farmer-geo-cb").forEach(function (cb) {
+        cb.checked = false;
+      });
+      applyFilters();
+    }
+    var clearAll = document.getElementById("farmer-geo-clear-all");
+    if (clearAll) clearAll.addEventListener("click", clearAllGeo);
+    var clearFromMap = document.getElementById("farmer-map-clear-filters");
+    if (clearFromMap) clearFromMap.addEventListener("click", clearAllGeo);
+
+    // ---- Multi-farmer selection (compare boundaries) -----------------------
+    (function () {
+      var ALL_PINS = window.__FARMER_MAP_PINS__ || [];
+      var pinById = {};
+      ALL_PINS.forEach(function (p) { pinById[String(p.id)] = p; });
+
+      var selectedIds = []; // ordered, so palette colours are stable per pin
+      var toolbar = document.getElementById("farmer-select-toolbar");
+      var countEl = document.getElementById("farmer-select-count");
+      var clearBtn = document.getElementById("farmer-select-clear");
+      var selectAllBox = document.getElementById("farmer-select-all");
+
+      function selectedPins() {
+        return selectedIds.map(function (id) { return pinById[String(id)]; }).filter(Boolean);
+      }
+
+      function syncRow(id) {
+        var sid = String(id);
+        document.querySelectorAll('.farmer-row[data-farmer-id="' + sid + '"]').forEach(function (row) {
+          row.classList.toggle("is-selected", selectedIds.indexOf(sid) !== -1);
+        });
+        document.querySelectorAll('.farmer-select-cb[data-farmer-id="' + sid + '"]').forEach(function (cb) {
+          cb.checked = selectedIds.indexOf(sid) !== -1;
+        });
+      }
+
+      function syncToolbar() {
+        if (!toolbar) return;
+        if (selectedIds.length === 0) {
+          toolbar.setAttribute("hidden", "");
+        } else {
+          toolbar.removeAttribute("hidden");
+          if (countEl) countEl.textContent = String(selectedIds.length);
+        }
+        // Sync the header "select all" checkbox state to the visible selection.
+        if (selectAllBox) {
+          var visible = visibleRowIds();
+          if (visible.length === 0) {
+            selectAllBox.checked = false;
+            selectAllBox.indeterminate = false;
+          } else {
+            var visSel = visible.filter(function (id) { return selectedIds.indexOf(id) !== -1; });
+            selectAllBox.checked = visSel.length === visible.length;
+            selectAllBox.indeterminate = visSel.length > 0 && visSel.length < visible.length;
+          }
+        }
+      }
+
+      function visibleRowIds() {
+        var ids = [];
+        document.querySelectorAll(".farmer-row").forEach(function (r) {
+          if (r.style.display !== "none") {
+            ids.push(String(r.getAttribute("data-farmer-id")));
+          }
+        });
+        return ids;
+      }
+
+      function rerenderSelectionMap() {
+        if (typeof window.__farmerListRenderSelection === "function") {
+          window.__farmerListRenderSelection(selectedPins());
+        }
+      }
+
+      function setSelected(id, on) {
+        var sid = String(id);
+        var idx = selectedIds.indexOf(sid);
+        if (on && idx === -1) selectedIds.push(sid);
+        else if (!on && idx !== -1) selectedIds.splice(idx, 1);
+        syncRow(sid);
+        syncToolbar();
+        rerenderSelectionMap();
+      }
+
+      function toggleSelected(id) {
+        setSelected(id, selectedIds.indexOf(String(id)) === -1);
+      }
+
+      function clearAll() {
+        var prev = selectedIds.slice();
+        selectedIds = [];
+        prev.forEach(syncRow);
+        syncToolbar();
+        rerenderSelectionMap();
+      }
+
+      // Public hooks consumed by the maps script.
+      window.__farmerListGetSelectedPins = selectedPins;
+      window.__farmerListToggleSelection = function (id) { toggleSelected(id); };
+      window.__farmerListSetSelection = function (id, on) { setSelected(id, !!on); };
+      window.__farmerListClearSelection = clearAll;
+
+      // Row click toggles selection (anywhere except controls inside the row).
+      document.querySelectorAll(".farmer-row").forEach(function (row) {
+        row.addEventListener("click", function (e) {
+          var t = e.target;
+          while (t && t !== row) {
+            if (t.tagName === "A" || t.tagName === "BUTTON") return;
+            if (t.classList && t.classList.contains("farmer-select-cb")) return; // checkbox handles itself
+            t = t.parentNode;
+          }
+          var fid = String(row.getAttribute("data-farmer-id"));
+          toggleSelected(fid);
+        });
+      });
+
+      // Per-row checkboxes.
+      document.querySelectorAll(".farmer-select-cb").forEach(function (cb) {
+        cb.addEventListener("click", function (e) { e.stopPropagation(); });
+        cb.addEventListener("change", function () {
+          var fid = String(cb.getAttribute("data-farmer-id"));
+          setSelected(fid, cb.checked);
+        });
+      });
+
+      // Header "select all visible".
+      if (selectAllBox) {
+        selectAllBox.addEventListener("change", function () {
+          var visible = visibleRowIds();
+          if (selectAllBox.checked) {
+            visible.forEach(function (id) {
+              if (selectedIds.indexOf(id) === -1) selectedIds.push(id);
+            });
+          } else {
+            selectedIds = selectedIds.filter(function (id) { return visible.indexOf(id) === -1; });
+          }
+          visible.forEach(syncRow);
+          syncToolbar();
+          rerenderSelectionMap();
+        });
+      }
+
+      if (clearBtn) clearBtn.addEventListener("click", clearAll);
+
+      // Re-sync the header checkbox state whenever filters change visibility.
+      window.addEventListener("analytics:filters-applied", syncToolbar);
+
+      // Initial sync (search box / filters at load may already be empty).
+      syncToolbar();
+    })();
+
+{% if not google_maps_api_key %}
+    (function () {
+      window.__refreshFocusMapForFilters = function (visiblePins, filterActive) {
+        var empty = document.getElementById("focus-empty");
+        var grid = document.getElementById("focus-grid");
+        if (!filterActive) {
+          if (grid) grid.removeAttribute("hidden");
+          if (empty) empty.style.display = "none";
+          var name = document.getElementById("focus-name");
+          var summary = document.getElementById("focus-summary");
+          var n = (visiblePins || []).length;
+          if (name) name.textContent = n + " farm" + (n === 1 ? "" : "s") + " with coordinates";
+          if (summary) {
+            summary.textContent =
+              "Add GOOGLE_MAPS_API_KEY to plot farms on the map. Use the table below for GPS and boundary detail when you click a row.";
+          }
+          return;
+        }
+        if (grid) grid.removeAttribute("hidden");
+        if (empty) empty.style.display = "none";
+        var name = document.getElementById("focus-name");
+        var summary = document.getElementById("focus-summary");
+        var n = (visiblePins || []).length;
+        if (name) name.textContent = n + " farm" + (n === 1 ? "" : "s") + " match your location filters";
+        if (summary) summary.textContent = "Add GOOGLE_MAPS_API_KEY to your .env to plot these farms on the map.";
+      };
+    })();
+{% endif %}
+
+    // Expose so the Google Maps callback can re-run filters once markers are
+    // ready (the map library loads async; checkboxes toggled before then would
+    // otherwise update the list but not the map).
+    window.__farmerListApplyFilters = applyFilters;
+
+    // Run once so the map / counter reflect the initial (empty) selection state.
+    applyFilters();
+  })();
+</script>
+<script>
+  (function () {
+    var d = document.querySelector(".fl-area-filters");
+    if (!d || typeof window.matchMedia !== "function") return;
+    function syncFarmLocationsFiltersOpen() {
+      d.open = window.matchMedia("(min-width: 768px)").matches;
+    }
+    syncFarmLocationsFiltersOpen();
+    window.matchMedia("(min-width: 768px)").addEventListener("change", syncFarmLocationsFiltersOpen);
+  })();
+</script>
+{% if google_maps_api_key %}
+<script>
+  window.gm_authFailure = function () {
+    var box = document.getElementById("farmer-map-api-error");
+    if (box) {
+      box.style.display = "block";
+      box.textContent =
+        "Google Maps could not load (invalid key, referrer restriction, or billing). Check Google Cloud Console: Maps JavaScript API enabled and referrer matches this URL.";
+    }
+  };
+</script>
+<script>
+  // Helpers: estimate a square farm boundary (in metres → degrees) from acres.
+  window.__FARM_GEO__ = (function () {
+    var SQM_PER_ACRE = 4046.8564224;
+    var METRES_PER_DEG_LAT = 111320; // good approximation for small areas
+    function squareFromAcres(lat, lng, acres) {
+      if (!isFinite(lat) || !isFinite(lng) || !(acres > 0)) return null;
+      var sqm = acres * SQM_PER_ACRE;
+      var sideM = Math.sqrt(sqm);
+      var halfM = sideM / 2;
+      var dLat = halfM / METRES_PER_DEG_LAT;
+      var cosLat = Math.cos((lat * Math.PI) / 180);
+      var safeCos = Math.abs(cosLat) < 1e-6 ? 1e-6 : cosLat;
+      var dLng = halfM / (METRES_PER_DEG_LAT * safeCos);
+      return {
+        nw: { lat: lat + dLat, lng: lng - dLng },
+        ne: { lat: lat + dLat, lng: lng + dLng },
+        se: { lat: lat - dLat, lng: lng + dLng },
+        sw: { lat: lat - dLat, lng: lng - dLng },
+        sideMetres: sideM,
+        halfMetres: halfM,
+        dLat: dLat,
+        dLng: dLng,
+      };
+    }
+    function fmt(n, digits) { return Number(n).toFixed(digits == null ? 6 : digits); }
+    return { squareFromAcres: squareFromAcres, fmt: fmt };
+  })();
+
+  window.initFarmerMap = function () {
+    var pins = window.__FARMER_MAP_PINS__ || [];
+    var meru = { lat: -0.0469, lng: 37.6543 };
+
+    function escHtml(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    // ---- Overview map (map view) --------------------------------------
+    var overviewEl = document.getElementById("farmer-locations-map");
+    var overviewMap = null;
+    var overviewMarkers = [];
+    var initialListView = window.__FARM_LOCATIONS_INITIAL_VIEW__ === "list";
+    if (overviewEl && !initialListView && window.google && google.maps) {
+      overviewMap = new google.maps.Map(overviewEl, {
+        center: meru,
+        zoom: 9,
+        mapTypeControl: true,
+        fullscreenControl: true,
+        streetViewControl: true,
+      });
+
+      var iw = new google.maps.InfoWindow();
+      pins.forEach(function (p) {
+        var latN = Number(p.lat);
+        var lngN = Number(p.lng);
+        if (Number.isNaN(latN) || Number.isNaN(lngN)) return;
+        var marker = new google.maps.Marker({
+          map: overviewMap,
+          position: { lat: latN, lng: lngN },
+          optimized: false,
+          title: (p.title || "") + (p.subtitle ? " · " + p.subtitle : "") || "Farm location",
+        });
+        var lines = [
+          "<strong>" + escHtml(p.title || "Farm") + "</strong>",
+          p.subtitle ? escHtml(p.subtitle) : "",
+          "Latitude: " + escHtml(String(p.lat_display)) + "<br/>Longitude: " + escHtml(String(p.lng_display)),
+          p.code ? "Farmer code: " + escHtml(p.code) : "",
+          p.phone ? "Phone: " + escHtml(p.phone) : "",
+          p.location ? escHtml(p.location) : "",
+          p.land_acres ? "Land: ~" + escHtml(String(p.land_acres)) + " acres" : "",
+          p.status ? "Status: " + escHtml(p.status) : "",
+        ].filter(Boolean);
+        marker.addListener("click", function () {
+          iw.setContent('<div style="max-width:240px;line-height:1.35">' + lines.join("<br/>") + "</div>");
+          iw.open({ map: overviewMap, anchor: marker });
+        });
+        overviewMarkers.push({ marker: marker, pin: p });
+      });
+
+      function fitOverviewToVisible(visiblePins) {
+        if (!overviewMap || !visiblePins) return;
+        if (visiblePins.length === 0) {
+          overviewMap.setCenter(meru);
+          overviewMap.setZoom(9);
+          return;
+        }
+        if (visiblePins.length === 1) {
+          overviewMap.setCenter({ lat: Number(visiblePins[0].lat), lng: Number(visiblePins[0].lng) });
+          overviewMap.setZoom(14);
+          return;
+        }
+        var bounds = new google.maps.LatLngBounds();
+        visiblePins.forEach(function (p) {
+          bounds.extend({ lat: Number(p.lat), lng: Number(p.lng) });
+        });
+        overviewMap.fitBounds(bounds);
+        google.maps.event.addListenerOnce(overviewMap, "bounds_changed", function () {
+          var z = overviewMap.getZoom();
+          if (z > 15) overviewMap.setZoom(15);
+        });
+      }
+
+      // Initial fit across all pins (may be overridden a moment later by
+      // __farmerListApplyFilters() if any checkboxes are already selected).
+      fitOverviewToVisible(overviewMarkers.map(function (m) { return m.pin; }));
+
+      // Public hook used by the filter UI to live-update the map.
+      window.__refreshOverviewMapForFilters = function (predicate, summary) {
+        if (typeof iw !== "undefined" && iw && iw.close) iw.close();
+        var visible = [];
+        overviewMarkers.forEach(function (entry) {
+          var ok = !predicate || !!predicate(entry.pin);
+          entry.marker.setMap(ok ? overviewMap : null);
+          if (ok) visible.push(entry.pin);
+        });
+        fitOverviewToVisible(visible);
+
+        var visEl = document.getElementById("farmer-map-visible-count");
+        var pluralEl = document.getElementById("farmer-map-visible-count-plural");
+        if (visEl) visEl.textContent = String(visible.length);
+        if (pluralEl) pluralEl.textContent = visible.length === 1 ? "" : "s";
+
+        var statusEl = document.getElementById("farmer-map-filter-status");
+        var statusText = document.getElementById("farmer-map-filter-status-text");
+        if (statusEl && statusText) {
+          if (summary && summary.active) {
+            statusText.textContent =
+              "Showing " + visible.length + " of " + overviewMarkers.length +
+              " farm" + (overviewMarkers.length === 1 ? "" : "s") +
+              (summary.label ? " — " + summary.label : "");
+            statusEl.style.display = "";
+          } else {
+            statusEl.style.display = "none";
+          }
+        }
+      };
+
+      // Re-run the list filter logic so any checkboxes toggled before the maps
+      // API finished loading take effect on the markers right away.
+      if (typeof window.__farmerListApplyFilters === "function") {
+        try { window.__farmerListApplyFilters(); } catch (e) { /* no-op */ }
+      }
+      // Re-render any pre-existing selection now that the maps are ready.
+      if (typeof window.__farmerListGetSelectedPins === "function" &&
+          typeof window.__farmerListRenderSelection === "function") {
+        try { window.__farmerListRenderSelection(window.__farmerListGetSelectedPins()); } catch (e) { /* no-op */ }
+      }
+    }
+
+    // ---- Focus map (Tab 2) --------------------------------------------
+    var focusEl = document.getElementById("farmer-focus-map");
+    var focusMap = null;
+    var focusOverviewMarkers = [];      // markers for every visible pin (filter overview)
+    var focusSelectionMarkers = [];     // markers for currently selected farmers
+    var focusSelectionPolygons = [];    // polygons for currently selected farmers
+    var lastVisiblePins = [];           // most recent filtered pin list for "Show all" reset
+
+    // Palette used to colour each farmer's polygon/marker when comparing.
+    var BOUNDARY_PALETTE = [
+      "#047857", "#0ea5e9", "#a855f7", "#f59e0b", "#ef4444",
+      "#6366f1", "#0d9488", "#db2777", "#65a30d", "#7c3aed",
+    ];
+    function colorForIndex(i) { return BOUNDARY_PALETTE[i % BOUNDARY_PALETTE.length]; }
+
+    var META_IDS = [
+      "focus-code","focus-membership","focus-phone","focus-location","focus-farm",
+      "focus-farm-loc","focus-gps","focus-land-acres-summary","focus-side","focus-area",
+    ];
+
+    function formatLandAcresSummary(pin) {
+      var total = pin.land_acres != null ? Number(pin.land_acres) : null;
+      var used = pin.used_acres != null ? Number(pin.used_acres) : 0;
+      var avail = pin.available_acres != null ? Number(pin.available_acres) : null;
+      function fa(n) {
+        if (n == null || Number.isNaN(n)) return "—";
+        return n.toFixed(2) + " ac";
+      }
+      if (Number.isNaN(used)) used = 0;
+      return "Total " + fa(total) + " · Used " + fa(used) + " · Avail " + fa(avail);
+    }
+
+    function ensureFocusMap() {
+      if (focusMap || !focusEl || !window.google || !google.maps) return focusMap;
+      focusMap = new google.maps.Map(focusEl, {
+        center: meru,
+        zoom: 11,
+        mapTypeId: "hybrid",
+        mapTypeControl: true,
+        fullscreenControl: true,
+        streetViewControl: false,
+      });
+      return focusMap;
+    }
+
+    function setText(id, value) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = (value == null || value === "") ? "—" : String(value);
+    }
+
+    function clearMetaCard() {
+      META_IDS.forEach(function (id) { setText(id, "—"); });
+      ["nw", "ne", "se", "sw"].forEach(function (c) {
+        setText("corner-" + c + "-lat", "—");
+        setText("corner-" + c + "-lng", "—");
+      });
+    }
+
+    function showSinglePane() {
+      var sp = document.getElementById("focus-single-pane");
+      var mp = document.getElementById("focus-multi-pane");
+      if (sp) sp.removeAttribute("hidden");
+      if (mp) mp.setAttribute("hidden", "");
+    }
+    function showMultiPane() {
+      var sp = document.getElementById("focus-single-pane");
+      var mp = document.getElementById("focus-multi-pane");
+      if (sp) sp.setAttribute("hidden", "");
+      if (mp) mp.removeAttribute("hidden");
+    }
+
+    function setSummaryCard(visibleCount, filterActive) {
+      var name = document.getElementById("focus-name");
+      var summary = document.getElementById("focus-summary");
+      var back = document.getElementById("focus-back-to-all");
+      if (back) back.style.display = "none";
+      showSinglePane();
+      if (visibleCount === 0) {
+        if (name) name.textContent = "No farms match the current filters";
+        if (summary) summary.textContent = "Adjust the location filters or clear them to see farms again.";
+      } else if (visibleCount === 1) {
+        if (name) name.textContent = filterActive ? "1 farm matches" : "1 farm with GPS";
+        if (summary) summary.textContent = "Click or tick a row in the table (or tap a map marker) to draw its estimated boundary.";
+      } else {
+        if (name) name.textContent = "Showing " + visibleCount + " farms" + (filterActive ? " in the selected location" : "");
+        if (summary) {
+          summary.textContent = filterActive
+            ? "Tick several rows in the table (or use map markers) to compare boundaries."
+            : "All farms with GPS are on the map — tap a marker or a table row for boundary detail; tick several rows to compare.";
+        }
+      }
+      clearMetaCard();
+    }
+
+    function clearSelectionGraphics() {
+      focusSelectionMarkers.forEach(function (m) { m.setMap(null); });
+      focusSelectionMarkers = [];
+      focusSelectionPolygons.forEach(function (p) { p.setMap(null); });
+      focusSelectionPolygons = [];
+    }
+
+    function hasFilterActive() {
+      return document.querySelectorAll(".farmer-geo-cb:checked").length > 0;
+    }
+
+    function fitFocusToPins(visiblePins) {
+      if (!focusMap) return;
+      if (visiblePins.length === 1) {
+        focusMap.setCenter({ lat: Number(visiblePins[0].lat), lng: Number(visiblePins[0].lng) });
+        focusMap.setZoom(15);
+        return;
+      }
+      var bounds = new google.maps.LatLngBounds();
+      visiblePins.forEach(function (p) { bounds.extend({ lat: Number(p.lat), lng: Number(p.lng) }); });
+      focusMap.fitBounds(bounds);
+      google.maps.event.addListenerOnce(focusMap, "bounds_changed", function () {
+        var z = focusMap.getZoom();
+        if (z > 16) focusMap.setZoom(16);
+      });
+    }
+
+    function renderFocusOverview(visiblePins, filterActive) {
+      lastVisiblePins = visiblePins.slice();
+      var grid = document.getElementById("focus-grid");
+      var empty = document.getElementById("focus-empty");
+
+      focusOverviewMarkers.forEach(function (entry) { entry.marker.setMap(null); });
+      focusOverviewMarkers = [];
+
+      if (visiblePins.length === 0) {
+        if (grid) grid.removeAttribute("hidden");
+        if (empty) {
+          empty.style.display = "";
+          empty.textContent = filterActive
+            ? "No farms match the current filters."
+            : "No farms with GPS coordinates yet.";
+        }
+        setSummaryCard(0, filterActive);
+        var mapEmpty = ensureFocusMap();
+        if (mapEmpty) {
+          google.maps.event.trigger(mapEmpty, "resize");
+        }
+        return;
+      }
+
+      // Maps must not initialize inside display:none — show grid before ensureFocusMap().
+      if (grid) grid.removeAttribute("hidden");
+      if (empty) empty.style.display = "none";
+
+      var map = ensureFocusMap();
+      if (!map) return;
+
+      google.maps.event.trigger(map, "resize");
+
+      visiblePins.forEach(function (pin) {
+        var latN = Number(pin.lat), lngN = Number(pin.lng);
+        if (Number.isNaN(latN) || Number.isNaN(lngN)) return;
+        var marker = new google.maps.Marker({
+          map: map,
+          position: { lat: latN, lng: lngN },
+          title: (pin.subtitle || pin.title || "Farm") + (pin.location ? " — " + pin.location : ""),
+        });
+        marker.addListener("click", function () {
+          if (typeof window.__farmerListToggleSelection === "function") {
+            window.__farmerListToggleSelection(pin.id, true);
+          }
+        });
+        focusOverviewMarkers.push({ marker: marker, pin: pin });
+      });
+
+      fitFocusToPins(visiblePins);
+      setSummaryCard(visiblePins.length, filterActive);
+
+      requestAnimationFrame(function () {
+        if (!focusMap) return;
+        google.maps.event.trigger(focusMap, "resize");
+        fitFocusToPins(visiblePins);
+      });
+    }
+
+    function renderSingleSelection(pin) {
+      var grid = document.getElementById("focus-grid");
+      var empty = document.getElementById("focus-empty");
+      if (grid) grid.removeAttribute("hidden");
+      if (empty) empty.style.display = "none";
+
+      showSinglePane();
+
+      var nameEl = document.getElementById("focus-name");
+      if (nameEl) nameEl.textContent = pin.subtitle || pin.title || "Farmer";
+      var summaryEl = document.getElementById("focus-summary");
+      if (summaryEl) summaryEl.textContent = "Estimated boundary derived from the recorded land size.";
+      var back = document.getElementById("focus-back-to-all");
+      if (back) back.style.display = "none";
+
+      setText("focus-code", pin.code);
+      setText("focus-membership", pin.membership);
+      setText("focus-phone", pin.phone);
+      setText("focus-location", pin.location);
+      setText("focus-farm", pin.farm);
+      setText("focus-farm-loc", pin.farm_location_text);
+
+      var lat = Number(pin.lat);
+      var lng = Number(pin.lng);
+      setText("focus-gps", lat.toFixed(6) + ", " + lng.toFixed(6));
+
+      setText("focus-land-acres-summary", formatLandAcresSummary(pin));
+
+      var geom = window.__FARM_GEO__.squareFromAcres(lat, lng, Number(pin.land_acres) || 0);
+
+      if (geom) {
+        var sideM = geom.sideMetres;
+        var sideStr = sideM >= 1000
+          ? (sideM / 1000).toFixed(3) + " km"
+          : sideM.toFixed(1) + " m";
+        setText("focus-side", "≈ " + sideStr + " × " + sideStr);
+        setText(
+          "focus-area",
+          pin.land_acres != null
+            ? "≈ " + Number(pin.land_acres).toFixed(2) + " acres recorded (boundary estimate)"
+            : "—"
+        );
+
+        setText("corner-nw-lat", geom.nw.lat.toFixed(6));
+        setText("corner-nw-lng", geom.nw.lng.toFixed(6));
+        setText("corner-ne-lat", geom.ne.lat.toFixed(6));
+        setText("corner-ne-lng", geom.ne.lng.toFixed(6));
+        setText("corner-se-lat", geom.se.lat.toFixed(6));
+        setText("corner-se-lng", geom.se.lng.toFixed(6));
+        setText("corner-sw-lat", geom.sw.lat.toFixed(6));
+        setText("corner-sw-lng", geom.sw.lng.toFixed(6));
+      } else {
+        setText("focus-side", "—");
+        setText("focus-area", "—");
+        ["nw", "ne", "se", "sw"].forEach(function (c) {
+          setText("corner-" + c + "-lat", "—");
+          setText("corner-" + c + "-lng", "—");
+        });
+      }
+
+      var map = ensureFocusMap();
+      if (!map) return;
+
+      google.maps.event.trigger(map, "resize");
+
+      // Hide the filter-overview markers while we drill in.
+      focusOverviewMarkers.forEach(function (entry) { entry.marker.setMap(null); });
+
+      clearSelectionGraphics();
+
+      var color = colorForIndex(0);
+      focusSelectionMarkers.push(new google.maps.Marker({
+        map: map,
+        position: { lat: lat, lng: lng },
+        title: pin.subtitle || pin.title || "Farm",
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor: color,
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+          scale: 8,
+        },
+        zIndex: 9999,
+      }));
+
+      if (geom) {
+        focusSelectionPolygons.push(new google.maps.Polygon({
+          paths: [geom.nw, geom.ne, geom.se, geom.sw],
+          strokeColor: color,
+          strokeOpacity: 0.95,
+          strokeWeight: 2,
+          fillColor: color,
+          fillOpacity: 0.2,
+          map: map,
+        }));
+        var bounds = new google.maps.LatLngBounds();
+        [geom.nw, geom.ne, geom.se, geom.sw].forEach(function (c) { bounds.extend(c); });
+        map.fitBounds(bounds, 40);
+        google.maps.event.addListenerOnce(map, "bounds_changed", function () {
+          var z = map.getZoom();
+          if (z > 19) map.setZoom(19);
+          if (z < 12) map.setZoom(12);
+        });
+      } else {
+        map.setCenter({ lat: lat, lng: lng });
+        map.setZoom(15);
+      }
+
+      if (focusEl && focusEl.scrollIntoView) {
+        try { focusEl.scrollIntoView({ behavior: "smooth", block: "nearest" }); } catch (e) { /* no-op */ }
+      }
+    }
+
+    function renderMultiSelection(selectedPins) {
+      var grid = document.getElementById("focus-grid");
+      var empty = document.getElementById("focus-empty");
+      if (grid) grid.removeAttribute("hidden");
+      if (empty) empty.style.display = "none";
+
+      showMultiPane();
+
+      var nameEl = document.getElementById("focus-name");
+      var summaryEl = document.getElementById("focus-summary");
+      var back = document.getElementById("focus-back-to-all");
+      if (nameEl) nameEl.textContent = selectedPins.length + " farms compared";
+      if (summaryEl) summaryEl.textContent = "Each farm's estimated boundary is drawn in its own colour.";
+      if (back) back.style.display = "none";
+
+      var listEl = document.getElementById("focus-multi-list");
+      var totalsEl = document.getElementById("focus-multi-totals");
+      if (listEl) listEl.innerHTML = "";
+
+      var totalAcres = 0;
+      var withAcresCount = 0;
+      var iw = ensureMultiInfoWindow();
+      var map = ensureFocusMap();
+      clearSelectionGraphics();
+
+      // Hide the filter-overview markers while comparing.
+      focusOverviewMarkers.forEach(function (entry) { entry.marker.setMap(null); });
+
+      var combinedBounds = map ? new google.maps.LatLngBounds() : null;
+
+      selectedPins.forEach(function (pin, idx) {
+        var color = colorForIndex(idx);
+        var lat = Number(pin.lat), lng = Number(pin.lng);
+        if (Number.isNaN(lat) || Number.isNaN(lng)) return;
+
+        var acres = pin.land_acres != null ? Number(pin.land_acres) : null;
+        if (acres != null && !Number.isNaN(acres) && acres > 0) {
+          totalAcres += acres;
+          withAcresCount++;
+        }
+        var geom = window.__FARM_GEO__.squareFromAcres(lat, lng, acres || 0);
+        var sideStr = "—";
+        if (geom) {
+          sideStr = geom.sideMetres >= 1000
+            ? (geom.sideMetres / 1000).toFixed(3) + " km"
+            : geom.sideMetres.toFixed(1) + " m";
+        }
+
+        if (map) {
+          var marker = new google.maps.Marker({
+            map: map,
+            position: { lat: lat, lng: lng },
+            title: pin.subtitle || pin.title || "Farm",
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              fillColor: color,
+              fillOpacity: 1,
+              strokeColor: "#ffffff",
+              strokeWeight: 2,
+              scale: 8,
+            },
+            label: { text: String(idx + 1), color: "#ffffff", fontSize: "10px", fontWeight: "700" },
+            zIndex: 5000 + idx,
+          });
+          marker.addListener("click", function () {
+            iw.setContent(
+              '<div style="max-width:230px;line-height:1.35"><strong>' +
+              escHtml((idx + 1) + ". " + (pin.subtitle || pin.title || "Farm")) + "</strong><br/>" +
+              (pin.code ? "Code: " + escHtml(pin.code) + "<br/>" : "") +
+              (pin.location ? escHtml(pin.location) + "<br/>" : "") +
+              (acres ? "Land: ~" + acres.toFixed(2) + " acres<br/>" : "") +
+              (geom ? "Side: ≈ " + escHtml(sideStr) + "<br/>" : "") +
+              "</div>"
+            );
+            iw.open({ map: map, anchor: marker });
+          });
+          focusSelectionMarkers.push(marker);
+
+          if (geom) {
+            focusSelectionPolygons.push(new google.maps.Polygon({
+              paths: [geom.nw, geom.ne, geom.se, geom.sw],
+              strokeColor: color,
+              strokeOpacity: 0.95,
+              strokeWeight: 2,
+              fillColor: color,
+              fillOpacity: 0.2,
+              map: map,
+            }));
+            [geom.nw, geom.ne, geom.se, geom.sw].forEach(function (c) { combinedBounds.extend(c); });
+          } else {
+            combinedBounds.extend({ lat: lat, lng: lng });
+          }
+        }
+
+        if (listEl) {
+          var li = document.createElement("li");
+          var sw = document.createElement("span");
+          sw.className = "focus-multi-swatch";
+          sw.style.background = color;
+          li.appendChild(sw);
+
+          var nm = document.createElement("span");
+          nm.className = "focus-multi-name";
+          nm.textContent = (idx + 1) + ". " + (pin.subtitle || pin.title || "Farmer");
+          li.appendChild(nm);
+
+          if (pin.code) {
+            var codeEl = document.createElement("code");
+            codeEl.className = "profile-code";
+            codeEl.style.marginLeft = "0.4rem";
+            codeEl.textContent = pin.code;
+            li.appendChild(codeEl);
+          }
+
+          var meta = document.createElement("span");
+          meta.className = "focus-multi-meta";
+          var bits = [];
+          if (acres != null && !Number.isNaN(acres)) bits.push(acres.toFixed(2) + " ac");
+          if (geom) bits.push("side ≈ " + sideStr);
+          if (pin.location) bits.push(pin.location);
+          meta.textContent = bits.join(" · ") || "no land size on record";
+          li.appendChild(meta);
+
+          var rm = document.createElement("button");
+          rm.type = "button";
+          rm.className = "focus-multi-remove";
+          rm.title = "Remove from comparison";
+          rm.setAttribute("aria-label", "Remove from comparison");
+          rm.textContent = "×";
+          rm.addEventListener("click", function (e) {
+            e.stopPropagation();
+            if (typeof window.__farmerListSetSelection === "function") {
+              window.__farmerListSetSelection(pin.id, false);
+            }
+          });
+          li.appendChild(rm);
+
+          listEl.appendChild(li);
+        }
+      });
+
+      if (totalsEl) {
+        var areaHa = totalAcres * 0.4046856422;
+        totalsEl.innerHTML =
+          "<strong>" + selectedPins.length + "</strong> farms · " +
+          (withAcresCount
+            ? "total land ≈ <strong>" + totalAcres.toFixed(2) + " acres</strong> (" + areaHa.toFixed(3) + " ha)"
+            : "no land sizes recorded for these farms");
+      }
+
+      if (map && combinedBounds && !combinedBounds.isEmpty()) {
+        google.maps.event.trigger(map, "resize");
+        map.fitBounds(combinedBounds, 60);
+        google.maps.event.addListenerOnce(map, "bounds_changed", function () {
+          var z = map.getZoom();
+          if (z > 18) map.setZoom(18);
+          if (z < 9) map.setZoom(9);
+        });
+      }
+
+      if (focusEl && focusEl.scrollIntoView) {
+        try { focusEl.scrollIntoView({ behavior: "smooth", block: "nearest" }); } catch (e) { /* no-op */ }
+      }
+    }
+
+    var multiInfoWindow = null;
+    function ensureMultiInfoWindow() {
+      if (!multiInfoWindow && window.google && google.maps) {
+        multiInfoWindow = new google.maps.InfoWindow();
+      }
+      return multiInfoWindow;
+    }
+
+    // Public hook so the filter UI can ask the focus map to re-render.
+    // (Selection always wins over the filter overview; the filter overview is
+    // only shown when no farmer is currently selected.)
+    window.__refreshFocusMapForFilters = function (visiblePins, filterActive) {
+      lastVisiblePins = (visiblePins || []).slice();
+
+      // If the user has farmers selected, the selection view stays on screen.
+      if (typeof window.__farmerListGetSelectedPins === "function") {
+        var selPins = window.__farmerListGetSelectedPins();
+        if (selPins.length >= 1) {
+          // The selection drawing happens via __farmerListRenderSelection;
+          // here we just ensure the overview markers (if any) are hidden.
+          focusOverviewMarkers.forEach(function (entry) { entry.marker.setMap(null); });
+          return;
+        }
+      }
+
+      if (!filterActive) {
+        clearSelectionGraphics();
+        renderFocusOverview(visiblePins || [], false);
+        return;
+      }
+
+      renderFocusOverview(visiblePins || [], true);
+    };
+
+    // Public hook used by the selection logic to (re)render the multi/single
+    // boundary view without reaching into private helpers.
+    window.__farmerListRenderSelection = function (selectedPins) {
+      if (!selectedPins || selectedPins.length === 0) {
+        clearSelectionGraphics();
+        // Fall back to the filter overview / placeholder.
+        var active = false;
+        if (typeof window.__farmerHasFilterActive === "function") {
+          active = !!window.__farmerHasFilterActive();
+        }
+        if (active) {
+          renderFocusOverview(lastVisiblePins, true);
+        } else {
+          renderFocusOverview(window.__FARMER_MAP_PINS__ || [], false);
+        }
+        return;
+      }
+      if (selectedPins.length === 1) {
+        renderSingleSelection(selectedPins[0]);
+      } else {
+        renderMultiSelection(selectedPins);
+      }
+    };
+
+    var backBtn = document.getElementById("focus-back-to-all");
+    if (backBtn) {
+      backBtn.addEventListener("click", function () {
+        if (typeof window.__farmerListClearSelection === "function") {
+          window.__farmerListClearSelection();
+        }
+      });
+    }
+
+    var resizeTimer = null;
+    window.addEventListener("resize", function () {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(function () {
+        if (!window.google || !google.maps) return;
+        if (overviewMap) google.maps.event.trigger(overviewMap, "resize");
+        if (focusMap) google.maps.event.trigger(focusMap, "resize");
+      }, 150);
+    });
+  };
+</script>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key | urlencode }}&callback=initFarmerMap&v=weekly"></script>
+{% else %}
+<script>
+  // No Google Maps key — list-only mode. Wire up rows to fill the boundary card without rendering a map.
+  (function () {
+    var pins = window.__FARMER_MAP_PINS__ || [];
+    function setText(id, value) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = (value == null || value === "") ? "—" : String(value);
+    }
+    var SQM_PER_ACRE = 4046.8564224;
+    var M_PER_DEG = 111320;
+    function squareFromAcres(lat, lng, acres) {
+      if (!isFinite(lat) || !isFinite(lng) || !(acres > 0)) return null;
+      var sideM = Math.sqrt(acres * SQM_PER_ACRE);
+      var halfM = sideM / 2;
+      var dLat = halfM / M_PER_DEG;
+      var cosLat = Math.cos((lat * Math.PI) / 180);
+      var safeCos = Math.abs(cosLat) < 1e-6 ? 1e-6 : cosLat;
+      var dLng = halfM / (M_PER_DEG * safeCos);
+      return {
+        nw: { lat: lat + dLat, lng: lng - dLng },
+        ne: { lat: lat + dLat, lng: lng + dLng },
+        se: { lat: lat - dLat, lng: lng + dLng },
+        sw: { lat: lat - dLat, lng: lng - dLng },
+        sideMetres: sideM,
+      };
+    }
+    function selectFarmer(pin) {
+      var grid = document.getElementById("focus-grid");
+      var empty = document.getElementById("focus-empty");
+      if (grid) grid.removeAttribute("hidden");
+      if (empty) empty.style.display = "none";
+      document.querySelectorAll(".farmer-row").forEach(function (r) {
+        r.classList.toggle("is-active", String(r.getAttribute("data-farmer-id")) === String(pin.id));
+      });
+      setText("focus-name", pin.subtitle || pin.title || "Farmer");
+      var summaryEl = document.getElementById("focus-summary");
+      if (summaryEl) summaryEl.textContent = "Estimated boundary derived from the recorded land size.";
+      var back = document.getElementById("focus-back-to-all");
+      if (back) back.style.display = "none";
+      setText("focus-code", pin.code);
+      setText("focus-membership", pin.membership);
+      setText("focus-phone", pin.phone);
+      setText("focus-location", pin.location);
+      setText("focus-farm", pin.farm);
+      setText("focus-farm-loc", pin.farm_location_text);
+      var lat = Number(pin.lat); var lng = Number(pin.lng);
+      setText("focus-gps", lat.toFixed(6) + ", " + lng.toFixed(6));
+      function formatLandAcresSummaryNm(pin) {
+        var total = pin.land_acres != null ? Number(pin.land_acres) : null;
+        var used = pin.used_acres != null ? Number(pin.used_acres) : 0;
+        var avail = pin.available_acres != null ? Number(pin.available_acres) : null;
+        function fa(n) {
+          if (n == null || Number.isNaN(n)) return "—";
+          return n.toFixed(2) + " ac";
+        }
+        var u = Number(used);
+        if (Number.isNaN(u)) u = 0;
+        return "Total " + fa(total) + " · Used " + fa(u) + " · Avail " + fa(avail);
+      }
+      setText("focus-land-acres-summary", formatLandAcresSummaryNm(pin));
+      var geom = squareFromAcres(lat, lng, Number(pin.land_acres) || 0);
+      if (geom) {
+        var sideStr = geom.sideMetres >= 1000 ? (geom.sideMetres / 1000).toFixed(3) + " km" : geom.sideMetres.toFixed(1) + " m";
+        setText("focus-side", "≈ " + sideStr + " × " + sideStr);
+        setText(
+          "focus-area",
+          pin.land_acres != null
+            ? "≈ " + Number(pin.land_acres).toFixed(2) + " acres recorded (boundary estimate)"
+            : "—"
+        );
+        ["nw","ne","se","sw"].forEach(function (c) {
+          setText("corner-" + c + "-lat", geom[c].lat.toFixed(6));
+          setText("corner-" + c + "-lng", geom[c].lng.toFixed(6));
+        });
+      } else {
+        setText("focus-side", "—"); setText("focus-area", "—");
+        ["nw","ne","se","sw"].forEach(function (c) {
+          setText("corner-" + c + "-lat", "—"); setText("corner-" + c + "-lng", "—");
+        });
+      }
+    }
+    document.querySelectorAll(".farmer-row").forEach(function (row) {
+      row.addEventListener("click", function () {
+        var fid = String(row.getAttribute("data-farmer-id"));
+        var pin = pins.find(function (p) { return String(p.id) === fid; });
+        if (pin) selectFarmer(pin);
+      });
+    });
+  })();
+</script>
+{% endif %}
+{% endblock %}

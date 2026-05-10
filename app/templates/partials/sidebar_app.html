@@ -17,20 +17,6 @@
       {% if request.endpoint == "main.dashboard" and r in ["administrator", "manager", "it_support"] %}
       <p class="app-sidebar__section" style="margin-top: 0.85rem">Modules</p>
       <a
-        href="{{ url_for('main.module_page', role=r, module_key='crops_session') }}"
-        class="app-sidebar__link{% if request.endpoint == 'main.module_page' and request.view_args and request.view_args.get('module_key') == 'crops_session' %} is-active{% endif %}"
-      >
-        {{ i("leaf") }}
-        <span>Crops in session</span>
-      </a>
-      <a
-        href="{{ url_for('main.products_management', role=r) }}"
-        class="app-sidebar__link{% if request.endpoint == 'main.products_management' %} is-active{% endif %}"
-      >
-        {{ i("package") }}
-        <span>Product management</span>
-      </a>
-      <a
         href="{{ url_for('main.module_page', role=r, module_key='farmers') }}"
         class="app-sidebar__link{% if (request.endpoint == 'main.module_page' and request.view_args and request.view_args.get('module_key') == 'farmers') or request.endpoint == 'main.farmers_manage_page' %} is-active{% endif %}"
       >
@@ -59,41 +45,6 @@
         <span>Warehouse</span>
       </a>
       <a
-        href="{{ url_for('main.module_page', role=r, module_key='logistics') }}"
-        class="app-sidebar__link{% if request.endpoint == 'main.module_page' and request.view_args and request.view_args.get('module_key') == 'logistics' %} is-active{% endif %}"
-      >
-        {{ i("truck") }}
-        <span>Logistics</span>
-      </a>
-      <a
-        href="{{ url_for('main.module_page', role=r, module_key='processing_value_addition') }}"
-        class="app-sidebar__link{% if request.endpoint == 'main.module_page' and request.view_args and request.view_args.get('module_key') == 'processing_value_addition' %} is-active{% endif %}"
-      >
-        {{ i("plus_circle") }}
-        <span>Processing &amp; value addition</span>
-      </a>
-      <a
-        href="{{ url_for('main.module_page', role=r, module_key='sales_marketing') }}"
-        class="app-sidebar__link{% if request.endpoint == 'main.module_page' and request.view_args and request.view_args.get('module_key') == 'sales_marketing' %} is-active{% endif %}"
-      >
-        {{ i("shopping_cart") }}
-        <span>Sales &amp; marketing</span>
-      </a>
-      <a
-        href="{{ url_for('main.module_page', role=r, module_key='communication') }}"
-        class="app-sidebar__link{% if request.endpoint == 'main.module_page' and request.view_args and request.view_args.get('module_key') == 'communication' %} is-active{% endif %}"
-      >
-        {{ i("megaphone") }}
-        <span>Communication</span>
-      </a>
-      <a
-        href="{{ url_for('main.module_page', role=r, module_key='health') }}"
-        class="app-sidebar__link{% if request.endpoint == 'main.module_page' and request.view_args and request.view_args.get('module_key') == 'health' %} is-active{% endif %}"
-      >
-        {{ i("heart") }}
-        <span>Health</span>
-      </a>
-      <a
         href="{{ url_for('main.module_page', role=r, module_key='analytics') }}"
         class="app-sidebar__link{% if request.endpoint == 'main.module_page' and request.view_args and request.view_args.get('module_key') == 'analytics' %} is-active{% endif %}"
       >
@@ -108,25 +59,11 @@
         <span>Reports</span>
       </a>
       <a
-        href="{{ url_for('main.module_page', role=r, module_key='loans_credit') }}"
-        class="app-sidebar__link{% if request.endpoint == 'main.module_page' and request.view_args and request.view_args.get('module_key') == 'loans_credit' %} is-active{% endif %}"
-      >
-        {{ i("hand_coins") }}
-        <span>Loans and credit</span>
-      </a>
-      <a
         href="{{ url_for('main.module_page', role=r, module_key='governance') }}"
         class="app-sidebar__link{% if request.endpoint == 'main.module_page' and request.view_args and request.view_args.get('module_key') == 'governance' %} is-active{% endif %}"
       >
         {{ i("users_cog") }}
         <span>Membership &amp; Cooperative Governance</span>
-      </a>
-      <a
-        href="{{ url_for('main.module_page', role=r, module_key='smart_farming') }}"
-        class="app-sidebar__link{% if request.endpoint == 'main.module_page' and request.view_args and request.view_args.get('module_key') == 'smart_farming' %} is-active{% endif %}"
-      >
-        {{ i("cpu") }}
-        <span>Smart Farming Integration</span>
       </a>
       <a
         href="{{ url_for('main.module_page', role=r, module_key='company_settings') }}"
@@ -137,33 +74,156 @@
       </a>
       {% endif %}
 
-      {# Products: in-session overview + full catalogue management #}
+      {# Finance overview (/module/finance): show links here so they sit under Menu, above Crops. #}
+      {% if r in ["administrator", "manager", "it_support"]
+            and request.endpoint == "main.module_page"
+            and request.view_args
+            and request.view_args.get("module_key") == "finance" %}
+      <p class="app-sidebar__section" style="margin-top: 0.85rem">Finance</p>
+      <a
+        href="{{ url_for('main.module_page', role=r, module_key='finance') }}"
+        class="app-sidebar__link is-active"
+      >
+        {{ i("wallet") }}
+        <span>Finance overview</span>
+      </a>
+      <a
+        href="{{ url_for('main.finance_farmer_session_stock_purchases', role=r) }}"
+        class="app-sidebar__link{% if request.endpoint == 'main.finance_farmer_session_stock_purchases' %} is-active{% endif %}"
+      >
+        {{ i("package") }}
+        <span>End product stock</span>
+      </a>
+      <a
+        href="{{ url_for('main.finance_crops_session', role=r) }}"
+        class="app-sidebar__link{% if request.endpoint == 'main.finance_crops_session' %} is-active{% endif %}"
+      >
+        {{ i("leaf") }}
+        <span>Crops in session finance</span>
+      </a>
+      <a
+        href="{{ url_for('main.finance_product_purchases', role=r) }}"
+        class="app-sidebar__link{% if request.endpoint == 'main.finance_product_purchases' %} is-active{% endif %}"
+      >
+        {{ i("shopping_cart") }}
+        <span>Item finance</span>
+      </a>
+      {% endif %}
+
+      {# Governance (/module/governance + subpages): member accounts, shares, etc. #}
       {% if r in ["administrator", "manager", "it_support"]
             and (
-              (request.endpoint == "main.module_page" and request.view_args and request.view_args.get("module_key") == "crops_session")
-              or request.endpoint == "main.crops_session_sessions_for_crop"
+              (request.endpoint == "main.module_page"
+                and request.view_args
+                and request.view_args.get("module_key") == "governance")
+              or request.endpoint == "main.governance_section"
+            ) %}
+      <p class="app-sidebar__section" style="margin-top: 0.85rem">Governance</p>
+      <a
+        href="{{ url_for('main.module_page', role=r, module_key='governance') }}"
+        class="app-sidebar__link{% if request.endpoint == 'main.module_page' and request.view_args and request.view_args.get('module_key') == 'governance' %} is-active{% endif %}"
+      >
+        {{ i("users_cog") }}
+        <span>Overview</span>
+      </a>
+      <a
+        href="{{ url_for('main.governance_section', role=r, section_slug='member-accounts') }}"
+        class="app-sidebar__link{% if request.endpoint == 'main.governance_section' and request.view_args and request.view_args.get('section_slug') == 'member-accounts' %} is-active{% endif %}"
+      >
+        {{ i("user") }}
+        <span>Member Accounts</span>
+      </a>
+      <a
+        href="{{ url_for('main.governance_section', role=r, section_slug='shares') }}"
+        class="app-sidebar__link{% if request.endpoint == 'main.governance_section' and request.view_args and request.view_args.get('section_slug') == 'shares' %} is-active{% endif %}"
+      >
+        {{ i("briefcase") }}
+        <span>Shares</span>
+      </a>
+      <a
+        href="{{ url_for('main.governance_section', role=r, section_slug='contributions') }}"
+        class="app-sidebar__link{% if request.endpoint == 'main.governance_section' and request.view_args and request.view_args.get('section_slug') == 'contributions' %} is-active{% endif %}"
+      >
+        {{ i("wallet") }}
+        <span>Contributions</span>
+      </a>
+      <a
+        href="{{ url_for('main.governance_section', role=r, section_slug='loans-eligibility') }}"
+        class="app-sidebar__link{% if request.endpoint == 'main.governance_section' and request.view_args and request.view_args.get('section_slug') == 'loans-eligibility' %} is-active{% endif %}"
+      >
+        {{ i("hand_coins") }}
+        <span>Loans Eligibility</span>
+      </a>
+      <a
+        href="{{ url_for('main.governance_section', role=r, section_slug='penalties-fines') }}"
+        class="app-sidebar__link{% if request.endpoint == 'main.governance_section' and request.view_args and request.view_args.get('section_slug') == 'penalties-fines' %} is-active{% endif %}"
+      >
+        {{ i("ban") }}
+        <span>Penalties &amp; Fines</span>
+      </a>
+      <a
+        href="{{ url_for('main.governance_section', role=r, section_slug='dividends') }}"
+        class="app-sidebar__link{% if request.endpoint == 'main.governance_section' and request.view_args and request.view_args.get('section_slug') == 'dividends' %} is-active{% endif %}"
+      >
+        {{ i("spark") }}
+        <span>Dividends</span>
+      </a>
+      <a
+        href="{{ url_for('main.governance_section', role=r, section_slug='transactions') }}"
+        class="app-sidebar__link{% if request.endpoint == 'main.governance_section' and request.view_args and request.view_args.get('section_slug') == 'transactions' %} is-active{% endif %}"
+      >
+        {{ i("shopping_cart") }}
+        <span>Transactions</span>
+      </a>
+      <a
+        href="{{ url_for('main.governance_section', role=r, section_slug='statements') }}"
+        class="app-sidebar__link{% if request.endpoint == 'main.governance_section' and request.view_args and request.view_args.get('section_slug') == 'statements' %} is-active{% endif %}"
+      >
+        {{ i("file_text") }}
+        <span>Statements</span>
+      </a>
+      <a
+        href="{{ url_for('main.governance_section', role=r, section_slug='receipts') }}"
+        class="app-sidebar__link{% if request.endpoint == 'main.governance_section' and request.view_args and request.view_args.get('section_slug') == 'receipts' %} is-active{% endif %}"
+      >
+        {{ i("package") }}
+        <span>Receipts</span>
+      </a>
+      <a
+        href="{{ url_for('main.governance_section', role=r, section_slug='financial-reports') }}"
+        class="app-sidebar__link{% if request.endpoint == 'main.governance_section' and request.view_args and request.view_args.get('section_slug') == 'financial-reports' %} is-active{% endif %}"
+      >
+        {{ i("bar_chart") }}
+        <span>Financial Reports</span>
+      </a>
+      {% endif %}
+
+      {# Crops module overview: register farming session #}
+      {% if r in ["administrator", "manager", "it_support"]
+            and request.endpoint == "main.module_page"
+            and request.view_args
+            and request.view_args.get("module_key") == "crops_session" %}
+      <p class="app-sidebar__section" style="margin-top: 0.85rem">Crops</p>
+      <a
+        href="{{ url_for('main.farmer_farming_session', role=r) }}"
+        class="app-sidebar__link"
+        data-farming-session-register-link
+      >
+        {{ i("leaf") }}
+        <span>Register farming session</span>
+      </a>
+      {% endif %}
+
+      {# Crops module: drill-down links only #}
+      {% if r in ["administrator", "manager", "it_support"]
+            and (
+              request.endpoint == "main.crops_session_sessions_for_crop"
               or request.endpoint == "main.crops_session_crop_activities"
               or request.endpoint == "main.crops_session_crop_required_products"
               or request.endpoint == "main.crops_session_crop_required_product_farmers"
               or request.endpoint == "main.crops_session_crop_required_manual_farmers"
-              or request.endpoint == "main.products_management"
             ) %}
       <p class="app-sidebar__section" style="margin-top: 0.85rem">Crops</p>
-      {% if request.endpoint not in [
-              "main.crops_session_sessions_for_crop",
-              "main.crops_session_crop_activities",
-              "main.crops_session_crop_required_products",
-              "main.crops_session_crop_required_product_farmers",
-              "main.crops_session_crop_required_manual_farmers",
-            ] %}
-      <a
-        href="{{ url_for('main.module_page', role=r, module_key='crops_session') }}"
-        class="app-sidebar__link{% if request.endpoint == 'main.module_page' and request.view_args and request.view_args.get('module_key') == 'crops_session' %} is-active{% endif %}"
-      >
-        {{ i("leaf") }}
-        <span>Crops in session</span>
-      </a>
-      {% endif %}
       {% if request.endpoint in [
               "main.crops_session_sessions_for_crop",
               "main.crops_session_crop_activities",
@@ -199,27 +259,15 @@
         <span>Products required</span>
       </a>
       {% endif %}
-      {% if request.endpoint == "main.products_management" %}
-      <a
-        href="{{ url_for('main.products_management', role=r) }}"
-        class="app-sidebar__link{% if request.endpoint == 'main.products_management' %} is-active{% endif %}"
-      >
-        {{ i("package") }}
-        <span>Product management</span>
-      </a>
-      {% endif %}
       {% endif %}
 
-      {# Contextual quick links for Finance module (it_support/admin/manager) #}
+      {# Contextual quick links for Finance module (it_support/admin/manager); overview uses block above. #}
       {% if (
-              request.endpoint == "main.module_page"
-              and request.view_args
-              and request.view_args.get("module_key") == "finance"
-              and r in ["administrator", "manager", "it_support"]
-            )
-            or (request.endpoint == "main.finance_crops_session"
+              request.endpoint == "main.finance_crops_session"
               and r in ["administrator", "manager", "it_support"])
             or (request.endpoint == "main.finance_product_purchases"
+              and r in ["administrator", "manager", "it_support"])
+            or (request.endpoint == "main.finance_farmer_session_stock_purchases"
               and r in ["administrator", "manager", "it_support"])
             or (request.endpoint == "main.finance_product_purchase_detail"
               and r in ["administrator", "manager", "it_support"]) %}
@@ -230,6 +278,13 @@
       >
         {{ i("wallet") }}
         <span>Finance overview</span>
+      </a>
+      <a
+        href="{{ url_for('main.finance_farmer_session_stock_purchases', role=r) }}"
+        class="app-sidebar__link{% if request.endpoint == 'main.finance_farmer_session_stock_purchases' %} is-active{% endif %}"
+      >
+        {{ i("package") }}
+        <span>End product stock</span>
       </a>
       <a
         href="{{ url_for('main.finance_crops_session', role=r) }}"
@@ -243,19 +298,31 @@
         class="app-sidebar__link{% if request.endpoint == 'main.finance_product_purchases' %} is-active{% endif %}"
       >
         {{ i("shopping_cart") }}
-        <span>Product purchase finance</span>
+        <span>Item finance</span>
       </a>
       {% endif %}
 
       {# Contextual quick links for Administration module only (it_support/admin/manager) #}
-      {% if request.endpoint == "main.module_page"
-            and request.view_args
-            and request.view_args.get("module_key") == "administration"
+      {% if (
+              request.endpoint == "main.administration_hr_manage"
+              or (
+                request.endpoint == "main.module_page"
+                and request.view_args
+                and request.view_args.get("module_key") == "administration"
+              )
+            )
             and r in ["administrator", "manager", "it_support"] %}
       <p class="app-sidebar__section" style="margin-top: 0.85rem">Administration</p>
       <a
         href="{{ url_for('main.module_page', role=r, module_key='administration') }}"
-        class="app-sidebar__link is-active"
+        class="app-sidebar__link{% if request.endpoint == 'main.module_page' and request.view_args and request.view_args.get('module_key') == 'administration' %} is-active{% endif %}"
+      >
+        {{ i("users") }}
+        <span>Employees directory</span>
+      </a>
+      <a
+        href="{{ url_for('main.administration_hr_manage', role=r) }}"
+        class="app-sidebar__link{% if request.endpoint == 'main.administration_hr_manage' %} is-active{% endif %}"
       >
         {{ i("briefcase") }}
         <span>HR Management</span>
@@ -279,7 +346,7 @@
         class="app-sidebar__link"
       >
         {{ i("package") }}
-        <span>Product Management</span>
+        <span>Item Management</span>
       </a>
       {% endif %}
 
@@ -288,38 +355,56 @@
               and request.view_args
               and request.view_args.get("module_key") == "warehouse"
               and r in ["administrator", "manager", "it_support"])
-            or (request.endpoint == "main.warehouse_section"
-              and r in ["administrator", "manager", "it_support"])
-            or (request.endpoint in ["main.warehouse_stock", "main.warehouse_distribution", "main.warehouse_stock_transactions"]
+            or (request.endpoint in [
+                  "main.warehouse_stock",
+                  "main.warehouse_farmer_session_stock",
+                  "main.warehouse_farmer_product_session_stock",
+                  "main.warehouse_distribution",
+                  "main.warehouse_stock_transactions",
+                ]
               and r in ["administrator", "manager", "it_support"]) %}
       <p class="app-sidebar__section" style="margin-top: 0.85rem">Warehouse</p>
+      <a
+        href="{{ url_for('main.products_management', role=r) }}"
+        class="app-sidebar__link{% if request.endpoint == 'main.products_management' %} is-active{% endif %}"
+      >
+        {{ i("package") }}
+        <span>Item management</span>
+      </a>
       <a
         href="{{ url_for('main.warehouse_stock', role=r) }}"
         class="app-sidebar__link{% if request.endpoint == 'main.warehouse_stock' %} is-active{% endif %}"
       >
         {{ i("boxes") }}
-        <span>Stock management</span>
+        <span>Item stock management</span>
       </a>
       <a
-        href="{{ url_for('main.warehouse_stock_transactions', role=r) }}"
-        class="app-sidebar__link{% if request.endpoint == 'main.warehouse_stock_transactions' %} is-active{% endif %}"
+        href="{{ url_for('main.warehouse_farmer_session_stock', role=r) }}"
+        class="app-sidebar__link{% if request.endpoint == 'main.warehouse_farmer_session_stock' %} is-active{% endif %}"
       >
-        {{ i("file_text") }}
-        <span>Stock transactions</span>
+        {{ i("package") }}
+        <span>End product stock</span>
+      </a>
+      {% endif %}
+
+      {# Farm locations: map vs list (same URL with ?view=); sidebar replaces in-page tabs. #}
+      {% if r in ["administrator", "manager", "it_support"]
+            and request.endpoint == "main.farmers_farm_locations_page" %}
+      {% set _fl_sidebar_view = request.args.get("view", "map") %}
+      <p class="app-sidebar__section" style="margin-top: 0.85rem">Farm locations</p>
+      <a
+        href="{{ url_for('main.farmers_farm_locations_page', role=r, view='map') }}"
+        class="app-sidebar__link{% if _fl_sidebar_view != 'list' %} is-active{% endif %}"
+      >
+        {{ i("map_pin") }}
+        <span>Map of farms</span>
       </a>
       <a
-        href="{{ url_for('main.warehouse_distribution', role=r) }}"
-        class="app-sidebar__link{% if request.endpoint == 'main.warehouse_distribution' %} is-active{% endif %}"
+        href="{{ url_for('main.farmers_farm_locations_page', role=r, view='list') }}"
+        class="app-sidebar__link{% if _fl_sidebar_view == 'list' %} is-active{% endif %}"
       >
-        {{ i("truck") }}
-        <span>Distribution section</span>
-      </a>
-      <a
-        href="{{ url_for('main.warehouse_section', role=r, section_key='audits') }}"
-        class="app-sidebar__link{% if request.endpoint == 'main.warehouse_section' and request.view_args and request.view_args.get('section_key') == 'audits' %} is-active{% endif %}"
-      >
-        {{ i("shield") }}
-        <span>Audits</span>
+        {{ i("users") }}
+        <span>Farmers list ({{ farmer_map_pins|length }})</span>
       </a>
       {% endif %}
 
@@ -332,11 +417,26 @@
               and request.view_args.get("module_key") == "farmers")
             or request.endpoint == "main.farmers_sessions_for_crop"
             or request.endpoint == "main.farmers_manage_page"
-            or request.endpoint == "main.farmer_farming_session"
           )
         ) %}
       {% if _show_farming_session %}
+      {% set _farmers_module_landing = (
+          request.endpoint == "main.module_page"
+          and request.view_args
+          and request.view_args.get("module_key") == "farmers"
+      ) %}
+      {% set _farmers_manage_sidebar_minimal = request.endpoint == 'main.farmers_manage_page' %}
       <p class="app-sidebar__section" style="margin-top: 0.85rem">Farmers</p>
+      {% if not _farmers_manage_sidebar_minimal %}
+      <a
+        href="{{ url_for('main.module_page', role=r, module_key='crops_session') }}"
+        class="app-sidebar__link{% if request.endpoint == 'main.module_page' and request.view_args and request.view_args.get('module_key') == 'crops_session' %} is-active{% endif %}"
+      >
+        {{ i("leaf") }}
+        <span>Crops in session</span>
+      </a>
+      {% endif %}
+      {% if not _farmers_module_landing and not _farmers_manage_sidebar_minimal %}
       <a
         href="{{ url_for('main.module_page', role=r, module_key='farmers') }}"
         class="app-sidebar__link{% if request.endpoint == 'main.module_page' and request.view_args and request.view_args.get('module_key') == 'farmers' or request.endpoint == 'main.farmers_sessions_for_crop' %} is-active{% endif %}"
@@ -344,6 +444,8 @@
         {{ i("leaf") }}
         <span>Farmers in session</span>
       </a>
+      {% endif %}
+      {% if not _farmers_manage_sidebar_minimal %}
       <a
         href="{{ url_for('main.farmers_manage_page', role=r) }}"
         class="app-sidebar__link{% if request.endpoint == 'main.farmers_manage_page' %} is-active{% endif %}"
@@ -351,6 +453,15 @@
         {{ i("users_cog") }}
         <span>Farmer management</span>
       </a>
+      {% endif %}
+      <a
+        href="{{ url_for('main.farmers_farm_locations_page', role=r) }}"
+        class="app-sidebar__link{% if request.endpoint == 'main.farmers_farm_locations_page' %} is-active{% endif %}"
+      >
+        {{ i("map_pin") }}
+        <span>Farm locations</span>
+      </a>
+      {% if not _farmers_module_landing and not _farmers_manage_sidebar_minimal %}
       <a
         href="{{ url_for('main.farmer_farming_session', role=r) }}"
         class="app-sidebar__link{% if request.endpoint == 'main.farmer_farming_session' %} is-active{% endif %}"
@@ -359,6 +470,7 @@
         {{ i("leaf") }}
         <span>Register farming session</span>
       </a>
+      {% endif %}
       {% endif %}
       {% endif %}
 
@@ -372,6 +484,8 @@
               "main.farmer_crop_session_detail",
             ] %}
       <p class="app-sidebar__section" style="margin-top: 0.85rem">This farmer</p>
+      {% if request.endpoint not in ['main.farmer_crop_session_detail', 'main.farmer_all_active_sessions'] %}
+      {% if request.endpoint != 'main.farmer_allocated_products' %}
       <a
         href="{{ url_for('main.module_page', role=r, module_key='farmers') }}"
         class="app-sidebar__link"
@@ -379,13 +493,15 @@
         {{ i("users") }}
         <span>Farmers in session</span>
       </a>
+      {% endif %}
       <a
         href="{{ url_for('main.farmer_all_active_sessions', role=r, farmer_id=_farmer_sidebar_id) }}"
-        class="app-sidebar__link{% if request.endpoint in ['main.farmer_all_active_sessions', 'main.farmer_crop_session_detail'] %} is-active{% endif %}"
+        class="app-sidebar__link{% if request.endpoint == 'main.farmer_all_active_sessions' %} is-active{% endif %}"
       >
         {{ i("leaf") }}
         <span>Sessions</span>
       </a>
+      {% endif %}
       <a
         href="{{ url_for('main.farmer_allocated_products', role=r, farmer_id=_farmer_sidebar_id) }}"
         class="app-sidebar__link{% if request.endpoint == 'main.farmer_allocated_products' %} is-active{% endif %}"

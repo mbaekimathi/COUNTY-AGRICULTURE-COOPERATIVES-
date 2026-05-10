@@ -12,7 +12,7 @@
 
 <section class="panel">
   <h3>{{ i("leaf") }} Crops in active farming sessions</h3>
-  <p class="lede">Only <strong>CROP</strong> products with an active farmer registration. Herbicide, fertiliser, and equipment appear in <a href="{{ url_for('main.products_management', role=session.get('employee_role')) }}">Product management</a>.</p>
+  <p class="lede">Only <strong>CROP</strong> products with an active farmer registration. Herbicide, fertiliser, and equipment appear in <a href="{{ url_for('main.products_management', role=session.get('employee_role')) }}">Item management</a>.</p>
 
   <div class="form-grid" style="margin-top: 0.75rem">
     <div class="field" style="margin-bottom: 0">
@@ -60,7 +60,7 @@
           {% endfor %}
         {% else %}
           <tr>
-            <td colspan="6" class="table-empty">No <strong>crop</strong> products with an active farming session. Register sessions under <strong>Farmers</strong> or open <a href="{{ url_for('main.products_management', role=session.get('employee_role')) }}">Product management</a> for the full catalogue.</td>
+            <td colspan="6" class="table-empty">No <strong>crop</strong> products with an active farming session. Register sessions under <strong>Farmers</strong> or open <a href="{{ url_for('main.products_management', role=session.get('employee_role')) }}">Item management</a> for the full catalogue.</td>
           </tr>
         {% endif %}
       </tbody>

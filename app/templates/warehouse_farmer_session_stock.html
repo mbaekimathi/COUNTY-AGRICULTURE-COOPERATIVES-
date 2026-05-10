@@ -1,0 +1,1469 @@
+{% extends "base.html" %}
+{% block title %}{{ section_title }} — Warehouse — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<style>
+  .fs-intake-picker {
+    margin-top: 0.35rem;
+  }
+  .fs-intake-picker__filter {
+    margin-bottom: 0.65rem;
+  }
+  .fs-intake-picker__filter .input-wrap {
+    max-width: 420px;
+  }
+  .fs-intake-picker__scroll {
+    max-height: min(52vh, 320px);
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-solid);
+  }
+  .fs-intake-picker__grid {
+    display: grid;
+    grid-template-columns:
+      minmax(7.5rem, 1.05fr)
+      minmax(9rem, 1.35fr)
+      4.25rem
+      minmax(6.5rem, 1fr)
+      minmax(5.5rem, 0.95fr);
+    gap: 0.4rem 0.65rem;
+    align-items: center;
+    padding: 0.5rem 0.7rem;
+    font-size: 0.9rem;
+  }
+  @media (max-width: 720px) {
+    .fs-intake-picker__scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .fs-intake-picker__grid {
+      min-width: 32rem;
+    }
+  }
+  .fs-intake-picker__grid--head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    font-weight: 600;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    background: var(--surface-solid);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 1px 0 var(--border);
+  }
+  .fs-intake-picker__row {
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.12s ease, border-color 0.12s ease;
+  }
+  .fs-intake-picker__row:last-child {
+    border-bottom: none;
+  }
+  .fs-intake-picker__row:hover {
+    background: var(--accent-soft);
+  }
+  .fs-intake-picker__row.is-selected {
+    background: var(--accent-soft);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .fs-intake-picker__row:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+  .fs-intake-cell--farmer strong {
+    display: block;
+    line-height: 1.35;
+  }
+  .fs-intake-cell--crop code {
+    font-size: 0.82rem;
+  }
+  .fs-intake-cell--crop .fs-intake-crop-name {
+    display: block;
+    margin-top: 0.15rem;
+    line-height: 1.35;
+    word-break: break-word;
+  }
+  .fs-intake-num {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  .fs-intake-picker__empty-filter {
+    padding: 1.25rem 0.75rem;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.92rem;
+    display: none;
+  }
+  .fs-intake-picker__empty-filter.is-visible {
+    display: block;
+  }
+  .fs-intake-disclosure {
+    margin-top: 0.35rem;
+  }
+  .fs-intake-tx-view {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.35rem;
+    border-radius: 8px;
+    color: var(--accent-hover);
+    border: 1px solid transparent;
+    line-height: 0;
+  }
+  .fs-intake-tx-view:hover {
+    background: var(--accent-soft);
+    border-color: var(--border);
+    color: var(--accent);
+  }
+  .fs-intake-tx-view .icon-svg {
+    width: 20px;
+    height: 20px;
+  }
+  .intake-branch-panel[hidden] {
+    display: none !important;
+  }
+  .fs-intake-classified-fields {
+    display: contents;
+  }
+  .fs-intake-classified-fields[hidden] {
+    display: none !important;
+  }
+  .fs-intake-kind-banner {
+    grid-column: 1 / -1;
+    margin: 0 0 0.75rem;
+    padding: 0.55rem 0.85rem;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface-solid);
+    font-size: 0.88rem;
+    font-weight: 650;
+    letter-spacing: 0.02em;
+    color: var(--text);
+  }
+  .fs-intake-kind-banner[data-intake-kind="member"] {
+    background: var(--accent-soft);
+    border-color: var(--border);
+    color: var(--accent-hover);
+  }
+  .fs-intake-kind-banner[data-intake-kind="walk_in"] {
+    background: var(--surface-solid);
+    color: var(--text);
+  }
+  .fs-intake-kind-banner[data-intake-kind="warn"] {
+    background: rgba(180, 35, 24, 0.08);
+    border-color: rgba(180, 35, 24, 0.25);
+    color: var(--danger, #b42318);
+  }
+</style>
+
+<div class="dashboard-header">
+  <div>
+    <h2 class="dash-title">{{ i(section_icon) }} {{ section_title }}</h2>
+    <p class="dash-meta">{{ section_desc }}</p>
+  </div>
+  <a
+    href="{{ url_for('main.warehouse_stock', role=session.get('employee_role')) }}"
+    class="button button-ghost"
+  >
+    {{ i("boxes") }} Item stock management
+  </a>
+</div>
+
+<section class="panel">
+  {% set can_member = has_intake_sessions %}
+  {% set can_walkin = has_walk_in_products %}
+  {% set walk_in_only = can_walkin and not can_member %}
+  {% if can_member or can_walkin %}
+
+  <div class="fs-intake-bluetooth-banner" style="margin-bottom: 1rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.65rem 1rem">
+    <button type="button" class="button button-ghost" id="fs-intake-bt-connect">{{ i("plus_circle") }} Pair &amp; connect printer</button>
+    <div id="fs-intake-bt-status" class="hint" style="flex: 1 1 12rem; min-width: 8rem; line-height: 1.45" aria-live="polite"></div>
+    <label class="hint" style="display: flex; gap: 0.45rem; align-items: flex-start; cursor: pointer; margin: 0">
+      <input type="checkbox" id="fs-intake-print-after-submit" form="fs-intake-form" style="margin-top: 0.2rem" checked />
+      <span>Print supplier intake receipt over Bluetooth after a successful save</span>
+    </label>
+  </div>
+
+  <details class="form-disclosure fs-intake-disclosure" open>
+    <summary class="form-disclosure__summary">
+      <span class="form-disclosure__summary-inner">{{ i("plus_circle") }} Record intake</span>
+    </summary>
+    <div class="form-disclosure__body">
+  <form
+    id="fs-intake-form"
+    method="post"
+    action="{{ url_for('main.warehouse_farmer_session_stock', role=session.get('employee_role')) }}"
+    class="warehouse-stock-form"
+    style="margin-top: 0"
+    data-intake-both="{{ 'true' if (can_member and can_walkin) else 'false' }}"
+    data-phone-lookup-url="{{ url_for('main.api_end_product_intake_phone_lookup') }}"
+    data-scope="{% if can_member and can_walkin %}both{% elif can_member %}member_only{% else %}walk_in_only{% endif %}"
+  >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <input type="hidden" name="intake_source" id="fs-intake-source-hidden" value="{% if can_walkin and not can_member %}walk_in{% else %}member{% endif %}" />
+
+    <input type="hidden" name="farming_session_id" id="fs-intake-session-id" value="" />
+
+    <div class="form-grid warehouse-stock-grid">
+      <div class="field" style="grid-column: 1 / -1">
+        <label class="label-row" for="fs-intake-primary-phone">{{ i("keypad") }} <span>Contact phone number</span></label>
+        <div class="input-wrap">{{ i("keypad") }}
+          <input
+            id="fs-intake-primary-phone"
+            name="supplier_contact"
+            type="text"
+            required
+            data-uppercase
+            style="text-transform: uppercase"
+            inputmode="tel"
+            autocomplete="off"
+            placeholder="E.g. 07… or 254…"
+          />
+        </div>
+        <p class="hint" style="margin-top: 0.35rem" data-intake-phone-status hidden aria-live="polite"></p>
+      </div>
+
+      <div
+        id="fs-intake-classified-fields"
+        class="fs-intake-classified-fields"
+        {% if can_member and can_walkin %}hidden{% endif %}
+      >
+        {% if can_member and can_walkin %}
+        <div id="fs-intake-kind-banner" class="fs-intake-kind-banner" hidden role="status" aria-live="polite"></div>
+        {% endif %}
+
+      <div id="intake-member-panel" class="intake-branch-panel" {% if not can_member or walk_in_only %}hidden{% endif %}>
+      {% if can_member %}
+      <div class="field" style="grid-column: 1 / -1">
+        <label class="label-row" for="fs-intake-member-filter">{{ i("users") }} <span>Filter by member (optional)</span></label>
+        <div class="input-wrap">{{ i("users") }}
+          <select id="fs-intake-member-filter" aria-label="Show sessions for one member">
+            <option value="">All members</option>
+            {% for m in intake_members %}
+              <option value="{{ m.id }}">{{ m.full_name or "—" }}{% if m.farmer_code %} · {{ m.farmer_code }}{% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="field" style="grid-column: 1 / -1">
+        <div class="label-row" id="fs-intake-picker-label">{{ i("leaf") }} <span>Select active session</span></div>
+        <div class="fs-intake-picker" role="group" aria-labelledby="fs-intake-picker-label">
+          <div class="fs-intake-picker__filter">
+            <div class="input-wrap">{{ i("search") }}
+              <input
+                type="search"
+                id="fs-intake-filter"
+                placeholder="Filter by farmer or crop…"
+                autocomplete="off"
+                aria-label="Filter sessions"
+              />
+            </div>
+          </div>
+          <div class="fs-intake-picker__scroll" id="fs-intake-picker-scroll">
+            <div class="fs-intake-picker__grid fs-intake-picker__grid--head" aria-hidden="true">
+              <span>Member</span>
+              <span>Crop product</span>
+              <span class="fs-intake-num">Acres</span>
+              <span class="fs-intake-num">Est. yield</span>
+              <span class="fs-intake-num">Stock now</span>
+            </div>
+            {% for s in intake_sessions %}
+              {% set search_hay = (
+                (s.farmer_name or '') ~ ' '
+                ~ (s.farmer_code or '') ~ ' '
+                ~ (s.membership_number or '') ~ ' '
+                ~ (s.crop_code or '') ~ ' '
+                ~ (s.crop_name or '') ~ ' '
+                ~ (s.crop_category or '')
+              ) | lower %}
+              <div
+                class="fs-intake-picker__grid fs-intake-picker__row"
+                role="option"
+                tabindex="0"
+                data-session-id="{{ s.session_id }}"
+                data-farmer-id="{{ s.farmer_id }}"
+                data-uom="{{ (s.unit_of_measure or '') | e }}"
+                data-stock="{{ '%.2f' | format(s.stock_quantity | float) }}"
+                data-search="{{ search_hay | e }}"
+              >
+                <div class="fs-intake-cell--farmer">
+                  <strong>{{ s.farmer_name or "—" }}</strong>
+                  {% if s.farmer_code %}<span class="hint fs-intake-meta">{{ s.farmer_code }}</span>{% endif %}
+                </div>
+                <div class="fs-intake-cell--crop">
+                  <code class="profile-code">{{ s.crop_code or "—" }}</code>
+                  <span class="fs-intake-crop-name">
+                    {{ s.crop_name or "—" }}
+                    {% if s.crop_category %}<span class="hint">({{ s.crop_category }})</span>{% endif %}
+                  </span>
+                </div>
+                <div class="fs-intake-num fs-intake-meta">{{ "%g" | format((s.acreage_used_acres or 0) | float) }}</div>
+                <div class="fs-intake-num">{{ s.estimated_yield_display }}</div>
+                <div class="fs-intake-num">{{ "%.2f" | format(s.stock_quantity | float) }}</div>
+              </div>
+            {% endfor %}
+            <p class="fs-intake-picker__empty-filter" id="fs-intake-empty-filter" role="status">No rows match your filter.</p>
+          </div>
+        </div>
+        <p class="hint" style="margin-bottom: 0; margin-top: 0.65rem">
+          Current warehouse stock for this product (before intake): <strong id="fs-intake-stock-hint">—</strong>
+          <span class="hint"> · Unit: <strong id="fs-intake-uom-hint">—</strong></span>
+        </p>
+      </div>
+      {% else %}
+      <p class="hint" style="margin: 0 0 0.75rem">Member intake needs at least one active farming session with a crop product.</p>
+      {% endif %}
+      </div>
+
+      {% if can_member %}
+      <div id="intake-qty-member-slot" class="field">
+        <label class="label-row" for="fs_intake_qty_member">{{ i("boxes") }} <span>Quantity received</span><span class="hint fs-intake-qty-unit-label"></span></label>
+        <div class="input-wrap input-wrap--addon">{{ i("boxes") }}
+          <input
+            id="fs_intake_qty_member"
+            type="number"
+            min="0.01"
+            step="0.01"
+            class="num-input js-intake-qty-input"
+            inputmode="decimal"
+          />
+          <span class="input-addon fs-intake-qty-addon">—</span>
+        </div>
+      </div>
+      {% endif %}
+
+      <div id="intake-walkin-panel" class="intake-branch-panel" {% if not can_walkin or (can_member and can_walkin) %}hidden{% endif %}>
+      {% if can_walkin %}
+      <div class="field" style="grid-column: 1 / -1">
+        <label class="label-row" for="w_supplier_name_in">{{ i("user") }} <span>Supplier name</span></label>
+        <div class="input-wrap">{{ i("user") }}
+          <input id="w_supplier_name_in" name="supplier_name" type="text" data-uppercase style="text-transform: uppercase" autocomplete="off" />
+        </div>
+        <p class="hint" style="margin-top: 0.35rem">Filled automatically when this phone is already in the supplier directory; otherwise type the name — it is saved on submit.</p>
+      </div>
+      <div id="intake-walkin-crop-slot" class="field" style="grid-column: 1 / -1">
+        <label class="label-row" for="fs_walk_in_product">{{ i("leaf") }} <span>Crop item</span></label>
+        <div class="input-wrap">{{ i("leaf") }}
+          <select id="fs_walk_in_product" name="walk_in_product_id">
+            <option value="">— Select crop —</option>
+            {% for p in walk_in_crop_products %}
+              <option value="{{ p.id }}" data-uom="{{ (p.unit_of_measure or '') | e }}">{{ p.crop_code or "—" }} — {{ p.crop_name or "—" }}{% if p.crop_category %} ({{ p.crop_category }}){% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div id="intake-qty-walk-slot" class="field" style="grid-column: 1 / -1">
+        <label class="label-row" for="fs_intake_qty_walk">{{ i("boxes") }} <span>Quantity received</span><span class="hint fs-intake-qty-unit-label"></span></label>
+        <div class="input-wrap input-wrap--addon">{{ i("boxes") }}
+          <input
+            id="fs_intake_qty_walk"
+            type="number"
+            min="0.01"
+            step="0.01"
+            class="num-input js-intake-qty-input"
+            inputmode="decimal"
+          />
+          <span class="input-addon fs-intake-qty-addon">—</span>
+        </div>
+      </div>
+      {% else %}
+      <p class="hint" style="margin: 0 0 0.75rem">Walk-in intake needs at least one active crop item registered in item management.</p>
+      {% endif %}
+      </div>
+
+      <div class="field">
+        <label class="label-row" for="fs_intake_price">{{ i("wallet") }} <span>Buying price per unit (optional)</span><span id="fs-intake-price-unit-label" class="hint"></span></label>
+        <div class="input-wrap input-wrap--addon warehouse-buying-price-wrap">{{ i("wallet") }}
+          <span class="input-addon input-addon--prefix">KES</span>
+          <input
+            id="fs_intake_price"
+            name="buying_price"
+            type="number"
+            min="0"
+            step="0.01"
+            class="num-input"
+            inputmode="decimal"
+            placeholder="0"
+          />
+          <span class="input-addon" id="fs-intake-price-addon">—</span>
+        </div>
+        <p id="fs-intake-buying-unit-hint" class="hint" style="margin-top: 0.35rem">Per product unit of measure; leave blank or 0 if not tracked.</p>
+      </div>
+
+      <div class="field">
+        <label class="label-row" for="fs_intake_quality">{{ i("shield") }} <span>Product quality</span></label>
+        <div class="input-wrap">{{ i("shield") }}
+          <select id="fs_intake_quality" name="intake_quality" required>
+            {% for val, label in intake_quality_options %}
+              <option value="{{ val }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="label-row" for="fs_farmer_payment">{{ i("wallet") }} <span>Payment status</span></label>
+        <div class="input-wrap">{{ i("wallet") }}
+          <select id="fs_farmer_payment" name="farmer_payment_status" required>
+            {% for val, label in payment_status_options %}
+              <option value="{{ val }}"{% if val == 'not_paid' %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <p class="hint" style="margin-top: 0.35rem">For members this reflects payout to the farmer; for walk-in suppliers, settlement with the supplier.</p>
+      </div>
+
+      <div class="field" style="grid-column: 1 / -1">
+        <label class="label-row" for="fs_intake_note">{{ i("file_text") }} <span>Note (optional)</span></label>
+        <div class="input-wrap">{{ i("file_text") }}
+          <input
+            id="fs_intake_note"
+            name="note"
+            type="text"
+            maxlength="500"
+            data-uppercase
+            style="text-transform: uppercase"
+            autocomplete="off"
+            placeholder="E.g. GRADE, LOT, DELIVERY REF"
+          />
+        </div>
+      </div>
+
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="button" type="submit">{{ i("plus_circle") }} Record end product stock</button>
+    </div>
+  </form>
+    </div>
+  </details>
+  {% else %}
+    <p class="lede dash-card-lede" style="margin-top: 1rem">
+      You need at least one active <strong>crop item</strong> (for walk-in intake) and/or an active <strong>member farming session</strong> with a linked crop (for member intake).
+    </p>
+    <p class="hint">
+      <a href="{{ url_for('main.module_page', role=session.get('employee_role'), module_key='farmers') }}">{{ i("users") }} Farmers</a>
+      <span aria-hidden="true"> · </span>
+      <a href="{{ url_for('main.farmer_farming_session', role=session.get('employee_role')) }}">{{ i("leaf") }} Register farming session</a>
+      <span aria-hidden="true"> · </span>
+      <a href="{{ url_for('main.products_management', role=session.get('employee_role')) }}">{{ i("boxes") }} Item management</a>
+    </p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="dashboard-header" style="margin-bottom: 1rem">
+    <div>
+      <h3 style="margin: 0 0 0.35rem" class="dash-title">{{ i("file_text") }} Record intake transactions</h3>
+      <p class="dash-meta" style="margin: 0">
+        Stock movements saved from <strong>Record intake</strong> on this page, newest first (up to 1,000).
+      </p>
+    </div>
+    <a
+      href="{{ url_for('main.warehouse_stock_transactions', role=session.get('employee_role')) }}"
+      class="button button-ghost"
+    >
+      {{ i("file_text") }} All warehouse movements
+    </a>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table warehouse-stock-tx-table">
+      <thead>
+        <tr>
+          <th>Member / supplier</th>
+          <th>Intake type</th>
+          <th>Item (crop)</th>
+          <th class="numeric-col">Quantity</th>
+          <th class="numeric-col">Total</th>
+          <th>Quality</th>
+          <th>Payment</th>
+          <th class="numeric-col" style="width: 3.5rem"><span class="sr-only">View crop session</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if intake_transactions and intake_transactions|length %}
+          {% for t in intake_transactions %}
+            {% set qty_v = (t.quantity | default(0) | float) %}
+            {% set price_v = t.buying_price if t.buying_price is not none else none %}
+            {% set line_total = (qty_v * (price_v | float)) if price_v is not none else none %}
+            <tr class="warehouse-stock-tx-row warehouse-stock-tx-row--in">
+              <td>
+                <strong>{{ t.supplier_name or "—" }}</strong>
+                {% if t.supplier_contact %}<div class="hint" style="margin-top: 0.2rem">{{ t.supplier_contact }}</div>{% endif %}
+              </td>
+              <td>
+                {% if t.note and ('END PRODUCT WALK-IN' in (t.note | upper)) %}
+                  <span class="pill">Walk-in supplier</span>
+                {% else %}
+                  <span class="pill">Member</span>
+                {% endif %}
+              </td>
+              <td>
+                <strong>{{ t.crop_code }}</strong>
+                · {{ t.product_type }} — {{ t.crop_name }}
+                {% if t.crop_category %}<span class="hint">({{ t.crop_category }})</span>{% endif %}
+              </td>
+              <td class="numeric-col">
+                <strong><code class="profile-code">{{ "%.2f"|format(qty_v) }}</code></strong>
+                {% if t.unit_of_measure %}
+                  <div class="hint" style="margin-top: 0.15rem">{{ t.unit_of_measure }}</div>
+                {% else %}
+                  <div class="hint" style="margin-top: 0.15rem">—</div>
+                {% endif %}
+              </td>
+              <td class="numeric-col">
+                {% if line_total is not none %}
+                  <strong>KES {{ "%.2f"|format(line_total) }}</strong>
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td>{{ t.intake_quality_label }}</td>
+              <td>{{ t.payment_status_label }}</td>
+              <td class="numeric-col">
+                {% if t.farmer_id and t.crop_session_product_id %}
+                  <a
+                    href="{{ url_for('main.warehouse_farmer_product_session_stock', role=session.get('employee_role'), farmer_id=t.farmer_id, product_id=t.crop_session_product_id) }}"
+                    class="fs-intake-tx-view"
+                    title="View this farmer’s product session stock transactions"
+                    aria-label="View stock transactions for {{ (t.supplier_name or 'farmer') | e }} — {{ t.crop_name or 'crop' }}"
+                  >{{ i("eye") }}</a>
+                {% elif t.note and ('END PRODUCT WALK-IN' in (t.note | upper)) %}
+                  <span class="hint" title="Walk-in supplier intake — no member session ledger">—</span>
+                {% else %}
+                  <span class="hint" title="Could not link to member session">—</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="8" class="table-empty">No record intake transactions yet. Use <strong>Record intake</strong> for a member session or a walk-in supplier.</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% if has_intake_sessions or has_walk_in_products %}
+<script>
+  (function () {
+    var form = document.querySelector("form.warehouse-stock-form");
+    if (!form) return;
+
+    var both = form.getAttribute("data-intake-both") === "true";
+    var scope = (form.getAttribute("data-scope") || "both").toLowerCase();
+    var lookupUrl = form.getAttribute("data-phone-lookup-url") || "";
+    var memberPanel = document.getElementById("intake-member-panel");
+    var walkPanel = document.getElementById("intake-walkin-panel");
+    var sourceHidden = document.getElementById("fs-intake-source-hidden");
+    var hidden = document.getElementById("fs-intake-session-id");
+    var primaryPhone = document.getElementById("fs-intake-primary-phone");
+    var rows = Array.prototype.slice.call(document.querySelectorAll(".fs-intake-picker__row"));
+    var stockHint = document.getElementById("fs-intake-stock-hint");
+    var uomHint = document.getElementById("fs-intake-uom-hint");
+    var qtyWalkInput = document.getElementById("fs_intake_qty_walk");
+    var qtyMemberInput = document.getElementById("fs_intake_qty_member");
+    var qtyMemberSlot = document.getElementById("intake-qty-member-slot");
+    var priceAddon = document.getElementById("fs-intake-price-addon");
+    var filterEl = document.getElementById("fs-intake-filter");
+    var emptyFilter = document.getElementById("fs-intake-empty-filter");
+    var memberFilter = document.getElementById("fs-intake-member-filter");
+    var walkProduct = document.getElementById("fs_walk_in_product");
+    var supName = document.getElementById("w_supplier_name_in");
+    var phoneStatusEl = form.querySelector("[data-intake-phone-status]");
+    var classifyWrap = document.getElementById("fs-intake-classified-fields");
+    var kindBanner = document.getElementById("fs-intake-kind-banner");
+    var btConnectBtn = document.getElementById("fs-intake-bt-connect");
+    var btStatusEl = document.getElementById("fs-intake-bt-status");
+    var printAfterCb = document.getElementById("fs-intake-print-after-submit");
+    var btTxCharacteristic = null;
+    var btPairedDevice = null;
+    var NORDIC_UART_SERVICE = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+    var NORDIC_UART_TX = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+    /** Common on many BLE thermal / serial modules (in addition to Nordic UART). */
+    var BLE_SERIAL_SERVICE_FFE0 = "0000ffe0-0000-1000-8000-00805f9b34fb";
+    var BLE_SERIAL_CHAR_FFE1 = "0000ffe1-0000-1000-8000-00805f9b34fb";
+    /** Very common on Chinese ESC/POS BLE printers (PuYinuo / “581” class, many AW-* models). */
+    var BLE_THERMAL_SERVICE_FF00 = "0000ff00-0000-1000-8000-00805f9b34fb";
+    var BLE_THERMAL_TX_FF02 = "0000ff02-0000-1000-8000-00805f9b34fb";
+    var BLE_THERMAL_RX_FF01 = "0000ff01-0000-1000-8000-00805f9b34fb";
+    /** ISSC “transparent UART” (fallback on many portables). */
+    var BLE_ISSC_SERVICE = "49535343-fe7d-4ae5-8fa9-9fafd205e455";
+    var BLE_ISSC_TX = "49535343-8841-43f4-a8d4-ecbe34729bb3";
+    var BLE_ISSC_RX = "49535343-1e4d-4bd9-ba61-23c647249616";
+
+    /** Order matters: try most common ESC/POS BLE stacks first. */
+    var BT_BLE_PRINT_CHANNELS = [
+      { service: NORDIC_UART_SERVICE, tx: NORDIC_UART_TX },
+      { service: BLE_THERMAL_SERVICE_FF00, tx: BLE_THERMAL_TX_FF02, notifyRx: BLE_THERMAL_RX_FF01 },
+      { service: BLE_SERIAL_SERVICE_FFE0, tx: BLE_SERIAL_CHAR_FFE1 },
+      { service: BLE_ISSC_SERVICE, tx: BLE_ISSC_TX, notifyRx: BLE_ISSC_RX },
+    ];
+
+    function btOptionalServiceUuids() {
+      var out = [];
+      for (var i = 0; i < BT_BLE_PRINT_CHANNELS.length; i++) {
+        var u = BT_BLE_PRINT_CHANNELS[i].service;
+        if (out.indexOf(u) === -1) out.push(u);
+      }
+      return out;
+    }
+
+    function onGattDisconnected() {
+      btTxCharacteristic = null;
+      setBtStatus(
+        "Printer disconnected (Bluetooth idle). Submit again — we reconnect automatically — or tap Pair & connect."
+      );
+    }
+
+    async function setupBtUart(device) {
+      if (btPairedDevice && btPairedDevice !== device) {
+        try {
+          btPairedDevice.removeEventListener("gattserverdisconnected", onGattDisconnected);
+        } catch (ignore) {}
+      }
+      var server = device.gatt.connected ? device.gatt : await device.gatt.connect();
+      var lastErr = null;
+      btTxCharacteristic = null;
+      for (var ci = 0; ci < BT_BLE_PRINT_CHANNELS.length; ci++) {
+        var pair = BT_BLE_PRINT_CHANNELS[ci];
+        try {
+          var svc = await server.getPrimaryService(pair.service);
+          var ch = await svc.getCharacteristic(pair.tx);
+          if (pair.notifyRx) {
+            try {
+              var rx = await svc.getCharacteristic(pair.notifyRx);
+              await rx.startNotifications();
+            } catch (rxSkip) {}
+          }
+          btTxCharacteristic = ch;
+          btPairedDevice = device;
+          device.removeEventListener("gattserverdisconnected", onGattDisconnected);
+          device.addEventListener("gattserverdisconnected", onGattDisconnected);
+          return;
+        } catch (oneErr) {
+          lastErr = oneErr;
+        }
+      }
+      throw lastErr || new Error("No recognised BLE print service on this device.");
+    }
+
+    /** Browsers remember allowed devices; use when the picker returns “cancelled” but pairing already succeeded earlier. */
+    async function tryConnectFromGrantedDevices() {
+      if (!navigator.bluetooth || !navigator.bluetooth.getDevices) return false;
+      try {
+        var granted = await navigator.bluetooth.getDevices();
+        for (var gi = 0; gi < granted.length; gi++) {
+          try {
+            await setupBtUart(granted[gi]);
+            setBtStatus("Connected: " + (granted[gi].name || "printer"));
+            return true;
+          } catch (skip) {}
+        }
+      } catch (e) {
+        console.warn(e);
+      }
+      return false;
+    }
+
+    /**
+     * OS “paired” ≠ this page connected. BLE often drops the link; we reconnect using the last device from Web Bluetooth.
+     */
+    async function ensureBtPrinterReady() {
+      try {
+        if (btPairedDevice && btPairedDevice.gatt.connected && btTxCharacteristic) {
+          return true;
+        }
+        if (btPairedDevice) {
+          await setupBtUart(btPairedDevice);
+          setBtStatus("Connected: " + (btPairedDevice.name || "printer"));
+          return true;
+        }
+        return await tryConnectFromGrantedDevices();
+      } catch (err) {
+        console.error(err);
+        btTxCharacteristic = null;
+        setBtStatus(
+          (err && err.message ? err.message : "Reconnect failed") +
+            ' — tap "Pair & connect printer" again.',
+          true
+        );
+      }
+      return false;
+    }
+
+    var phoneLookupSeq = 0;
+    var debounceMs = 420;
+
+    function digitsLen(v) {
+      return String(v || "").replace(/\D/g, "").length;
+    }
+
+    function currentSource() {
+      return sourceHidden ? String(sourceHidden.value || "member").toLowerCase() : "member";
+    }
+
+    function setPhoneStatus(kind, text) {
+      if (!phoneStatusEl) return;
+      if (!text) {
+        phoneStatusEl.hidden = true;
+        phoneStatusEl.textContent = "";
+        phoneStatusEl.removeAttribute("data-intake-phone-status-kind");
+        return;
+      }
+      phoneStatusEl.hidden = false;
+      phoneStatusEl.textContent = text;
+      if (kind) phoneStatusEl.setAttribute("data-intake-phone-status-kind", kind);
+      else phoneStatusEl.removeAttribute("data-intake-phone-status-kind");
+    }
+
+    function applySelectedCropUom(uomRaw) {
+      var raw = (uomRaw || "").trim();
+      var u = raw ? raw.toUpperCase() : "";
+      var disp = u || "—";
+      document.querySelectorAll(".fs-intake-qty-addon").forEach(function (el) {
+        el.textContent = disp;
+      });
+      if (priceAddon) priceAddon.textContent = u ? "PER " + u : "—";
+      document.querySelectorAll(".fs-intake-qty-unit-label").forEach(function (el) {
+        el.textContent = u ? " · " + u : "";
+      });
+      var pl = document.getElementById("fs-intake-price-unit-label");
+      var bh = document.getElementById("fs-intake-buying-unit-hint");
+      if (pl) pl.textContent = u ? " · per " + u : "";
+      if (bh) {
+        bh.textContent = u
+          ? "Amounts are recorded per " + u + " for the selected crop item."
+          : "Per product unit of measure; leave blank or 0 if not tracked.";
+      }
+    }
+
+    function syncWalkInProductUom() {
+      if (!walkProduct || walkProduct.disabled || !String(walkProduct.value || "").trim()) {
+        applySelectedCropUom("");
+        return;
+      }
+      var opt = walkProduct.options[walkProduct.selectedIndex];
+      var uom = opt ? opt.getAttribute("data-uom") || "" : "";
+      applySelectedCropUom(uom);
+    }
+
+    function syncFromRow(row) {
+      if (!row || !row.dataset) {
+        if (hidden && !hidden.disabled) hidden.value = "";
+        if (stockHint) stockHint.textContent = "—";
+        if (uomHint) uomHint.textContent = "—";
+        applySelectedCropUom("");
+        return;
+      }
+      if (hidden && !hidden.disabled) hidden.value = row.dataset.sessionId || "";
+      var uom = row.dataset.uom || "";
+      var uomTrim = (uom || "").trim();
+      var uomDisp = uomTrim ? uomTrim.toUpperCase() : "—";
+      var st = row.dataset.stock != null ? row.dataset.stock : "—";
+      if (stockHint) stockHint.textContent = st;
+      if (uomHint) uomHint.textContent = uomDisp;
+      applySelectedCropUom(uom);
+    }
+
+    function clearSelection() {
+      rows.forEach(function (r) {
+        r.classList.remove("is-selected");
+      });
+      syncFromRow(null);
+    }
+
+    function selectRow(row) {
+      rows.forEach(function (r) {
+        r.classList.toggle("is-selected", r === row);
+      });
+      syncFromRow(row);
+    }
+
+    function applyFilter() {
+      var q = (filterEl && filterEl.value ? filterEl.value : "").trim().toLowerCase();
+      var fid =
+        memberFilter && !memberFilter.disabled
+          ? String(memberFilter.value || "").trim()
+          : "";
+      var visible = 0;
+      rows.forEach(function (r) {
+        var hay = (r.getAttribute("data-search") || "").toLowerCase();
+        var farmerOk =
+          !fid || String(r.getAttribute("data-farmer-id") || "") === fid;
+        var show = (!q || hay.indexOf(q) !== -1) && farmerOk;
+        r.style.display = show ? "" : "none";
+        if (show) visible++;
+        if (!show && r.classList.contains("is-selected")) {
+          r.classList.remove("is-selected");
+          syncFromRow(null);
+        }
+      });
+      if (emptyFilter) {
+        emptyFilter.classList.toggle("is-visible", visible === 0 && rows.length > 0);
+      }
+    }
+
+    function selectFirstVisibleSessionRow() {
+      var pick = null;
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].style.display !== "none") {
+          pick = rows[i];
+          break;
+        }
+      }
+      if (pick) selectRow(pick);
+    }
+
+    function setWalkFieldsDisabled(disabled) {
+      if (walkProduct) {
+        walkProduct.disabled = disabled;
+        if (disabled) walkProduct.selectedIndex = 0;
+      }
+      if (supName) {
+        supName.disabled = disabled;
+        if (disabled) supName.value = "";
+      }
+      if (disabled) syncWalkInProductUom();
+    }
+
+    function setMemberFieldsDisabled(disabled) {
+      if (hidden) {
+        hidden.disabled = disabled;
+        if (disabled) hidden.value = "";
+      }
+      if (memberFilter) {
+        memberFilter.disabled = disabled;
+        if (disabled) memberFilter.selectedIndex = 0;
+      }
+      rows.forEach(function (r) {
+        r.tabIndex = disabled ? -1 : 0;
+        if (disabled) r.classList.remove("is-selected");
+      });
+      if (disabled) syncFromRow(null);
+    }
+
+    function bindQuantityFieldNames() {
+      var walk = currentSource() === "walk_in";
+      if (qtyMemberSlot && both) qtyMemberSlot.hidden = walk;
+      if (qtyWalkInput && qtyMemberInput) {
+        if (walk) {
+          qtyWalkInput.value = qtyWalkInput.value || qtyMemberInput.value || "";
+          qtyWalkInput.setAttribute("name", "quantity");
+          qtyWalkInput.required = true;
+          qtyMemberInput.removeAttribute("name");
+          qtyMemberInput.required = false;
+          qtyMemberInput.removeAttribute("required");
+        } else {
+          qtyMemberInput.value = qtyMemberInput.value || qtyWalkInput.value || "";
+          qtyMemberInput.setAttribute("name", "quantity");
+          qtyMemberInput.required = true;
+          qtyWalkInput.removeAttribute("name");
+          qtyWalkInput.required = false;
+          qtyWalkInput.removeAttribute("required");
+        }
+      } else if (qtyWalkInput && !qtyMemberInput) {
+        qtyWalkInput.setAttribute("name", "quantity");
+        qtyWalkInput.required = true;
+      } else if (qtyMemberInput && !qtyWalkInput) {
+        qtyMemberInput.setAttribute("name", "quantity");
+        qtyMemberInput.required = true;
+      }
+    }
+
+    function syncIntakeBranches() {
+      if (!both) {
+        var src = currentSource();
+        if (src === "walk_in") {
+          setMemberFieldsDisabled(true);
+          setWalkFieldsDisabled(false);
+        } else {
+          setMemberFieldsDisabled(false);
+          setWalkFieldsDisabled(true);
+        }
+        bindQuantityFieldNames();
+        refreshQtyPriceUomFromContext();
+        return;
+      }
+      var isMember = currentSource() === "member";
+      if (memberPanel) memberPanel.hidden = !isMember;
+      if (walkPanel) walkPanel.hidden = isMember;
+      setMemberFieldsDisabled(!isMember);
+      setWalkFieldsDisabled(isMember);
+      if (isMember) applyFilter();
+      bindQuantityFieldNames();
+      refreshQtyPriceUomFromContext();
+    }
+
+    function refreshQtyPriceUomFromContext() {
+      if (currentSource() === "walk_in") {
+        syncWalkInProductUom();
+        return;
+      }
+      var sel = document.querySelector(".fs-intake-picker__row.is-selected");
+      if (
+        sel &&
+        sel.style.display !== "none" &&
+        !(hidden && hidden.disabled)
+      ) {
+        applySelectedCropUom(sel.getAttribute("data-uom") || "");
+      } else {
+        applySelectedCropUom("");
+      }
+    }
+
+    function hideClassifiedIntakeFields() {
+      if (!both || !classifyWrap) return;
+      classifyWrap.setAttribute("hidden", "");
+      if (kindBanner) {
+        kindBanner.setAttribute("hidden", "");
+        kindBanner.textContent = "";
+        kindBanner.removeAttribute("data-intake-kind");
+      }
+    }
+
+    function revealClassifiedIntakeFields() {
+      if (!classifyWrap) return;
+      classifyWrap.removeAttribute("hidden");
+    }
+
+    /** Shown only after phone lookup resolves (member vs walk-in) when both flows exist. */
+    function setIntakeKindBanner(kind) {
+      if (!kindBanner || !both) return;
+      kindBanner.removeAttribute("hidden");
+      kindBanner.removeAttribute("data-intake-kind");
+      if (kind === "member") {
+        kindBanner.textContent = "Intake type: Cooperative member — select session and quantity.";
+        kindBanner.setAttribute("data-intake-kind", "member");
+      } else if (kind === "no_member_session") {
+        kindBanner.textContent =
+          "Intake type: Member phone — no active farming session for this number.";
+        kindBanner.setAttribute("data-intake-kind", "warn");
+      } else if (kind === "walk_in") {
+        kindBanner.textContent =
+          "Intake type: Walk-in supplier — complete supplier details and crop below.";
+        kindBanner.setAttribute("data-intake-kind", "walk_in");
+      }
+    }
+
+    function resetPhoneBranchUi() {
+      setPhoneStatus(null, "");
+      hideClassifiedIntakeFields();
+      var emptyPhone = !primaryPhone || !String(primaryPhone.value || "").trim();
+      if (emptyPhone && supName) supName.value = "";
+      if (both && sourceHidden) {
+        sourceHidden.value = "member";
+        if (memberFilter) memberFilter.selectedIndex = 0;
+        clearSelection();
+        syncIntakeBranches();
+        applyFilter();
+      }
+    }
+
+    async function runPhoneLookup() {
+      var my = ++phoneLookupSeq;
+      if (!lookupUrl || !primaryPhone) return;
+
+      var digits = digitsLen(primaryPhone.value);
+      if (digits < 9) {
+        resetPhoneBranchUi();
+        return;
+      }
+
+      var params = new URLSearchParams();
+      params.set("phone", primaryPhone.value.trim());
+      params.set("scope", scope);
+
+      try {
+        var res = await fetch(lookupUrl + "?" + params.toString(), {
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        });
+        if (my !== phoneLookupSeq) return;
+        if (!res.ok) {
+          setPhoneStatus(null, "");
+          hideClassifiedIntakeFields();
+          return;
+        }
+        var data = await res.json();
+        if (my !== phoneLookupSeq) return;
+        if (data.error) {
+          setPhoneStatus(null, "");
+          hideClassifiedIntakeFields();
+          return;
+        }
+
+        if (!data.ready) {
+          setPhoneStatus(null, data.message || "");
+          hideClassifiedIntakeFields();
+          return;
+        }
+
+        if (data.kind === "member") {
+          if (sourceHidden) sourceHidden.value = "member";
+          revealClassifiedIntakeFields();
+          setIntakeKindBanner("member");
+          setPhoneStatus("member", data.message || "Member — select session.");
+          if (memberFilter && data.farmer && data.farmer.id != null) {
+            memberFilter.value = String(data.farmer.id);
+          }
+          syncIntakeBranches();
+          applyFilter();
+          selectFirstVisibleSessionRow();
+          return;
+        }
+
+        if (data.kind === "no_member_session") {
+          if (sourceHidden) sourceHidden.value = "member";
+          revealClassifiedIntakeFields();
+          setIntakeKindBanner("no_member_session");
+          setPhoneStatus("warn", data.message || "");
+          if (memberFilter) memberFilter.selectedIndex = 0;
+          syncIntakeBranches();
+          applyFilter();
+          return;
+        }
+
+        if (data.kind === "walk_in_supplier" || data.kind === "walk_in_new") {
+          if (sourceHidden) sourceHidden.value = "walk_in";
+          revealClassifiedIntakeFields();
+          setIntakeKindBanner("walk_in");
+          var sk = data.kind === "walk_in_supplier" ? "registered" : "new";
+          setPhoneStatus(sk, data.message || "");
+          syncIntakeBranches();
+          if (supName && !supName.disabled) {
+            if (data.supplier && data.supplier.name) {
+              supName.value = String(data.supplier.name).toUpperCase();
+            } else {
+              supName.value = "";
+            }
+          }
+          return;
+        }
+
+        setPhoneStatus(null, "");
+        hideClassifiedIntakeFields();
+      } catch (err) {
+        if (my === phoneLookupSeq) {
+          setPhoneStatus(null, "");
+          hideClassifiedIntakeFields();
+        }
+      }
+    }
+
+    function debounce(fn, ms) {
+      var t;
+      return function () {
+        var ctx = this;
+        var args = arguments;
+        clearTimeout(t);
+        t = setTimeout(function () {
+          fn.apply(ctx, args);
+        }, ms);
+      };
+    }
+
+    var debouncedLookup = debounce(runPhoneLookup, debounceMs);
+
+    rows.forEach(function (row) {
+      row.addEventListener("click", function () {
+        if (row.style.display === "none" || (hidden && hidden.disabled)) return;
+        selectRow(row);
+      });
+      row.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          if (row.style.display === "none" || (hidden && hidden.disabled)) return;
+          selectRow(row);
+        }
+      });
+    });
+
+    if (filterEl) filterEl.addEventListener("input", applyFilter);
+    if (memberFilter) memberFilter.addEventListener("change", applyFilter);
+    if (walkProduct) walkProduct.addEventListener("change", syncWalkInProductUom);
+
+    if (qtyWalkInput && qtyMemberInput) {
+      qtyWalkInput.addEventListener("input", function () {
+        qtyMemberInput.value = qtyWalkInput.value;
+      });
+      qtyMemberInput.addEventListener("input", function () {
+        qtyWalkInput.value = qtyMemberInput.value;
+      });
+    }
+
+    if (primaryPhone) {
+      primaryPhone.addEventListener("input", function () {
+        debouncedLookup();
+      });
+    }
+
+    function setBtStatus(text, isErr) {
+      if (!btStatusEl) return;
+      btStatusEl.textContent = text || "";
+      btStatusEl.style.color = isErr ? "var(--danger, #b42318)" : "";
+    }
+
+    function receiptAsciiLine(s) {
+      return String(s || "").replace(/[^\x20-\x7e]/g, "?");
+    }
+
+    function concatUint8(parts) {
+      var len = 0;
+      for (var i = 0; i < parts.length; i++) len += parts[i].length;
+      var out = new Uint8Array(len);
+      var o = 0;
+      for (var j = 0; j < parts.length; j++) {
+        out.set(parts[j], o);
+        o += parts[j].length;
+      }
+      return out;
+    }
+
+    /** Typical printable columns for 58mm thermal; avoids overrun on narrow printers. */
+    function buildEscPosReceipt(r) {
+      var enc = new TextEncoder();
+      var W = 32;
+      var ESC = 0x1b;
+      var GS = 0x1d;
+      function truncVis(s, max) {
+        s = receiptAsciiLine(s).trim();
+        return s.length <= max ? s : s.slice(0, Math.max(1, max - 1)) + "~";
+      }
+      function wrapAscii(text, width) {
+        text = receiptAsciiLine(text).trim();
+        if (!text) return [];
+        var words = text.split(/\s+/);
+        var lines = [];
+        var cur = "";
+        for (var wi = 0; wi < words.length; wi++) {
+          var w = words[wi];
+          if (!cur.length) {
+            cur = w;
+            continue;
+          }
+          if (cur.length + 1 + w.length <= width) cur += " " + w;
+          else {
+            lines.push(cur);
+            cur = w;
+          }
+        }
+        if (cur.length) lines.push(cur);
+        return lines;
+      }
+      /** Left column label + right-aligned value within width */
+      function rowLR(left, right) {
+        left = receiptAsciiLine(left);
+        right = receiptAsciiLine(right);
+        if (left.length + right.length + 1 > W) {
+          return enc.encode(left + "\n" + " ".repeat(Math.max(0, W - right.length)) + right + "\n");
+        }
+        return enc.encode(left + " ".repeat(W - left.length - right.length) + right + "\n");
+      }
+      function lnPlain(s) {
+        return enc.encode(receiptAsciiLine(s) + "\n");
+      }
+      function sep(ch) {
+        var c = (ch || "-").charAt(0);
+        var line = new Array(W + 1).join(c);
+        return enc.encode(line.slice(0, W) + "\n");
+      }
+      function align(a) {
+        return new Uint8Array([ESC, 0x61, a & 255]);
+      }
+      function bold(on) {
+        return new Uint8Array([ESC, 0x45, on ? 1 : 0]);
+      }
+      /** ESC ! n — 0x30 double w+h on most Epson-compat */
+      function sizeNormal() {
+        return new Uint8Array([ESC, 0x21, 0x00]);
+      }
+      function sizeLarge() {
+        return new Uint8Array([ESC, 0x21, 0x30]);
+      }
+
+      var intakeLbl =
+        String(r.intake_type || "").toLowerCase() === "walk_in"
+          ? "WALK-IN SUPPLIER"
+          : "COOPERATIVE MEMBER";
+      var qtyNum = Number(r.quantity);
+      var qtyStr = Number.isFinite(qtyNum) ? qtyNum.toFixed(2) : String(r.quantity || "");
+      var priceNum = Number(r.buying_price);
+      var priceStr = Number.isFinite(priceNum) ? priceNum.toFixed(2) : String(r.buying_price ?? "");
+      var uom = receiptAsciiLine(r.unit_of_measure || "").trim();
+      var lineTot =
+        r.line_total != null && r.line_total !== ""
+          ? "KES " + Number(r.line_total).toFixed(2)
+          : "—";
+      var cropLine = truncVis(
+        (r.crop_code || "—") + " — " + (r.crop_name || "—") + (uom ? " · " + uom : ""),
+        W
+      );
+      var movId = String(r.movement_id != null ? r.movement_id : "—");
+
+      var parts = [];
+      parts.push(new Uint8Array([ESC, 0x40]));
+      parts.push(align(1));
+      parts.push(sizeLarge());
+      parts.push(bold(true));
+      parts.push(lnPlain(truncVis(r.cooperative || "COOPERATIVE", 18)));
+      parts.push(sizeNormal());
+      parts.push(bold(false));
+      parts.push(lnPlain(""));
+      parts.push(bold(true));
+      parts.push(lnPlain(truncVis(r.title || "INTAKE RECEIPT", W)));
+      parts.push(bold(false));
+      parts.push(lnPlain(""));
+      parts.push(sep("="));
+      parts.push(align(0));
+      parts.push(bold(true));
+      parts.push(rowLR("REFERENCE", "#" + movId));
+      parts.push(bold(false));
+      parts.push(lnPlain(truncVis("Recorded " + (r.recorded_at || ""), W)));
+      parts.push(sep("-"));
+      parts.push(bold(true));
+      parts.push(lnPlain("PARTY"));
+      parts.push(bold(false));
+      parts.push(lnPlain(truncVis(r.party_name || "—", W)));
+      parts.push(lnPlain(truncVis(r.party_contact || "", W)));
+      parts.push(lnPlain(""));
+      parts.push(rowLR("Channel", intakeLbl));
+      if (r.farming_session_id != null && r.farming_session_id !== "") {
+        parts.push(rowLR("Session", "#" + String(r.farming_session_id)));
+      }
+      parts.push(sep("-"));
+      parts.push(bold(true));
+      parts.push(lnPlain("LINE DETAIL"));
+      parts.push(bold(false));
+      parts.push(lnPlain(cropLine));
+      parts.push(rowLR("Quantity", qtyStr + (uom ? " " + uom : "")));
+      parts.push(rowLR("Unit price", "KES " + priceStr));
+      parts.push(bold(true));
+      parts.push(rowLR("LINE TOTAL", lineTot));
+      parts.push(bold(false));
+      parts.push(sep("-"));
+      parts.push(rowLR("Quality", truncVis(r.quality_label || "—", 18)));
+      parts.push(rowLR("Payment", truncVis(r.payment_label || "—", 18)));
+      if (r.note) {
+        parts.push(lnPlain(""));
+        parts.push(bold(true));
+        parts.push(lnPlain("NOTE"));
+        parts.push(bold(false));
+        var noteLines = wrapAscii(r.note, W);
+        for (var ni = 0; ni < noteLines.length; ni++) {
+          parts.push(lnPlain(noteLines[ni]));
+        }
+      }
+      parts.push(sep("="));
+      parts.push(align(1));
+      parts.push(lnPlain(""));
+      parts.push(bold(true));
+      parts.push(lnPlain("Thank you"));
+      parts.push(bold(false));
+      parts.push(lnPlain("Retain this receipt for your records."));
+      parts.push(lnPlain(""));
+      parts.push(align(0));
+      var feedCut = new Uint8Array([0x0a, 0x0a, 0x0a, GS, 0x56, 0x41, 0x03]);
+      parts.push(feedCut);
+      return concatUint8(parts);
+    }
+
+    async function writeBleChunks(characteristic, buffer) {
+      var mtu = 20;
+      var useNoAck =
+        characteristic.properties &&
+        characteristic.properties.writeWithoutResponse;
+      for (var i = 0; i < buffer.length; i += mtu) {
+        var chunk = buffer.slice(i, Math.min(i + mtu, buffer.length));
+        if (useNoAck) await characteristic.writeValueWithoutResponse(chunk);
+        else await characteristic.writeValue(chunk);
+      }
+    }
+
+    async function printIntakeReceiptEscPos(receipt) {
+      if (!btTxCharacteristic) throw new Error("Bluetooth printer not connected.");
+      var bytes = buildEscPosReceipt(receipt);
+      await writeBleChunks(btTxCharacteristic, bytes);
+    }
+
+    async function submitIntakeAjaxAndPrint() {
+      if (!(await ensureBtPrinterReady())) {
+        window.alert(
+          'No usable Bluetooth printer from this browser session. Tap "Pair & connect printer" on this page (Chrome/Edge), wait for Connected, then submit again — or untick print receipt.'
+        );
+        return;
+      }
+      bindQuantityFieldNames();
+      var fd = new FormData(form);
+      try {
+        var res = await fetch(form.action, {
+          method: "POST",
+          body: fd,
+          credentials: "same-origin",
+          headers: {
+            "X-Intake-Ajax": "1",
+            Accept: "application/json",
+          },
+        });
+        var ct = (res.headers.get("content-type") || "").toLowerCase();
+        var data =
+          ct.indexOf("application/json") !== -1 ? await res.json() : null;
+        if (!res.ok || !data || data.ok !== true) {
+          var msg =
+            (data && data.error) ||
+            "Could not save intake (" + res.status + ").";
+          window.alert(msg);
+          return;
+        }
+        try {
+          await printIntakeReceiptEscPos(data.receipt);
+        } catch (printErr) {
+          console.error(printErr);
+          window.alert(
+            "Saved, but printing failed: " +
+              (printErr && printErr.message ? printErr.message : printErr) +
+              ". Check the printer."
+          );
+        }
+        if (data.redirect) window.location.href = data.redirect;
+      } catch (err) {
+        console.error(err);
+        window.alert("Network error — try again.");
+      }
+    }
+
+    if (btConnectBtn) {
+      btConnectBtn.addEventListener("click", async function () {
+        if (!navigator.bluetooth) {
+          setBtStatus("Web Bluetooth not available (use Chrome/Edge, HTTPS or localhost).", true);
+          return;
+        }
+        setBtStatus("Pairing…");
+        btConnectBtn.disabled = true;
+        try {
+          var device;
+          try {
+            device = await navigator.bluetooth.requestDevice({
+              acceptAllDevices: true,
+              optionalServices: btOptionalServiceUuids(),
+            });
+          } catch (pickErr) {
+            btTxCharacteristic = null;
+            var recovered = await tryConnectFromGrantedDevices();
+            if (recovered) return;
+            if (!(pickErr && (pickErr.name === "NotFoundError" || pickErr.name === "AbortError"))) {
+              btPairedDevice = null;
+            }
+            if (pickErr && (pickErr.name === "NotFoundError" || pickErr.name === "AbortError")) {
+              setBtStatus(
+                "Browser did not grant this site access to a printer. Tap Pair & connect again, select the printer row, click Pair — or remove the printer from Windows Bluetooth and pair again from this button.",
+                true
+              );
+            } else {
+              setBtStatus(
+                pickErr && pickErr.message ? pickErr.message : String(pickErr || "Error"),
+                true
+              );
+            }
+            return;
+          }
+          try {
+            await setupBtUart(device);
+            setBtStatus("Connected: " + (device.name || "printer"));
+          } catch (uartErr) {
+            console.error(uartErr);
+            btTxCharacteristic = null;
+            setBtStatus(
+              "Chrome paired, but none of the ESC/POS BLE channels we tried responded (Nordic UART, FF00/FF02, FFE0, ISSC). Use USB if available, check chrome://bluetooth-internals for this device’s services, or use the manufacturer app.",
+              true
+            );
+          }
+        } finally {
+          btConnectBtn.disabled = false;
+        }
+      });
+    }
+
+    form.addEventListener("submit", function (e) {
+      var phoneVal =
+        primaryPhone && primaryPhone.value ? primaryPhone.value.trim() : "";
+      if (digitsLen(phoneVal) < 9) {
+        e.preventDefault();
+        window.alert("Enter a contact phone with at least 9 digits.");
+        return;
+      }
+
+      var src = currentSource();
+      var activeQty =
+        src === "walk_in"
+          ? qtyWalkInput
+          : qtyMemberInput || qtyWalkInput;
+      if (
+        !activeQty ||
+        activeQty.disabled ||
+        !String(activeQty.value || "").trim() ||
+        Number(activeQty.value) <= 0
+      ) {
+        e.preventDefault();
+        window.alert("Enter a positive quantity received.");
+        return;
+      }
+
+      if (src === "member") {
+        if (!hidden || hidden.disabled || !String(hidden.value || "").trim()) {
+          e.preventDefault();
+          window.alert("Select an active farming session for this member intake.");
+          return;
+        }
+      } else {
+        if (!walkProduct || walkProduct.disabled || !String(walkProduct.value || "").trim()) {
+          e.preventDefault();
+          window.alert("Select the crop item for walk-in intake.");
+          return;
+        }
+        if (
+          !supName ||
+          supName.disabled ||
+          !String(supName.value || "").trim()
+        ) {
+          e.preventDefault();
+          window.alert("Enter the walk-in supplier name.");
+          return;
+        }
+      }
+
+      var wantBtPrint = printAfterCb && printAfterCb.checked;
+      if (wantBtPrint) {
+        e.preventDefault();
+        setBtStatus("Connecting to printer…");
+        ensureBtPrinterReady().then(function (ready) {
+          if (!ready) {
+            window.alert(
+              'Could not open the Bluetooth printer from this page. Tap "Pair & connect printer" here (not only in Windows Settings), wait for Connected, then submit again — or untick print receipt.'
+            );
+            return;
+          }
+          if (btPairedDevice) {
+            setBtStatus("Connected: " + (btPairedDevice.name || "printer"));
+          }
+          submitIntakeAjaxAndPrint();
+        });
+      }
+    });
+
+    syncIntakeBranches();
+    if (currentSource() === "member") applyFilter();
+    else syncFromRow(null);
+    refreshQtyPriceUomFromContext();
+
+    runPhoneLookup();
+  })();
+</script>
+{% endif %}
+
+{% endblock %}

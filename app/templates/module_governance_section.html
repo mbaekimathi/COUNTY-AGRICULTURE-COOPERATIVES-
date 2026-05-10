@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ section_title }} — {{ module_title }} — Meru Cooperatives{% endblock %}
+{% block content %}
+{% from "macros/icons.html" import i %}
+
+<div class="dashboard-header">
+  <div>
+    <p class="dash-meta" style="margin: 0 0 0.35rem">
+      <a href="{{ url_for('main.module_page', role=session.get('employee_role'), module_key='governance') }}" style="color: var(--muted); text-decoration: none">{{ i(module_icon) }} {{ module_title }}</a>
+      <span aria-hidden="true"> · </span>
+      <span>{{ section_title }}</span>
+    </p>
+    <h2 class="dash-title">{{ i(section_icon) }} {{ section_title }}</h2>
+    <p class="dash-meta">{{ section_desc }}</p>
+  </div>
+</div>
+
+<section class="panel">
+  <h3>{{ i("spark") }} Coming next</h3>
+  <p class="lede dash-card-lede">
+    This workspace is reserved for {{ section_title | lower }}. Next steps: wire forms, approvals, and reporting from cooperative records.
+  </p>
+</section>
+
+{% endblock %}

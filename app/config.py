@@ -5,9 +5,10 @@ from urllib.parse import urlparse, unquote
 
 from dotenv import load_dotenv
 
-load_dotenv()
-
 BASE_DIR = Path(__file__).resolve().parent.parent
+# Always prefer repo-root `.env` (cwd differs under IDE / task runners / subprocesses).
+load_dotenv(BASE_DIR / ".env")
+load_dotenv()
 
 
 def _mysql_from_env():
@@ -40,6 +41,8 @@ _DB = _mysql_from_env()
 class Config:
     SECRET_KEY = os.environ.get("FLASK_SECRET_KEY") or "dev-only-change-in-production"
     PERMANENT_SESSION_LIFETIME = timedelta(days=14)
+    # After this many minutes without any request (or session heartbeat), session hours pause.
+    SESSION_ACTIVITY_IDLE_MINUTES = int(os.environ.get("SESSION_ACTIVITY_IDLE_MINUTES", "15"))
 
     MYSQL_HOST = _DB["MYSQL_HOST"]
     MYSQL_PORT = _DB["MYSQL_PORT"]
@@ -57,3 +60,6 @@ class Config:
     # profile photo plus a national ID PDF/image; keep this comfortably above typical scans.
     MAX_CONTENT_LENGTH = int(os.environ.get("MAX_CONTENT_LENGTH_MB", "25")) * 1024 * 1024
     ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
+
+    # Browser Maps JavaScript API key (restrict by HTTP referrer in Google Cloud Console).
+    GOOGLE_MAPS_API_KEY = (os.environ.get("GOOGLE_MAPS_API_KEY") or "").strip()
